@@ -1,15 +1,5 @@
-VERSION 1.0 CLASS
-BEGIN
-  MultiUse = -1  'True
-END
-Attribute VB_Name = "ThisWorkbook"
-Attribute VB_GlobalNameSpace = False
-Attribute VB_Creatable = False
-Attribute VB_PredeclaredId = True
-Attribute VB_Exposed = True
 Option Explicit
 Public WithEvents App As Application
-Attribute App.VB_VarHelpID = -1
 
 Public Sub EnsureAppHook()
     On Error Resume Next
@@ -118,7 +108,6 @@ Private Function ShouldSkipAutoColor(ByVal rng As Range) As Boolean
 
 CleanExit:
 End Function
-
 
 
 

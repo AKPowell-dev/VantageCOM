@@ -236,8 +236,8 @@ def parse_args(argv: Optional[Sequence[str]] = None):
     )
     parser.add_argument(
         "--filename",
-        default="Vim_Package_Holder_V22.xlam",
-        help="Output add-in filename (default: Vim_Package_Holder_V22.xlam)",
+        default="Vantage.xlam",
+        help="Output add-in filename (default: Vantage.xlam)",
     )
     parser.add_argument(
         "--build-dir",

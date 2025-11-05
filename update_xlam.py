@@ -97,7 +97,7 @@ def _remove_component_if_exists(vbproject, name: str) -> None:
         return
     if component.Type == vbext_ct_document:
         return
-    vbproject.VBComponents.Remove(component)
+        vbproject.VBComponents.Remove(component)
 
 
 def _sync_code_module(component, source_path: Path) -> None:
@@ -108,6 +108,80 @@ def _sync_code_module(component, source_path: Path) -> None:
     if existing:
         code_module.DeleteLines(1, existing)
     code_module.AddFromString(code)
+
+
+def _deactivate_addin_if_loaded(target_path: Path) -> bool:
+    """Deactivate the add-in in any running Excel instance to release file locks."""
+    pythoncom, _, com_error = ensure_pywin32()
+    from win32com.client import Dispatch  # type: ignore
+
+    pythoncom.CoInitialize()
+    released = False
+    try:
+        try:
+            excel_app = pythoncom.GetActiveObject("Excel.Application")
+        except com_error:
+            return False
+
+        excel = Dispatch(excel_app)
+        normalized_target = str(target_path.resolve()).lower()
+        original_alerts = getattr(excel, "DisplayAlerts", True)
+        excel.DisplayAlerts = False
+
+        try:
+            for collection_name in ("AddIns2", "AddIns"):
+                try:
+                    collection = getattr(excel, collection_name)
+                except AttributeError:
+                    continue
+                # Iterate backwards to avoid indexing issues when removing
+                for idx in range(collection.Count, 0, -1):
+                    try:
+                        addin = collection.Item(idx)
+                        full_name = getattr(addin, "FullName", "")
+                    except Exception:
+                        continue
+                    if not full_name:
+                        continue
+                    try:
+                        addin_path = str(Path(full_name).resolve()).lower()
+                    except (OSError, ValueError):
+                        addin_path = full_name.lower()
+                    if addin_path == normalized_target:
+                        try:
+                            if bool(getattr(addin, "Installed", False)):
+                                addin.Installed = False
+                                released = True
+                        except Exception:
+                            continue
+
+            # Close any open workbook referencing the add-in file.
+            workbooks = getattr(excel, "Workbooks", None)
+            if workbooks is not None:
+                for idx in range(workbooks.Count, 0, -1):
+                    try:
+                        workbook = workbooks.Item(idx)
+                        full_name = getattr(workbook, "FullName", "")
+                    except Exception:
+                        continue
+                    if not full_name:
+                        continue
+                    try:
+                        workbook_path = str(Path(full_name).resolve()).lower()
+                    except (OSError, ValueError):
+                        workbook_path = full_name.lower()
+                    if workbook_path == normalized_target:
+                        try:
+                            workbook.Close(SaveChanges=False)
+                            released = True
+                        except Exception:
+                            continue
+        finally:
+            excel.DisplayAlerts = original_alerts
+    finally:
+        pythoncom.CoUninitialize()
+
+    return released
 
 
 def build_xlam(
@@ -228,8 +302,17 @@ def update_xlam(
     built_path = build_xlam(repo_dir, filename, build_directory, excel_visible)
 
     target_path = target_directory / filename
+    if _deactivate_addin_if_loaded(target_path):
+        print("Deactivated running add-in instance to release lock.")
+
     backup_path = backup_existing(target_path)
-    shutil.copy2(built_path, target_path)
+    try:
+        shutil.copy2(built_path, target_path)
+    except PermissionError as exc:
+        raise RuntimeError(
+            f"Could not overwrite '{target_path}' because it is in use. Close Excel or "
+            "disable the add-in, then rerun the script."
+        ) from exc
 
     if backup_path:
         print(f"Existing add-in backed up to: {backup_path}")

@@ -110,20 +110,21 @@ def _sync_code_module(component, source_path: Path) -> None:
     code_module.AddFromString(code)
 
 
-def _deactivate_addin_if_loaded(target_path: Path) -> bool:
-    """Deactivate the add-in in any running Excel instance to release file locks."""
+def _deactivate_addin_if_loaded(target_path: Path) -> Dict[str, Iterable[str]]:
+    """Temporarily disable the add-in in running Excel instances to release file locks."""
     pythoncom, _, com_error = ensure_pywin32()
     from win32com.client import Dispatch  # type: ignore
 
     pythoncom.CoInitialize()
-    released = False
+    disabled_addins: set[str] = set()
+    excel = None
+    existing_instance = True
     try:
         try:
-            excel_app = pythoncom.GetActiveObject("Excel.Application")
+            pythoncom.GetActiveObject("Excel.Application")
         except com_error:
-            return False
-
-        excel = Dispatch(excel_app)
+            existing_instance = False
+        excel = Dispatch("Excel.Application")
         normalized_target = str(target_path.resolve()).lower()
         original_alerts = getattr(excel, "DisplayAlerts", True)
         excel.DisplayAlerts = False
@@ -134,7 +135,6 @@ def _deactivate_addin_if_loaded(target_path: Path) -> bool:
                     collection = getattr(excel, collection_name)
                 except AttributeError:
                     continue
-                # Iterate backwards to avoid indexing issues when removing
                 for idx in range(collection.Count, 0, -1):
                     try:
                         addin = collection.Item(idx)
@@ -147,15 +147,15 @@ def _deactivate_addin_if_loaded(target_path: Path) -> bool:
                         addin_path = str(Path(full_name).resolve()).lower()
                     except (OSError, ValueError):
                         addin_path = full_name.lower()
-                    if addin_path == normalized_target:
-                        try:
-                            if bool(getattr(addin, "Installed", False)):
-                                addin.Installed = False
-                                released = True
-                        except Exception:
-                            continue
+                    if addin_path != normalized_target:
+                        continue
+                    try:
+                        if bool(getattr(addin, "Installed", False)):
+                            addin.Installed = False
+                            disabled_addins.add(addin_path)
+                    except Exception:
+                        continue
 
-            # Close any open workbook referencing the add-in file.
             workbooks = getattr(excel, "Workbooks", None)
             if workbooks is not None:
                 for idx in range(workbooks.Count, 0, -1):
@@ -173,15 +173,77 @@ def _deactivate_addin_if_loaded(target_path: Path) -> bool:
                     if workbook_path == normalized_target:
                         try:
                             workbook.Close(SaveChanges=False)
-                            released = True
                         except Exception:
                             continue
         finally:
             excel.DisplayAlerts = original_alerts
+
+        if not existing_instance:
+            try:
+                excel.Quit()
+            except Exception:
+                pass
     finally:
         pythoncom.CoUninitialize()
 
-    return released
+    if disabled_addins:
+        return {"disabled_addins": tuple(disabled_addins), "excel_was_running": existing_instance}
+    return {"disabled_addins": (), "excel_was_running": existing_instance}
+
+
+def _reactivate_addins(info: Dict[str, Iterable[str]]) -> None:
+    """Restore add-ins that were temporarily disabled."""
+    disabled = tuple(info.get("disabled_addins", ()))
+    if not disabled:
+        return
+
+    pythoncom, _, com_error = ensure_pywin32()
+    from win32com.client import Dispatch  # type: ignore
+
+    pythoncom.CoInitialize()
+    excel = None
+    try:
+        try:
+            excel = Dispatch("Excel.Application")
+        except com_error:
+            return
+
+        original_alerts = getattr(excel, "DisplayAlerts", True)
+        excel.DisplayAlerts = False
+
+        try:
+            for collection_name in ("AddIns2", "AddIns"):
+                try:
+                    collection = getattr(excel, collection_name)
+                except AttributeError:
+                    continue
+                for idx in range(collection.Count, 0, -1):
+                    try:
+                        addin = collection.Item(idx)
+                        full_name = getattr(addin, "FullName", "")
+                    except Exception:
+                        continue
+                    if not full_name:
+                        continue
+                    try:
+                        addin_path = str(Path(full_name).resolve()).lower()
+                    except (OSError, ValueError):
+                        addin_path = full_name.lower()
+                    if addin_path in disabled:
+                        try:
+                            addin.Installed = True
+                        except Exception:
+                            continue
+        finally:
+            excel.DisplayAlerts = original_alerts
+
+        if not info.get("excel_was_running", True):
+            try:
+                excel.Quit()
+            except Exception:
+                pass
+    finally:
+        pythoncom.CoUninitialize()
 
 
 def build_xlam(
@@ -302,17 +364,27 @@ def update_xlam(
     built_path = build_xlam(repo_dir, filename, build_directory, excel_visible)
 
     target_path = target_directory / filename
-    if _deactivate_addin_if_loaded(target_path):
-        print("Deactivated running add-in instance to release lock.")
+    unlock_info = _deactivate_addin_if_loaded(target_path)
+    disabled_addins = tuple(unlock_info.get("disabled_addins", ()))
+    if disabled_addins:
+        print("Temporarily disabled running add-in to release file lock.")
 
     backup_path = backup_existing(target_path)
+    reactivated = False
     try:
         shutil.copy2(built_path, target_path)
     except PermissionError as exc:
         raise RuntimeError(
-            f"Could not overwrite '{target_path}' because it is in use. Close Excel or "
-            "disable the add-in, then rerun the script."
+            f"Could not overwrite '{target_path}' because it is currently in use. "
+            "Close Excel or disable the add-in, then rerun the script."
         ) from exc
+    finally:
+        if disabled_addins:
+            _reactivate_addins(unlock_info)
+            reactivated = True
+
+    if reactivated:
+        print("Restored add-in activation state.")
 
     if backup_path:
         print(f"Existing add-in backed up to: {backup_path}")

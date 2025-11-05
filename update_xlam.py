@@ -17,10 +17,22 @@ def get_default_addins_folder() -> Optional[str]:
     return str(candidate) if candidate.exists() else None
 
 
+def _read_text_with_fallback(path: Path) -> str:
+    """Read text using common VBA encodings with graceful fallback."""
+    data = path.read_bytes()
+    for encoding in ("utf-8-sig", "utf-16", "cp1252", "latin-1"):
+        try:
+            return data.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    # As a last resort, replace undecodable bytes to avoid crashing the build.
+    return data.decode("latin-1", errors="replace")
+
+
 def _read_vb_name(source_path: Path) -> Optional[str]:
     """Extract the VB_Name attribute from a VBA source file."""
     try:
-        for line in source_path.read_text(encoding="utf-8-sig").splitlines():
+        for line in _read_text_with_fallback(source_path).splitlines():
             stripped = line.strip()
             if stripped.startswith("Attribute VB_Name"):
                 _, value = stripped.split("=", 1)
@@ -90,7 +102,7 @@ def _remove_component_if_exists(vbproject, name: str) -> None:
 
 def _sync_code_module(component, source_path: Path) -> None:
     """Replace the entire contents of a VBA component with the given source file."""
-    code = source_path.read_text(encoding="utf-8-sig")
+    code = _read_text_with_fallback(source_path)
     code_module = component.CodeModule
     existing = code_module.CountOfLines
     if existing:

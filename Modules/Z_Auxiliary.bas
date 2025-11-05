@@ -18,7 +18,7 @@ Public Function SubstituteType(Optional ByVal g As String) As Boolean
     Dim uiGuard As ExcelUiGuard
     Set uiGuard = SuppressExcelUi(True)
     On Error GoTo CleanFail
-
+    ' TESTING FILE UPLOAD
     Call SubstituteFollowLangMode
 
     Select Case g

@@ -12,7 +12,7 @@ Option Explicit
 Public Parent As cls_Vim
 
 'config dictionary
-Private cConfig As Dictionary
+Private cConfig As Object
 
 'custom config filename
 Private Const CUSTOM_CONFIG = "_vimxlamrc"
@@ -194,7 +194,7 @@ End Sub
 
 
 Private Sub Class_Initialize()
-    Set cConfig = New Dictionary
+    Set cConfig = CreateObject("Scripting.Dictionary")
 
     'defined keys
     With cConfig

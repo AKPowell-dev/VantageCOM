@@ -251,7 +251,7 @@ Function GenerateHelps(Optional ByVal isJP As Boolean = False) As String
     End If
     
     ' DictionaryÇçÏê¨
-    Set actionDict = New Dictionary
+    Set actionDict = CreateObject("Scripting.Dictionary")
     
     ' Create ADODB.Stream object
     Set stream = CreateObject("ADODB.Stream")
@@ -300,7 +300,7 @@ Function GenerateHelps(Optional ByVal isJP As Boolean = False) As String
                         
                         ' Check if action exists
                         If Not actionDict.Exists(act) Then
-                            actionDict.Add act, New Dictionary
+                            actionDict.Add act, CreateObject("Scripting.Dictionary")
                         End If
                         
                         ' Add description for keystroke
@@ -329,8 +329,8 @@ Function GenerateHelps(Optional ByVal isJP As Boolean = False) As String
     Dim fileNumber As Integer
     Dim reading As Boolean
     Dim startLineFound As Boolean
-    Dim ret As Dictionary
-    Set ret = New Dictionary
+    Dim ret As Object
+    Set ret = CreateObject("Scripting.Dictionary")
     
     ' Set file path
     filePath = ThisWorkbook.Path & "\..\src\DefaultConfig.bas"

@@ -10,11 +10,11 @@ Attribute VB_Exposed = False
 Option Explicit
 
 Public Parent As cls_Vim
-Private cKeyMap As Dictionary
-Private cOnKeyMap As Dictionary
+Private cKeyMap As Object
+Private cOnKeyMap As Object
 
-Private REDIRECT_TABLE_US  As Dictionary
-Private REDIRECT_TABLE_JIS As Dictionary
+Private REDIRECT_TABLE_US  As Object
+Private REDIRECT_TABLE_JIS As Object
 
 Private mSuppressPlainKeys As Boolean           'new
 
@@ -892,8 +892,8 @@ Private Sub InitDummyKey()
 End Sub
 
 Private Sub Class_Initialize()
-    Set cKeyMap = New Dictionary
-    Set cOnKeyMap = New Dictionary
+    Set cKeyMap = CreateObject("Scripting.Dictionary")
+    Set cOnKeyMap = CreateObject("Scripting.Dictionary")
     mSuppressPlainKeys = False
 End Sub
 
@@ -1333,7 +1333,7 @@ Private Function FixWithKeyboardType(ByVal key As String) As String
     FixWithKeyboardType = key
 
     ' Determine which redirect table to use based on the current keyboard type
-    Dim redirectTable As Dictionary
+    Dim redirectTable As Object
     If Parent.Config.IsJisKeyboard Then
         Set redirectTable = REDIRECT_TABLE_JIS
     Else
@@ -1405,7 +1405,7 @@ End Function
 ' */
 Private Sub InitializeRedirectTables()
     If REDIRECT_TABLE_US Is Nothing Then
-        Set REDIRECT_TABLE_US = New Dictionary
+        Set REDIRECT_TABLE_US = CreateObject("Scripting.Dictionary")
         With REDIRECT_TABLE_US
             .Add "+{`}", "{~}"
             .Add "+1", "{!}"
@@ -1454,7 +1454,7 @@ Private Sub InitializeRedirectTables()
     End If
 
     If REDIRECT_TABLE_JIS Is Nothing Then
-        Set REDIRECT_TABLE_JIS = New Dictionary
+        Set REDIRECT_TABLE_JIS = CreateObject("Scripting.Dictionary")
         With REDIRECT_TABLE_JIS
             .Add "+1", "{!}"
             .Add "+2", "{""}"

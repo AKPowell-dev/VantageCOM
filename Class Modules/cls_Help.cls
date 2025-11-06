@@ -10,8 +10,8 @@ Attribute VB_Exposed = False
 Option Explicit
 
 Public Parent As cls_Vim
-Private HELP_DICT_JP As Dictionary
-Private HELP_DICT_EN As Dictionary
+Private HELP_DICT_JP As Object
+Private HELP_DICT_EN As Object
 
 Public Function GetText(ByVal funcName As String) As String
     If Parent.IsJapanese Then
@@ -33,7 +33,7 @@ End Function
 
 Private Sub InitJPDict()
     If HELP_DICT_JP Is Nothing Then
-        Set HELP_DICT_JP = New Dictionary
+        Set HELP_DICT_JP = CreateObject("Scripting.Dictionary")
         With HELP_DICT_JP
             .Add "ToggleLang", "言語モードの切替 (日本語/英語)"
             .Add "EnterCmdlineMode", "コマンドラインモードに入る"
@@ -394,7 +394,7 @@ End Sub
 
 Private Sub InitENDict()
     If HELP_DICT_EN Is Nothing Then
-        Set HELP_DICT_EN = New Dictionary
+        Set HELP_DICT_EN = CreateObject("Scripting.Dictionary")
         With HELP_DICT_EN
             .Add "ToggleLang", "Toggle language mode (Japanese/English)"
             .Add "EnterCmdlineMode", "Enter the Cmdline mode"

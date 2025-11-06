@@ -354,8 +354,8 @@ Private Function CmdSuggest(ByVal key As String) As CommandBar
         Exit Function
     End If
 
-    Dim menuDict As Dictionary
-    Set menuDict = New Dictionary
+    Dim menuDict As Object
+    Set menuDict = CreateObject("Scripting.Dictionary")
 
     Dim i As Long
     For i = LBound(suggestsList) To UBound(suggestsList)

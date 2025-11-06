@@ -453,16 +453,16 @@ End Function
 ' * @returns {Collection} - A collection of file and subfolder names.
 ' */
 Function DirGrob(ByVal folderPath As String) As Collection
-    Dim fso As FileSystemObject
-    Dim objFolder As folder
-    Dim objFile As file
-    Dim objSubFolder As folder
+    Dim fso As Object
+    Dim objFolder As Object
+    Dim objFile As Object
+    Dim objSubFolder As Object
 
     ' Setup Collection
     Set DirGrob = New Collection
 
     ' Create FileSystemObject
-    Set fso = New FileSystemObject
+    Set fso = CreateObject("Scripting.FileSystemObject")
 
     Dim sepIndex As Long
     Dim lastPart As String
@@ -507,11 +507,11 @@ End Function
 ' */
 Function GetAbsolutePath(ByRef cwd As String, ByRef relativePath As String) As String
     ' Declare variables
-    Dim fso As FileSystemObject
+    Dim fso As Object
     Dim fullPath As String
 
     ' Create FileSystemObject
-    Set fso = New FileSystemObject
+    Set fso = CreateObject("Scripting.FileSystemObject")
 
     ' Combine the current workbook path with the relative path and get the absolute path
     fullPath = cwd & "\" & relativePath

@@ -114,7 +114,9 @@ End Sub
 Sub ReplaceAll()
     On Error Resume Next
 
-    Dim fso As New FileSystemObject
+    Dim fso As Object
+
+    Set fso = CreateObject("Scripting.FileSystemObject")
     Dim modules() As String
     Dim module As Variant
     Dim ext As String
@@ -166,7 +168,8 @@ Sub ReplaceAll()
 End Sub
 
 Sub ImportAll(ByVal Dummy As Long)
-    Dim fso As New FileSystemObject
+    Dim fso As Object
+    Set fso = CreateObject("Scripting.FileSystemObject")
     Dim modules() As String
     Dim module As Variant
     Dim ext As String
@@ -196,10 +199,11 @@ End Sub
 '  * @param ret      return file paths
 '  */
 Private Sub SearchAllFile(ByVal dirPath As String, ByRef ret() As String)
-    Dim fso As New FileSystemObject
-    Dim folder As folder
-    Dim subFolder As folder
-    Dim file As file
+    Dim fso As Object
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Dim folder As Object
+    Dim subFolder As Object
+    Dim file As Object
     Dim i As Long
     
     'exit if specified directory is not exists
@@ -251,7 +255,7 @@ Function GenerateHelps(Optional ByVal isJP As Boolean = False) As String
     End If
     
     ' DictionaryÇçÏê¨
-    Set actionDict = New Dictionary
+    Set actionDict = CreateObject("Scripting.Dictionary")
     
     ' Create ADODB.Stream object
     Set stream = CreateObject("ADODB.Stream")
@@ -300,7 +304,7 @@ Function GenerateHelps(Optional ByVal isJP As Boolean = False) As String
                         
                         ' Check if action exists
                         If Not actionDict.Exists(act) Then
-                            actionDict.Add act, New Dictionary
+                            actionDict.Add act, CreateObject("Scripting.Dictionary")
                         End If
                         
                         ' Add description for keystroke
@@ -329,8 +333,8 @@ Function GenerateHelps(Optional ByVal isJP As Boolean = False) As String
     Dim fileNumber As Integer
     Dim reading As Boolean
     Dim startLineFound As Boolean
-    Dim ret As Dictionary
-    Set ret = New Dictionary
+    Dim ret As Object
+    Set ret = CreateObject("Scripting.Dictionary")
     
     ' Set file path
     filePath = ThisWorkbook.Path & "\..\src\DefaultConfig.bas"

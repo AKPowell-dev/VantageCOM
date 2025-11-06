@@ -4,10 +4,11 @@ import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Iterable, Optional, Sequence
+from typing import Any, Dict, Iterable, Optional, Sequence
 
 XLAM_FILE_FORMAT = 55  # Excel constant xlOpenXMLAddIn
 DEFAULT_BUILD_DIRNAME = "build"
+AddinUnlockInfo = Dict[str, Any]
 
 
 def get_default_addins_folder() -> Optional[str]:
@@ -29,6 +30,33 @@ def _read_text_with_fallback(path: Path) -> str:
     return data.decode("latin-1", errors="replace")
 
 
+def _strip_document_metadata(code: str) -> str:
+    """Remove export metadata that breaks document-module compilation."""
+    lines = []
+    for original in code.splitlines():
+        stripped = original.strip()
+        if not stripped:
+            lines.append("")
+            continue
+        if stripped.startswith("VERSION "):
+            continue
+        if stripped.startswith("BEGIN"):
+            continue
+        if stripped == "END":
+            continue
+        if stripped.startswith("Attribute "):
+            continue
+        lines.append(original)
+
+    while lines and not lines[0].strip():
+        lines.pop(0)
+
+    cleaned = "\n".join(lines)
+    if cleaned and not cleaned.endswith("\n"):
+        cleaned += "\n"
+    return cleaned
+
+
 def _read_vb_name(source_path: Path) -> Optional[str]:
     """Extract the VB_Name attribute from a VBA source file."""
     try:
@@ -39,7 +67,8 @@ def _read_vb_name(source_path: Path) -> Optional[str]:
                 return value.strip().strip('"')
     except FileNotFoundError:
         return None
-    return None
+    fallback = source_path.stem
+    return fallback if fallback else None
 
 
 def collect_vba_sources(repo_dir: Path) -> Dict[str, Sequence[Path]]:
@@ -102,7 +131,8 @@ def _remove_component_if_exists(vbproject, name: str) -> None:
 
 def _sync_code_module(component, source_path: Path) -> None:
     """Replace the entire contents of a VBA component with the given source file."""
-    code = _read_text_with_fallback(source_path)
+    raw_code = _read_text_with_fallback(source_path)
+    code = _strip_document_metadata(raw_code)
     code_module = component.CodeModule
     existing = code_module.CountOfLines
     if existing:
@@ -110,7 +140,7 @@ def _sync_code_module(component, source_path: Path) -> None:
     code_module.AddFromString(code)
 
 
-def _deactivate_addin_if_loaded(target_path: Path) -> Dict[str, Iterable[str]]:
+def _deactivate_addin_if_loaded(target_path: Path) -> AddinUnlockInfo:
     """Temporarily disable the add-in in running Excel instances to release file locks."""
     pythoncom, _, com_error = ensure_pywin32()
     from win32com.client import Dispatch  # type: ignore
@@ -191,7 +221,7 @@ def _deactivate_addin_if_loaded(target_path: Path) -> Dict[str, Iterable[str]]:
     return {"disabled_addins": (), "excel_was_running": existing_instance}
 
 
-def _reactivate_addins(info: Dict[str, Iterable[str]]) -> None:
+def _reactivate_addins(info: AddinUnlockInfo) -> None:
     """Restore add-ins that were temporarily disabled."""
     disabled = tuple(info.get("disabled_addins", ()))
     if not disabled:
@@ -339,12 +369,17 @@ def build_xlam(
     return output_path
 
 
-def backup_existing(target_path: Path) -> Optional[Path]:
+def backup_existing(target_path: Path, backup_dir: Optional[Path] = None) -> Optional[Path]:
     """Back up the existing file if present, returning the backup path."""
     if not target_path.exists():
         return None
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_path = target_path.with_suffix(target_path.suffix + f".{timestamp}.bak")
+    if backup_dir:
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        backup_filename = f"{target_path.stem}_{timestamp}{target_path.suffix}"
+        backup_path = backup_dir / backup_filename
+    else:
+        backup_path = target_path.with_suffix(target_path.suffix + f".{timestamp}.bak")
     shutil.copy2(target_path, backup_path)
     return backup_path
 
@@ -369,7 +404,8 @@ def update_xlam(
     if disabled_addins:
         print("Temporarily disabled running add-in to release file lock.")
 
-    backup_path = backup_existing(target_path)
+    backup_dir = built_path.parent / "backups"
+    backup_path = backup_existing(target_path, backup_dir)
     reactivated = False
     try:
         shutil.copy2(built_path, target_path)

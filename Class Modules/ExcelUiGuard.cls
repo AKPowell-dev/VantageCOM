@@ -23,6 +23,137 @@ Private m_originalSheet As Worksheet
 Private m_originalSelection As Object
 Private m_originalCell As Range
 
+Private Function ResolveSelectionWindow() As Window
+    Dim sel As Object
+    Dim candidateSheet As Worksheet
+    Dim candidateWorkbook As Workbook
+    Dim win As Window
+    Dim activeWin As Window
+
+    On Error Resume Next
+    Set activeWin = Application.ActiveWindow
+    On Error GoTo 0
+
+    On Error Resume Next
+    Set sel = Selection
+    On Error GoTo 0
+
+    If Not sel Is Nothing Then
+        Select Case TypeName(sel)
+            Case "Range"
+                On Error Resume Next
+                Set candidateSheet = sel.Worksheet
+                On Error GoTo 0
+            Case "ChartObject"
+                On Error Resume Next
+                Set candidateSheet = sel.Parent.Parent
+                On Error GoTo 0
+            Case "Chart"
+                Dim parentObj As Object
+                On Error Resume Next
+                Set parentObj = sel.Parent
+                On Error GoTo 0
+                If Not parentObj Is Nothing Then
+                    Select Case TypeName(parentObj)
+                        Case "ChartObject"
+                            Set candidateSheet = parentObj.Parent
+                        Case "Worksheet"
+                            Set candidateSheet = parentObj
+                    End Select
+                End If
+            Case "Worksheet"
+                Set candidateSheet = sel
+        End Select
+    End If
+
+    If candidateSheet Is Nothing Then
+        If Not activeWin Is Nothing Then
+            Set ResolveSelectionWindow = activeWin
+        Else
+            On Error Resume Next
+            Set ResolveSelectionWindow = Application.ActiveWindow
+            On Error GoTo 0
+        End If
+        Exit Function
+    End If
+
+    Set candidateWorkbook = candidateSheet.Parent
+    If candidateWorkbook Is Nothing Then
+        If Not activeWin Is Nothing Then
+            Set ResolveSelectionWindow = activeWin
+        Else
+            On Error Resume Next
+            Set ResolveSelectionWindow = Application.ActiveWindow
+            On Error GoTo 0
+        End If
+        Exit Function
+    End If
+
+    If Not activeWin Is Nothing Then
+        On Error Resume Next
+        If activeWin.Visible Then
+            If Not activeWin.ActiveSheet Is Nothing Then
+                If activeWin.ActiveSheet Is candidateSheet Then
+                    Set ResolveSelectionWindow = activeWin
+                    On Error GoTo 0
+                    Exit Function
+                End If
+            End If
+        End If
+        On Error GoTo 0
+    End If
+
+    On Error Resume Next
+    For Each win In candidateWorkbook.Windows
+        If Not win Is Nothing Then
+            If win.Visible Then
+                If Not win.ActiveSheet Is Nothing Then
+                    If win.ActiveSheet Is candidateSheet Then
+                        If TypeName(sel) = "Range" Then
+                            Dim cmp As Range
+                            Set cmp = Nothing
+                            On Error Resume Next
+                            Set cmp = win.RangeSelection
+                            On Error GoTo 0
+                            If Not cmp Is Nothing Then
+                                If cmp.Address(True, True, xlA1, True) = sel.Address(True, True, xlA1, True) Then
+                                    Set ResolveSelectionWindow = win
+                                    Exit Function
+                                End If
+                            End If
+                        Else
+                            Set ResolveSelectionWindow = win
+                            Exit Function
+                        End If
+                    End If
+                End If
+            End If
+        End If
+    Next win
+    On Error GoTo 0
+
+    On Error Resume Next
+    If candidateWorkbook.Windows.Count = 1 Then
+        Set ResolveSelectionWindow = candidateWorkbook.Windows(1)
+    End If
+    If ResolveSelectionWindow Is Nothing Then
+        Set ResolveSelectionWindow = Application.ActiveWindow
+    End If
+    On Error GoTo 0
+End Function
+
+Public Sub EnsureWindow()
+    On Error Resume Next
+    If Not m_originalWindow Is Nothing Then
+        If m_originalWindow.Visible Then
+            If Not Application.ActiveWindow Is m_originalWindow Then
+                m_originalWindow.Activate
+            End If
+        End If
+    End If
+    On Error GoTo 0
+End Sub
+
 Private Sub Class_Initialize()
     ' Snapshot current UI flags and disable expensive UI updates
     m_prevScreenUpdating = Application.ScreenUpdating
@@ -32,7 +163,7 @@ Private Sub Class_Initialize()
     Application.EnableEvents = False
 
     On Error Resume Next
-    Set m_originalWindow = Application.ActiveWindow
+    Set m_originalWindow = ResolveSelectionWindow()
     Set m_originalWorkbook = Application.ActiveWorkbook
     If Not m_originalWindow Is Nothing Then
         Set m_originalSheet = m_originalWindow.ActiveSheet
@@ -59,14 +190,9 @@ Public Sub Restore()
     If m_restored Then Exit Sub
     On Error Resume Next
 
-    ' ----------------------------------------------------------
-    ' NO window/sheet activation and NO selection restoration.
-    ' This prevents Excel from switching to a different window.
-    ' Whatever selection is active at macro end remains as-is.
-    ' ----------------------------------------------------------
     If Not m_originalWindow Is Nothing Then
-        If Not Application.ActiveWindow Is m_originalWindow Then
-            If m_originalWindow.Visible Then
+        If m_originalWindow.Visible Then
+            If Not Application.ActiveWindow Is m_originalWindow Then
                 m_originalWindow.Activate
             End If
         End If

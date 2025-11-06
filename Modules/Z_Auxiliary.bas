@@ -10,7 +10,8 @@ Private Function SuppressExcelUi(Optional ByVal hideStatusBar As Boolean = False
     Dim guard As ExcelUiGuard
     ThisWorkbook.EnsureAppHook
     Set guard = New ExcelUiGuard
-    'If hideStatusBar Then guard.DisableStatusBar
+    guard.EnsureWindow
+    If hideStatusBar Then guard.DisableStatusBar
     Set SuppressExcelUi = guard
 End Function
 
@@ -580,6 +581,15 @@ Private Function CopySelectionAsPicturePrintSafe(sel As Object) As Boolean
     Dim t As String
     t = TypeName(sel)
 
+    Dim originalWindow As Window
+    Dim originalSheet As Worksheet
+    On Error Resume Next
+    Set originalWindow = Application.ActiveWindow
+    If Not originalWindow Is Nothing Then
+        Set originalSheet = originalWindow.ActiveSheet
+    End If
+    On Error GoTo 0
+
     On Error Resume Next
 
     ' Activate the source to ensure CopyPicture works
@@ -670,6 +680,11 @@ Private Function CopySelectionAsPicturePrintSafe(sel As Object) As Boolean
     Call WaitForClipboardReady(600)
     CopySelectionAsPicturePrintSafe = HasClipboardContent()
 
+    On Error Resume Next
+    If Not originalWindow Is Nothing And originalWindow.Visible Then originalWindow.Activate
+    If Not originalSheet Is Nothing Then originalSheet.Activate
+    Set originalWindow = Nothing
+    Set originalSheet = Nothing
     On Error GoTo 0
 End Function
 
@@ -781,7 +796,6 @@ Private Function CopySelectionAsPicture(ByVal sel As Variant) As Boolean
 End Function
 
 Private Function CopyRangePictureReliable(ByVal rng As Range) As Boolean
-    On Error GoTo CleanFail
     Dim ws As Worksheet
     Dim area As Range
     Dim attempt As Long
@@ -789,11 +803,22 @@ Private Function CopyRangePictureReliable(ByVal rng As Range) As Boolean
     Dim shp As Object
     Dim w As Double, h As Double
     Dim okSize As Boolean
+    Dim originalWindow As Window
+    Dim originalSheet As Worksheet
 
-    If rng Is Nothing Then Exit Function
+    On Error GoTo CleanFail
+
+    If rng Is Nothing Then GoTo CleanExit
     Set ws = rng.Worksheet
     Set area = rng
     If area.Areas.Count > 1 Then Set area = area.Areas(1)
+
+    On Error Resume Next
+    Set originalWindow = Application.ActiveWindow
+    If Not originalWindow Is Nothing Then
+        Set originalSheet = originalWindow.ActiveSheet
+    End If
+    On Error GoTo CleanFail
 
     For attempt = 1 To 4
         Application.CutCopyMode = False
@@ -836,7 +861,7 @@ Private Function CopyRangePictureReliable(ByVal rng As Range) As Boolean
                 shp.Delete
                 On Error GoTo 0
                 CopyRangePictureReliable = True
-                Exit Function
+                GoTo CleanExit
             Else
                 On Error Resume Next
                 shp.Delete
@@ -845,11 +870,21 @@ Private Function CopyRangePictureReliable(ByVal rng As Range) As Boolean
         End If
         DoEvents
     Next attempt
+
+CleanExit:
+    On Error Resume Next
+    If Not originalWindow Is Nothing And originalWindow.Visible Then originalWindow.Activate
+    If Not originalSheet Is Nothing Then originalSheet.Activate
+    Set originalSheet = Nothing
+    Set originalWindow = Nothing
+    On Error GoTo 0
     Exit Function
 
 CleanFail:
     On Error Resume Next
     If Not shp Is Nothing Then shp.Delete
+    On Error GoTo 0
+    GoTo CleanExit
 End Function
 
 Private Function TryCopyAsPicture(ByVal target As Variant, _

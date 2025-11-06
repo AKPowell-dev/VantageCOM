@@ -12,8 +12,8 @@ Option Explicit
 Public Parent As cls_Vim
 
 Private cCurrentMode As String
-Private cKeyMapFallback As Dictionary
-Private cKeyMapBits As Dictionary
+Private cKeyMapFallback As Object
+Private cKeyMapBits As Object
 
 ' Event hooks for each modes
 Private cModeNormal As cls_ModeNormal
@@ -25,7 +25,7 @@ Private cModeShapeInsert As cls_ModeShapeInsert
 ' * Initializes the class and sets up the key map fallback.
 ' */
 Private Sub Class_Initialize()
-    Set cKeyMapFallback = New Dictionary
+    Set cKeyMapFallback = CreateObject("Scripting.Dictionary")
     With cKeyMapFallback
         .Add MODE_DUMMY, ""
         .Add MODE_NORMAL, MODE_DUMMY
@@ -34,7 +34,7 @@ Private Sub Class_Initialize()
         .Add MODE_SHAPEINSERT, ""
     End With
 
-    Set cKeyMapBits = New Dictionary
+    Set cKeyMapBits = CreateObject("Scripting.Dictionary")
 
     Dim i As Long: i = 0
     Dim mode_ As Variant

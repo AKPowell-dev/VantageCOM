@@ -59,18 +59,10 @@ Public Sub Restore()
     If m_restored Then Exit Sub
     On Error Resume Next
 
-    ' ----------------------------------------------------------
-    ' NO window/sheet activation and NO selection restoration.
-    ' This prevents Excel from switching to a different window.
-    ' Whatever selection is active at macro end remains as-is.
-    ' ----------------------------------------------------------
-    If Not m_originalWindow Is Nothing Then
-        If Not Application.ActiveWindow Is m_originalWindow Then
-            If m_originalWindow.Visible Then
-                m_originalWindow.Activate
-            End If
-        End If
-    End If
+    ' Keep whichever window is currently active. We intentionally
+    ' avoid re-activating the window captured at construction time
+    ' to prevent Excel from hopping back to a different view when
+    ' multiple windows of the same workbook are open.
 
     ' Release object references
     Set m_originalSelection = Nothing

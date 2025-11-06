@@ -314,6 +314,12 @@ Public Function Launch(ByVal prefixKey As String) As Boolean
         Exit Function
     End If
 
+    Dim priorWindow As Window
+    Dim formShown As Boolean
+    On Error Resume Next
+    Set priorWindow = Application.ActiveWindow
+    On Error GoTo 0
+
     ' Set the label text with the prefix key
     Me.Label_Text = gVim.KeyMap.SendKeysToDisplayText(prefixKey)
     Me.Width = 84
@@ -329,7 +335,21 @@ Public Function Launch(ByVal prefixKey As String) As Boolean
 
     ' Show the form
     Me.Show
+    formShown = True
     Launch = False
+
+    If formShown Then
+        On Error Resume Next
+        If Not priorWindow Is Nothing Then
+            If priorWindow.Visible Then
+                If Not Application.ActiveWindow Is priorWindow Then
+                    priorWindow.Activate
+                End If
+            End If
+        End If
+        Set priorWindow = Nothing
+        On Error GoTo 0
+    End If
 End Function
 
 Private Sub LazySuggest(Optional ByVal cancelOnly As Boolean = False)

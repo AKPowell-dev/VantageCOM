@@ -104,6 +104,11 @@ Public Function Launch(Optional ByVal prefix As String = ":", _
                        Optional ByVal enableIME As Boolean = False) As String
 
     ' Set the label text with the prefix key
+    Dim priorWindow As Window
+    On Error Resume Next
+    Set priorWindow = Application.ActiveWindow
+    On Error GoTo 0
+
     Me.Label_Prefix.Caption = prefix
 
     With Me.TextBox
@@ -125,6 +130,17 @@ Public Function Launch(Optional ByVal prefix As String = ":", _
     Call gVim.Mode.Change(MODE_CMDLINE)
     Me.Show
     Call gVim.Mode.Change(currentMode)
+
+    On Error Resume Next
+    If Not priorWindow Is Nothing Then
+        If priorWindow.Visible Then
+            If Not Application.ActiveWindow Is priorWindow Then
+                priorWindow.Activate
+            End If
+        End If
+    End If
+    Set priorWindow = Nothing
+    On Error GoTo 0
 
     Launch = cReturn
 End Function

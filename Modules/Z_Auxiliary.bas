@@ -10,7 +10,8 @@ Private Function SuppressExcelUi(Optional ByVal hideStatusBar As Boolean = False
     Dim guard As ExcelUiGuard
     ThisWorkbook.EnsureAppHook
     Set guard = New ExcelUiGuard
-    'If hideStatusBar Then guard.DisableStatusBar
+    guard.EnsureWindow
+    If hideStatusBar Then guard.DisableStatusBar
     Set SuppressExcelUi = guard
 End Function
 

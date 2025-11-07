@@ -2766,6 +2766,7 @@ Function SelectNearestChart(Optional ByVal g As String) As Boolean
         Call SetStatusBarTemporarily("No charts found on this sheet.", 2000)
     Else
         ActivateChartContainer bestTarget
+        EnsureChartElementSelection bestTarget
     End If
 
     SelectNearestChart = False
@@ -2773,6 +2774,36 @@ Function SelectNearestChart(Optional ByVal g As String) As Boolean
 
 CleanFail:
     Call ErrorHandler("SelectNearestChart")
+End Function
+
+Private Sub EnsureChartElementSelection(ByVal chartContainer As Object)
+    Dim ch As Chart
+    Set ch = ResolveChartFromContainer(chartContainer)
+    If ch Is Nothing Then Exit Sub
+
+    On Error Resume Next
+    ch.ChartArea.Select
+    If Err.Number <> 0 Then
+        Err.Clear
+        ch.Parent.Select
+    End If
+    On Error GoTo 0
+End Sub
+
+Private Function ResolveChartFromContainer(ByVal container As Object) As Chart
+    If container Is Nothing Then Exit Function
+    On Error Resume Next
+    Select Case TypeName(container)
+        Case "ChartObject"
+            Set ResolveChartFromContainer = container.Chart
+        Case "Shape"
+            If container.HasChart Then Set ResolveChartFromContainer = container.Chart
+        Case "Chart"
+            Set ResolveChartFromContainer = container
+        Case "ChartArea"
+            Set ResolveChartFromContainer = container.Parent
+    End Select
+    On Error GoTo 0
 End Function
 
 Private Sub RunDecimalCommand(ByVal controlId As Long)

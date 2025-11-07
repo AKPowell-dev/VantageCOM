@@ -4,6 +4,7 @@ Option Private Module
 Private currentSeriesIndex As Long
 Public gScrollLockMode As Boolean
 Private Const DATA_LABEL_STEP As Double = 2#
+Private Const CHART_MOVE_STEP As Double = DATA_LABEL_STEP * 10#
 ' Shared wrapper for temporarily disabling events / screen updates.
 
 Private Function SuppressExcelUi(Optional ByVal hideStatusBar As Boolean = False) As ExcelUiGuard
@@ -2586,6 +2587,99 @@ Private Function TryMoveSelectedLabel(ByVal dx As Double, ByVal dy As Double) As
     End Select
 End Function
 
+Private Function TryMoveSelectedChart(ByVal dx As Double, ByVal dy As Double) As Boolean
+    Dim chartContainer As Object
+    Dim sel As Object
+    If gScrollLockMode Then Exit Function
+
+    On Error Resume Next
+    Set sel = Selection
+    On Error GoTo 0
+    If sel Is Nothing Then Exit Function
+    If Not IsChartMoveSelection(sel) Then Exit Function
+
+    Set chartContainer = ResolveSelectedChartContainer(sel)
+    If chartContainer Is Nothing Then Exit Function
+
+    On Error Resume Next
+    chartContainer.Left = chartContainer.Left + dx
+    chartContainer.Top = chartContainer.Top + dy
+    If Err.Number = 0 Then
+        TryMoveSelectedChart = True
+    Else
+        Err.Clear
+    End If
+    On Error GoTo 0
+End Function
+
+Private Function ResolveSelectedChartContainer(ByVal seed As Object) As Object
+    Const MAX_PARENT_HOPS As Long = 20
+    Dim current As Object
+    Dim nextParent As Object
+    Dim hopCount As Long
+    Set current = seed
+
+    On Error Resume Next
+    Do While Not current Is Nothing And hopCount < MAX_PARENT_HOPS
+        hopCount = hopCount + 1
+        Set nextParent = Nothing
+
+        Select Case TypeName(current)
+            Case "ChartObject"
+                Set ResolveSelectedChartContainer = current
+                Exit Function
+            Case "Shape"
+                If current.HasChart Then
+                    Set ResolveSelectedChartContainer = current
+                    Exit Function
+                End If
+                Set nextParent = CallByName(current, "Parent", VbGet)
+            Case "ShapeRange"
+                If current.Count = 1 Then
+                    Set current = current.Item(1)
+                    hopCount = hopCount - 1
+                    GoTo ContinueLoop
+                Else
+                    Exit Do
+                End If
+            Case "Chart"
+                Set nextParent = current.Parent
+                If TypeName(nextParent) = "ChartObject" Or TypeName(nextParent) = "Shape" Then
+                    Set ResolveSelectedChartContainer = nextParent
+                    Exit Function
+                End If
+            Case Else
+                Set nextParent = CallByName(current, "Parent", VbGet)
+        End Select
+
+        If Err.Number <> 0 Then
+            Err.Clear
+            Exit Do
+        End If
+
+        If nextParent Is Nothing Then Exit Do
+        If nextParent Is current Then Exit Do
+        Set current = nextParent
+ContinueLoop:
+    Loop
+    On Error GoTo 0
+End Function
+
+Private Function IsChartMoveSelection(ByVal target As Object) As Boolean
+    If target Is Nothing Then Exit Function
+    Dim t As String
+    t = TypeName(target)
+    Select Case t
+        Case "ChartObject", "ChartArea", "PlotArea", _
+             "Chart", "Series", "DataPoint", "Legend", _
+             "LegendEntry", "LegendKey", "ChartTitle", _
+             "Shape", "ShapeRange"
+            IsChartMoveSelection = True
+        Case Else
+            IsChartMoveSelection = False
+    End Select
+End Function
+
 ' ==================================================
 '  SMART MOVE SHORTCUTS
 ' ==================================================
@@ -2593,14 +2687,18 @@ End Function
 Sub MoveLeftSmart()
     Dim steps As Long: steps = gVim.Count1: If steps < 1 Then steps = 1
     If gScrollLockMode Then ScrollLockScroll 0, -steps: gVim.Count1 = 1: Exit Sub
-    If Not TryMoveSelectedLabel(-DATA_LABEL_STEP, 0) Then Call MoveLeft
+    If Not TryMoveSelectedLabel(-DATA_LABEL_STEP, 0) Then
+        If Not TryMoveSelectedChart(-CHART_MOVE_STEP, 0) Then Call MoveLeft
+    End If
     gVim.Count1 = 1
 End Sub
 
 Sub MoveRightSmart()
     Dim steps As Long: steps = gVim.Count1: If steps < 1 Then steps = 1
     If gScrollLockMode Then ScrollLockScroll 0, steps: gVim.Count1 = 1: Exit Sub
-    If Not TryMoveSelectedLabel(DATA_LABEL_STEP, 0) Then Call MoveRight
+    If Not TryMoveSelectedLabel(DATA_LABEL_STEP, 0) Then
+        If Not TryMoveSelectedChart(CHART_MOVE_STEP, 0) Then Call MoveRight
+    End If
     gVim.Count1 = 1
 End Sub
 
@@ -2608,6 +2706,7 @@ Sub MoveUpSmart()
     Dim steps As Long: steps = gVim.Count1: If steps < 1 Then steps = 1
     If gScrollLockMode Then ScrollLockScroll -steps, 0: gVim.Count1 = 1: Exit Sub
     If TryMoveSelectedLabel(0, -DATA_LABEL_STEP) Then gVim.Count1 = 1: Exit Sub
+    If TryMoveSelectedChart(0, -CHART_MOVE_STEP) Then gVim.Count1 = 1: Exit Sub
     Dim i As Long: For i = 1 To steps: KeyStroke Up_: Next i
     gVim.Count1 = 1
 End Sub
@@ -2616,6 +2715,7 @@ Sub MoveDownSmart()
     Dim steps As Long: steps = gVim.Count1: If steps < 1 Then steps = 1
     If gScrollLockMode Then ScrollLockScroll steps, 0: gVim.Count1 = 1: Exit Sub
     If TryMoveSelectedLabel(0, DATA_LABEL_STEP) Then gVim.Count1 = 1: Exit Sub
+    If TryMoveSelectedChart(0, CHART_MOVE_STEP) Then gVim.Count1 = 1: Exit Sub
     Dim i As Long: For i = 1 To steps: KeyStroke Down_: Next i
     gVim.Count1 = 1
 End Sub
@@ -2666,6 +2766,7 @@ Function SelectNearestChart(Optional ByVal g As String) As Boolean
         Call SetStatusBarTemporarily("No charts found on this sheet.", 2000)
     Else
         ActivateChartContainer bestTarget
+        EnsureChartElementSelection bestTarget
     End If
 
     SelectNearestChart = False
@@ -2673,6 +2774,36 @@ Function SelectNearestChart(Optional ByVal g As String) As Boolean
 
 CleanFail:
     Call ErrorHandler("SelectNearestChart")
+End Function
+
+Private Sub EnsureChartElementSelection(ByVal chartContainer As Object)
+    Dim ch As Chart
+    Set ch = ResolveChartFromContainer(chartContainer)
+    If ch Is Nothing Then Exit Sub
+
+    On Error Resume Next
+    ch.ChartArea.Select
+    If Err.Number <> 0 Then
+        Err.Clear
+        ch.Parent.Select
+    End If
+    On Error GoTo 0
+End Sub
+
+Private Function ResolveChartFromContainer(ByVal container As Object) As Chart
+    If container Is Nothing Then Exit Function
+    On Error Resume Next
+    Select Case TypeName(container)
+        Case "ChartObject"
+            Set ResolveChartFromContainer = container.Chart
+        Case "Shape"
+            If container.HasChart Then Set ResolveChartFromContainer = container.Chart
+        Case "Chart"
+            Set ResolveChartFromContainer = container
+        Case "ChartArea"
+            Set ResolveChartFromContainer = container.Parent
+    End Select
+    On Error GoTo 0
 End Function
 
 Private Sub RunDecimalCommand(ByVal controlId As Long)

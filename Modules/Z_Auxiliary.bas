@@ -392,6 +392,8 @@ Sub ClearFormatting()
         ' Remove bold and italic for the whole selection in one pass
         .Font.Bold = False
         .Font.Italic = False
+        .Font.Underline = xlUnderlineStyleNone
+        .Font.Color = vbBlack
     End With
     On Error GoTo 0
 End Sub

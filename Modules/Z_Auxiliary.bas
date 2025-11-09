@@ -234,44 +234,131 @@ Sub CycleFontColor()
     If fontCycleIndex > UBound(fontColorsArray) Then fontCycleIndex = 0
 End Sub
 
-Function CycleNumberFormat(Optional ByVal g As String) As Boolean
+Private Function ApplyNumberFormatCycle(ByRef formats As Variant, _
+    ByRef lastIndex As Long, _
+    ByRef lastAddress As String, _
+    ByRef lastActiveCellAddress As String, _
+    ByRef lastSelectionStamp As Long) As Boolean
+
     Dim uiGuard As ExcelUiGuard
     Set uiGuard = SuppressExcelUi(True)
-    Dim formats As Variant
-    Static lastIndex As Long
-    Static lastAddress As String
-    Static lastActiveCellAddress As String
-    Static lastSelectionStamp As Long
-    formats = Array( _
-        "#,##0_);(#,##0);--_)", _
-        "$#,##0_);($#,##0);$--_)", _
-        "#,##0.0%_);(#,##0.0%);--\%_)", _
-        "#,##0.0x_);(#,##0.0x);--x_)", _
-        "#,##0""bps""_);(#,##0""bps"");""--bps """, _
-        """On"";"""";""Off""", _
-        "[=1]""Yes"";[=0]""No"";""ERROR""", _
-        "[=1]0"" Year"";0"" Years""", _
-        """Year ""0; ""Year ""-0; ""Year 0""; """"" _
-    )
+
     If TypeName(Selection) <> "Range" Then
-        CycleNumberFormat = False
+        ApplyNumberFormatCycle = False
         Exit Function
     End If
-    ' Reset if new selection, active cell moves, or cursor moved since last call
+
     If Selection.Address <> lastAddress _
         Or ActiveCell.Address <> lastActiveCellAddress _
         Or gSelectionStamp <> lastSelectionStamp Then
         lastIndex = 0
     End If
+
     lastAddress = Selection.Address
     lastActiveCellAddress = ActiveCell.Address
     lastSelectionStamp = gSelectionStamp
-    ' Apply to entire selection at once
+
     Selection.NumberFormat = formats(lastIndex)
-    ' Advance the cycle
+
     lastIndex = lastIndex + 1
     If lastIndex > UBound(formats) Then lastIndex = 0
-    CycleNumberFormat = False
+
+    ApplyNumberFormatCycle = False
+End Function
+
+Function CycleNumberFormat(Optional ByVal g As String) As Boolean
+    Static lastIndex As Long
+    Static lastAddress As String
+    Static lastActiveCellAddress As String
+    Static lastSelectionStamp As Long
+    Dim formats As Variant
+    formats = Array( _
+        "$#,##0_);($#,##0);$--_)", _
+        "$#,##0_);($#,##0);$--_)", _
+        "#,##0.0%_);(#,##0.0%);--\%_)", _
+        "#,##0.0x_);(#,##0.0x);--x_)", _
+        "#,##0""bps""_);(#,##0""bps"");""--bps """, _
+        """On"";"""";""Off""", _
+        "[>=1]""Yes"";""No"";""No""", _
+        "[=1]0"" Year"";0"" Years""", _
+        """Year ""0; ""Year ""-0; ""Year 0""; """"" _
+    )
+    CycleNumberFormat = ApplyNumberFormatCycle(formats, lastIndex, lastAddress, lastActiveCellAddress, lastSelectionStamp)
+End Function
+
+Function BinaryCycle(Optional ByVal g As String) As Boolean
+    Static lastIndex As Long
+    Static lastAddress As String
+    Static lastActiveCellAddress As String
+    Static lastSelectionStamp As Long
+    Dim formats As Variant
+    formats = Array( _
+        "[>=1]""Yes"";""No"";""No""", _
+        """On"";"""";""Off""" _
+    )
+    BinaryCycle = ApplyNumberFormatCycle(formats, lastIndex, lastAddress, lastActiveCellAddress, lastSelectionStamp)
+End Function
+
+Function YearDisplayCycle(Optional ByVal g As String) As Boolean
+    Static lastIndex As Long
+    Static lastAddress As String
+    Static lastActiveCellAddress As String
+    Static lastSelectionStamp As Long
+    Dim formats As Variant
+    formats = Array( _
+        "yyyy", _
+        "mmm-yyyy" _
+    )
+    YearDisplayCycle = ApplyNumberFormatCycle(formats, lastIndex, lastAddress, lastActiveCellAddress, lastSelectionStamp)
+End Function
+
+Function NumberNarrativeCycle(Optional ByVal g As String) As Boolean
+    Static lastIndex As Long
+    Static lastAddress As String
+    Static lastActiveCellAddress As String
+    Static lastSelectionStamp As Long
+    Dim formats As Variant
+    formats = Array( _
+        "$#,##0_);($#,##0);$--_)", _
+        "#,##0.0x_);(#,##0.0x);--x_)", _
+        "[=1]0"" Year"";0"" Years""", _
+        """Year ""0; ""Year ""-0; ""Year 0""; """"" _
+    )
+    NumberNarrativeCycle = ApplyNumberFormatCycle(formats, lastIndex, lastAddress, lastActiveCellAddress, lastSelectionStamp)
+End Function
+
+Function PercentCycle(Optional ByVal g As String) As Boolean
+    Static lastIndex As Long
+    Static lastAddress As String
+    Static lastActiveCellAddress As String
+    Static lastSelectionStamp As Long
+    Dim formats As Variant
+    formats = Array( _
+        "#,##0.0%_);(#,##0.0%);--\%_)", _
+        "#,##0""bps""_);(#,##0""bps"");""--bps """ _
+    )
+    PercentCycle = ApplyNumberFormatCycle(formats, lastIndex, lastAddress, lastActiveCellAddress, lastSelectionStamp)
+End Function
+
+Function CurrencyCycle(Optional ByVal g As String) As Boolean
+    Static lastIndex As Long
+    Static lastAddress As String
+    Static lastActiveCellAddress As String
+    Static lastSelectionStamp As Long
+    Dim formats As Variant
+    Dim poundSymbol As String
+    Dim euroSymbol As String
+
+    poundSymbol = ChrW$(&HA3)
+    euroSymbol = ChrW$(&H20AC)
+
+    formats = Array( _
+        "$#,##0_);($#,##0);$--_)", _
+        poundSymbol & "#,##0_);(" & poundSymbol & "#,##0);" & poundSymbol & "--_)", _
+        euroSymbol & "#,##0_);(" & euroSymbol & "#,##0);" & euroSymbol & "--_)" _
+    )
+
+    CurrencyCycle = ApplyNumberFormatCycle(formats, lastIndex, lastAddress, lastActiveCellAddress, lastSelectionStamp)
 End Function
 
 Public Sub DeleteLikeExcel()
@@ -944,7 +1031,7 @@ Sub SmartFillRight()
             sourceBottomColor = .Color
         End With
 
-        ' Determine last column to fill for this row using NEAREST ROW within ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â±50
+        ' Determine last column to fill for this row using NEAREST ROW within ÃƒÆ’Ã†â�™ÃƒÂ¢Ã¢â�šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ�šÃ‚Â±50
         lastCol = ComputeLastColFromNearestRow(ws, startRow + r - 1, startCol + 1, 50)
 
         If lastCol > startCol Then
@@ -1262,7 +1349,7 @@ Private Sub HighlightOutlineCell(ws As Worksheet, ByVal rowIdx As Long, ByVal co
         cell.Font.Bold = True
     End If
 End Sub
-' ===== Helper: nearest row scan ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â±maxOffset =====
+' ===== Helper: nearest row scan ÃƒÆ’Ã†â�™ÃƒÂ¢Ã¢â�šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ�šÃ‚Â±maxOffset =====
 Private Function ComputeLastColFromNearestRow(ws As Worksheet, baseRow As Long, startCol As Long, maxOffset As Long) As Long
     Dim offset As Long, upRow As Long, downRow As Long, lastC As Long
     lastC = ContiguousSpanLastCol(ws, baseRow, startCol)
@@ -2520,7 +2607,7 @@ End Sub
 ' ==================================================
 
 Private Function TryMoveSelectedLabel(ByVal dx As Double, ByVal dy As Double) As Boolean
-    ' Extremely fast ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â touches only the current label(s)
+    ' Extremely fast ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â�šÂ¬Ã‚Â touches only the current label(s)
     Dim t As String
     Dim pt As Excel.point
     Dim lbl As Excel.DataLabel
@@ -2555,7 +2642,7 @@ Private Function TryMoveSelectedLabel(ByVal dx As Double, ByVal dy As Double) As
             On Error GoTo 0
 
         Case "DataLabels"
-            ' Whole label collection selected ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â move each very quickly
+            ' Whole label collection selected ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â�šÂ¬Ã‚Â move each very quickly
             On Error Resume Next
             For Each lbl In Selection
                 lbl.Position = xlLabelPositionCustom

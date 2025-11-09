@@ -2,6 +2,8 @@ Attribute VB_Name = "F_UsefulCmd"
 Option Explicit
 Option Private Module
 
+Private Const ZOOM_STEP_PERCENT As Integer = 5 'Zoom step size in percent for manual zoom commands
+
 Function Undo_CtrlZ(Optional ByVal g As String) As Boolean
     Dim times As Long
     Dim i As Long
@@ -42,12 +44,14 @@ Function ZoomIn(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
 
     Dim afterZoomRate As Integer
+    Dim zoomDelta As Integer
 
+    zoomDelta = ZOOM_STEP_PERCENT
     If gVim.Count > 0 Then
-        afterZoomRate = ActiveWindow.Zoom + gVim.Count
-    Else
-        afterZoomRate = ActiveWindow.Zoom + 10
+        zoomDelta = gVim.Count * ZOOM_STEP_PERCENT
     End If
+
+    afterZoomRate = ActiveWindow.Zoom + zoomDelta
 
     If afterZoomRate > 400 Then
         afterZoomRate = 400
@@ -66,12 +70,14 @@ Function ZoomOut(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
 
     Dim afterZoomRate As Integer
+    Dim zoomDelta As Integer
 
+    zoomDelta = ZOOM_STEP_PERCENT
     If gVim.Count > 0 Then
-        afterZoomRate = ActiveWindow.Zoom - gVim.Count
-    Else
-        afterZoomRate = ActiveWindow.Zoom - 10
+        zoomDelta = gVim.Count * ZOOM_STEP_PERCENT
     End If
+
+    afterZoomRate = ActiveWindow.Zoom - zoomDelta
 
     If afterZoomRate < 10 Then
         afterZoomRate = 10

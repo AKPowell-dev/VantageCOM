@@ -15,10 +15,10 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 Option Explicit
 
-Private Const KEY_LIST1 As String = "qwertyuiop"    ' Theme color selection key (section 1)
+Private Const KEY_LIST1 As String = "wbertyuiop"    ' Theme color selection key (section 1)
 Private Const KEY_LIST2 As String = "asdfghjkl;"    ' Default color selection key (section 2)
-Private Const KEY_LIST3 As String = "zxcvbn"        ' Custom color selection key (section 3)
-Private Const KEY_LIST4 As String = "mbpqr"         ' Expanded custom block keys (section 4)
+Private Const KEY_LIST3 As String = "zxcvm"        ' Custom color selection key (section 3)
+Private Const KEY_LIST4 As String = "12345"        ' Expanded custom block keys (section 4)
 Private Const KEY_LIST4_COUNT As Long = 5           ' Number of keys/columns in the new block
 Private Const KEY_DETAIL As String = "1234567890"   ' Detail keys (10 entries)
 Private Const KEY_NULL As String = "n"              ' Auto/Null selection key
@@ -151,18 +151,18 @@ Private Sub UserForm_Initialize()
     Dim customBlockDetailColors As Variant
 
     customBlockTopColors = Array( _
-        RGB(29, 53, 87), _
-        RGB(15, 26, 15), _
-        RGB(153, 60, 15), _
-        RGB(77, 34, 30), _
-        RGB(132, 92, 28))
+        RGB(175, 200, 230), _
+        RGB(190, 215, 183), _
+        RGB(210, 250, 212), _
+        RGB(243, 195, 180), _
+        RGB(252, 226, 192))
 
     customBlockDetailColors = Array( _
-        Array(RGB(29, 53, 87), RGB(41, 67, 101), RGB(53, 81, 115), RGB(65, 95, 129), RGB(77, 109, 143), RGB(89, 123, 157), RGB(101, 137, 171), RGB(118, 154, 190), RGB(140, 174, 208), RGB(175, 200, 230)), _
-        Array(RGB(15, 26, 15), RGB(29, 45, 28), RGB(43, 64, 42), RGB(57, 83, 56), RGB(71, 102, 70), RGB(85, 121, 84), RGB(99, 140, 98), RGB(122, 163, 120), RGB(152, 188, 147), RGB(190, 215, 183)), _
-        Array(RGB(153, 60, 15), RGB(168, 74, 25), RGB(183, 88, 35), RGB(198, 102, 45), RGB(213, 116, 55), RGB(228, 130, 65), RGB(240, 148, 83), RGB(246, 168, 109), RGB(250, 188, 139), RGB(253, 210, 170)), _
-        Array(RGB(77, 34, 30), RGB(95, 47, 42), RGB(113, 60, 54), RGB(131, 73, 66), RGB(149, 86, 78), RGB(167, 99, 90), RGB(185, 112, 102), RGB(203, 133, 121), RGB(223, 160, 145), RGB(243, 195, 180)), _
-        Array(RGB(132, 92, 28), RGB(146, 106, 40), RGB(160, 120, 52), RGB(174, 134, 64), RGB(188, 148, 76), RGB(202, 162, 88), RGB(216, 176, 100), RGB(230, 190, 130), RGB(243, 208, 160), RGB(252, 226, 192)))
+        Array(RGB(175, 200, 230), RGB(140, 174, 208), RGB(118, 154, 190), RGB(101, 137, 171), RGB(89, 123, 157), RGB(77, 109, 143), RGB(65, 95, 129), RGB(53, 81, 115), RGB(41, 67, 101), RGB(29, 53, 87)), _
+        Array(RGB(190, 215, 183), RGB(152, 188, 147), RGB(122, 163, 120), RGB(99, 140, 98), RGB(85, 121, 84), RGB(71, 102, 70), RGB(57, 83, 56), RGB(43, 64, 42), RGB(29, 45, 28), RGB(15, 26, 15)), _
+        Array(RGB(210, 250, 212), RGB(188, 229, 192), RGB(166, 208, 171), RGB(145, 186, 151), RGB(123, 165, 130), RGB(101, 144, 110), RGB(79, 123, 89), RGB(58, 101, 69), RGB(36, 80, 48), RGB(14, 59, 28)), _
+        Array(RGB(243, 195, 180), RGB(223, 160, 145), RGB(203, 133, 121), RGB(185, 112, 102), RGB(167, 99, 90), RGB(149, 86, 78), RGB(131, 73, 66), RGB(113, 60, 54), RGB(95, 47, 42), RGB(77, 34, 30)), _
+        Array(RGB(252, 226, 192), RGB(243, 208, 160), RGB(230, 190, 130), RGB(216, 176, 100), RGB(202, 162, 88), RGB(188, 148, 76), RGB(174, 134, 64), RGB(160, 120, 52), RGB(146, 106, 40), RGB(132, 92, 28)))
     ' --------------------------------------------------------------------------------------
 
     Dim lncBlack As Variant

@@ -273,8 +273,8 @@ Function CycleNumberFormat(Optional ByVal g As String) As Boolean
     Static lastSelectionStamp As Long
     Dim formats As Variant
     formats = Array( _
-        "$#,##0_);($#,##0);$--_)", _
-        "$#,##0_);($#,##0);$--_)", _
+        "#,##0_);(#,##0);--)", _
+        "#,##0_);(#,##0);--)", _
         "#,##0.0%_);(#,##0.0%);--\%_)", _
         "#,##0.0x_);(#,##0.0x);--x_)", _
         "#,##0""bps""_);(#,##0""bps"");""--bps """, _
@@ -319,7 +319,7 @@ Function NumberNarrativeCycle(Optional ByVal g As String) As Boolean
     Static lastSelectionStamp As Long
     Dim formats As Variant
     formats = Array( _
-        "$#,##0_);($#,##0);$--_)", _
+        "#,##0_);(#,##0);--)", _
         "#,##0.0x_);(#,##0.0x);--x_)", _
         "[=1]0"" Year"";0"" Years""", _
         """Year ""0; ""Year ""-0; ""Year 0""; """"" _

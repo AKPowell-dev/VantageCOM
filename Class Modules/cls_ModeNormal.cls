@@ -125,17 +125,6 @@ Catch:
     Call ErrorHandler("ModeNormal.AppForLock_SheetSelectionChange")
 End Sub
 
-Private Sub App_SheetSelectionChange(ByVal Sh As Object, ByVal target As Range)
-    On Error GoTo Catch
-
-
-    gSelectionStamp = gSelectionStamp + 1
-    Exit Sub
-
-Catch:
-    Call ErrorHandler("ModeNormal.App_SheetSelectionChange")
-End Sub
-
 Private Sub AppForLock_SheetActivate(ByVal Sh As Object)
     If Not gVim.Vars.LockedSheet Is Sh Then
         Call ClearSelectionLock

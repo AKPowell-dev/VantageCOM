@@ -273,8 +273,8 @@ Function CycleNumberFormat(Optional ByVal g As String) As Boolean
     Static lastSelectionStamp As Long
     Dim formats As Variant
     formats = Array( _
-        "#,##0_);(#,##0);--)", _
-        "#,##0_);(#,##0);--)", _
+        "#,##0_);(#,##0);--", _
+        "#,##0_);(#,##0);--", _
         "#,##0.0%_);(#,##0.0%);--\%_)", _
         "#,##0.0x_);(#,##0.0x);--x_)", _
         "#,##0""bps""_);(#,##0""bps"");""--bps """, _
@@ -319,8 +319,8 @@ Function NumberNarrativeCycle(Optional ByVal g As String) As Boolean
     Static lastSelectionStamp As Long
     Dim formats As Variant
     formats = Array( _
-        "#,##0_);(#,##0);--)", _
-        "#,##0.0x_);(#,##0.0x);--x_)", _
+        "#,##0_);(#,##0);--_", _
+        "#,##0.0x_);(#,##0.0x);--x_", _
         "[=1]0"" Year"";0"" Years""", _
         """Year ""0; ""Year ""-0; ""Year 0""; """"" _
     )
@@ -1033,7 +1033,7 @@ Sub SmartFillRight()
             sourceBottomColor = .Color
         End With
 
-        ' Determine last column to fill for this row using NEAREST ROW within ÃƒÆ’Ã†â�™ÃƒÂ¢Ã¢â�šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ�šÃ‚Â±50
+        ' Determine last column to fill for this row using NEAREST ROW within ÃƒÆ’Ã†â�™ÃƒÂ¢Ã¢â�šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ�šÃ‚Â±50
         lastCol = ComputeLastColFromNearestRow(ws, startRow + r - 1, startCol + 1, 50)
 
         If lastCol > startCol Then
@@ -1351,7 +1351,7 @@ Private Sub HighlightOutlineCell(ws As Worksheet, ByVal rowIdx As Long, ByVal co
         cell.Font.Bold = True
     End If
 End Sub
-' ===== Helper: nearest row scan ÃƒÆ’Ã†â�™ÃƒÂ¢Ã¢â�šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ�šÃ‚Â±maxOffset =====
+' ===== Helper: nearest row scan ÃƒÆ’Ã†â�™ÃƒÂ¢Ã¢â�šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ�šÃ‚Â±maxOffset =====
 Private Function ComputeLastColFromNearestRow(ws As Worksheet, baseRow As Long, startCol As Long, maxOffset As Long) As Long
     Dim offset As Long, upRow As Long, downRow As Long, lastC As Long
     lastC = ContiguousSpanLastCol(ws, baseRow, startCol)
@@ -2609,7 +2609,7 @@ End Sub
 ' ==================================================
 
 Private Function TryMoveSelectedLabel(ByVal dx As Double, ByVal dy As Double) As Boolean
-    ' Extremely fast ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â�šÂ¬Ã‚Â touches only the current label(s)
+    ' Extremely fast ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â�šÂ¬Ã‚Â touches only the current label(s)
     Dim t As String
     Dim pt As Excel.point
     Dim lbl As Excel.DataLabel
@@ -2644,7 +2644,7 @@ Private Function TryMoveSelectedLabel(ByVal dx As Double, ByVal dy As Double) As
             On Error GoTo 0
 
         Case "DataLabels"
-            ' Whole label collection selected ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â�šÂ¬Ã‚Â move each very quickly
+            ' Whole label collection selected ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â�šÂ¬Ã‚Â move each very quickly
             On Error Resume Next
             For Each lbl In Selection
                 lbl.Position = xlLabelPositionCustom

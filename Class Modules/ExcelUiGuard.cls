@@ -12,8 +12,6 @@ Option Explicit
 Private m_prevScreenUpdating As Boolean
 Private m_prevEnableEvents As Boolean
 Private m_prevStatusBar As Boolean
-Private m_prevStatusBarText As Variant
-Private m_prevStatusBarHasCustom As Boolean
 Private m_statusBarManaged As Boolean
 Private m_restored As Boolean
 
@@ -185,9 +183,6 @@ Public Sub DisableStatusBar()
     If m_statusBarManaged Then Exit Sub
     On Error Resume Next
     m_prevStatusBar = Application.DisplayStatusBar
-    m_prevStatusBarText = Application.StatusBar
-    m_prevStatusBarHasCustom = Not (VarType(m_prevStatusBarText) = vbBoolean And m_prevStatusBarText = False)
-    Application.StatusBar = False
     On Error GoTo 0
     m_statusBarManaged = True
 End Sub
@@ -217,11 +212,6 @@ Public Sub Restore()
 
     If m_statusBarManaged Then
         On Error Resume Next
-        If m_prevStatusBarHasCustom Then
-            Application.StatusBar = m_prevStatusBarText
-        Else
-            Application.StatusBar = False
-        End If
         Application.DisplayStatusBar = m_prevStatusBar
         On Error GoTo 0
     End If

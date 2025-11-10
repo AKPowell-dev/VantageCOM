@@ -1,3 +1,7 @@
+
+
+
+
 Attribute VB_Name = "C_Util1"
 Option Explicit
 Option Private Module
@@ -848,3 +852,4 @@ Function ErrorHandler(Optional ByVal funcName As String = "") As Boolean
         ErrorHandler = True
     End If
 End Function
+

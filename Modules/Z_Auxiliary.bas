@@ -274,6 +274,7 @@ Function CycleNumberFormat(Optional ByVal g As String) As Boolean
     Dim formats As Variant
     formats = Array( _
         "#,##0_);(#,##0);--_)", _
+        "$#,##0_);($#,##0);$--_)", _
         "#,##0.0%_);(#,##0.0%);--\%_)", _
         "#,##0.0x_);(#,##0.0x);--x_)", _
         "#,##0""bps""_);(#,##0""bps"");""--bps """, _

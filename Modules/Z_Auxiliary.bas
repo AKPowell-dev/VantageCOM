@@ -667,6 +667,60 @@ End Sub
 '====================================================
 ' Helper: Copy selection "As shown when printed"
 '====================================================
+Private Sub CopyCellPresentation(ByVal srcCell As Range, ByVal destCell As Range)
+    On Error Resume Next
+
+    destCell.NumberFormat = srcCell.NumberFormat
+
+    With destCell.Font
+        .Name = srcCell.Font.Name
+        .Size = srcCell.Font.Size
+        .Bold = srcCell.Font.Bold
+        .Italic = srcCell.Font.Italic
+        .Underline = srcCell.Font.Underline
+        .Color = srcCell.Font.Color
+        .Strikethrough = srcCell.Font.Strikethrough
+    End With
+
+    With destCell.Interior
+        If srcCell.Interior.Pattern = xlPatternNone _
+            Or srcCell.Interior.ColorIndex = xlColorIndexNone Then
+            .Pattern = xlPatternNone
+            .ColorIndex = xlColorIndexNone
+            .TintAndShade = 0
+            .PatternTintAndShade = 0
+        Else
+            .Pattern = srcCell.Interior.Pattern
+            .PatternColorIndex = srcCell.Interior.PatternColorIndex
+            .Color = srcCell.Interior.Color
+            .TintAndShade = srcCell.Interior.TintAndShade
+            .PatternTintAndShade = srcCell.Interior.PatternTintAndShade
+        End If
+    End With
+
+    destCell.HorizontalAlignment = srcCell.HorizontalAlignment
+    destCell.VerticalAlignment = srcCell.VerticalAlignment
+    destCell.WrapText = srcCell.WrapText
+    destCell.Orientation = srcCell.Orientation
+    destCell.AddIndent = srcCell.AddIndent
+    destCell.IndentLevel = srcCell.IndentLevel
+    destCell.ShrinkToFit = srcCell.ShrinkToFit
+    destCell.ReadingOrder = srcCell.ReadingOrder
+
+    Dim borderId As Variant
+    For Each borderId In Array(xlEdgeLeft, xlEdgeRight, xlEdgeTop, xlEdgeBottom)
+        With destCell.Borders(borderId)
+            .LineStyle = srcCell.Borders(borderId).LineStyle
+            If .LineStyle <> xlNone Then
+                .Weight = srcCell.Borders(borderId).Weight
+                .Color = srcCell.Borders(borderId).Color
+            End If
+        End With
+    Next borderId
+
+    On Error GoTo 0
+End Sub
+
 Private Function CopySelectionAsPicturePrintSafe(sel As Object) As Boolean
     Dim t As String
     t = TypeName(sel)
@@ -850,6 +904,78 @@ CleanExit:
 
 CleanFail:
     Call ErrorHandler("PasteExact")
+    Resume CleanExit
+End Function
+
+Function PasteCondensed(Optional ByVal g As String) As Boolean
+    Dim uiGuard As ExcelUiGuard
+    Dim src As Range
+    Dim dest As Range
+    Dim rowKeep() As Long
+    Dim colKeep() As Long
+    Dim rowCount As Long
+    Dim colCount As Long
+    Dim i As Long, j As Long
+    Dim srcCell As Range
+    Dim destCell As Range
+    Dim wasCopyMode As Boolean
+
+    On Error GoTo CleanFail
+
+    Set uiGuard = SuppressExcelUi(True)
+    Call RepeatRegister("PasteCondensed")
+
+    Set src = ClipboardGetCopyRange()
+    If src Is Nothing Then
+        Application.CommandBars.ExecuteMso "Paste"
+        GoTo CleanExit
+    End If
+
+    If TypeName(Selection) <> "Range" Then GoTo CleanExit
+    Set dest = Selection.Cells(1)
+
+    ReDim rowKeep(1 To src.Rows.Count)
+    For i = 1 To src.Rows.Count
+        If Application.WorksheetFunction.CountA(src.Rows(i)) > 0 Then
+            rowCount = rowCount + 1
+            rowKeep(rowCount) = i
+        End If
+    Next i
+    If rowCount = 0 Then GoTo CleanExit
+    ReDim Preserve rowKeep(1 To rowCount)
+
+    ReDim colKeep(1 To src.Columns.Count)
+    For j = 1 To src.Columns.Count
+        If Application.WorksheetFunction.CountA(src.Columns(j)) > 0 Then
+            colCount = colCount + 1
+            colKeep(colCount) = j
+        End If
+    Next j
+    If colCount = 0 Then GoTo CleanExit
+    ReDim Preserve colKeep(1 To colCount)
+
+    Set dest = dest.Resize(rowCount, colCount)
+
+    For i = 1 To rowCount
+        For j = 1 To colCount
+            Set srcCell = src.Cells(rowKeep(i), colKeep(j))
+            Set destCell = dest.Cells(i, j)
+            destCell.Formula = srcCell.Formula
+            Call CopyCellPresentation(srcCell, destCell)
+        Next j
+    Next i
+
+    ClipboardSetCopyRange src
+    wasCopyMode = (Application.CutCopyMode = xlCopy)
+    If wasCopyMode Then src.Copy
+    ClipboardRefresh
+
+CleanExit:
+    PasteCondensed = False
+    Exit Function
+
+CleanFail:
+    Call ErrorHandler("PasteCondensed")
     Resume CleanExit
 End Function
 

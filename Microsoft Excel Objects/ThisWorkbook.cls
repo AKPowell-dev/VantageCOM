@@ -1,5 +1,6 @@
 Option Explicit
 Public WithEvents App As Application
+Private selectionPageBreakCache As Object
 
 Public Sub EnsureAppHook()
     On Error Resume Next
@@ -57,22 +58,35 @@ End Sub
 Private Sub App_SheetSelectionChange(ByVal Sh As Object, ByVal Target As Range)
     On Error GoTo CleanExit
     If Target Is Nothing Then Exit Sub
-    
+
+    gSelectionStamp = gSelectionStamp + 1
+
+    If Target.CountLarge <= 10000 Then Exit Sub
+    If TypeName(Sh) <> "Worksheet" Then Exit Sub
+
+    If selectionPageBreakCache Is Nothing Then
+        Set selectionPageBreakCache = CreateObject("Scripting.Dictionary")
+    End If
+
     Dim ws As Worksheet
-    If TypeName(Sh) = "Worksheet" Then
-        Set ws = Sh
-    Else
+    Set ws = Sh
+    Dim cacheKey As String
+    cacheKey = ws.CodeName
+
+    If selectionPageBreakCache.Exists(cacheKey) Then Exit Sub
+
+    If Not ws.DisplayPageBreaks Then
+        selectionPageBreakCache.Add cacheKey, True
         Exit Sub
     End If
-    
-    ' Large selections are slow when page breaks are displayed; disable once.
-    If Target.CountLarge > 10000 Then
-        Dim prevEvents As Boolean
-        prevEvents = Application.EnableEvents
-        Application.EnableEvents = False
-        If ws.DisplayPageBreaks Then ws.DisplayPageBreaks = False
-        Application.EnableEvents = prevEvents
-    End If
+
+    Dim prevEvents As Boolean
+    prevEvents = Application.EnableEvents
+    Application.EnableEvents = False
+    ws.DisplayPageBreaks = False
+    Application.EnableEvents = prevEvents
+
+    selectionPageBreakCache.Add cacheKey, True
 
 CleanExit:
 End Sub
@@ -108,6 +122,5 @@ Private Function ShouldSkipAutoColor(ByVal rng As Range) As Boolean
 
 CleanExit:
 End Function
-
 
 

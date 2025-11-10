@@ -21,13 +21,13 @@ Public Parent As cls_Vim
 Public Property Get VimStarted() As String
     VimStarted = IIf(Parent.IsJapanese, _
         "Vim モードを開始しました。", _
-        "Vim mode started.")
+        "Vantage Mode Started.")
 End Property
 
 Public Property Get VimStopped() As String
     VimStopped = IIf(Parent.IsJapanese, _
         "Vim モードを停止しました。", _
-        "Vim mode stopped.")
+        "Vantage Mode Stopped.")
 End Property
 
 Public Property Get LangChanged() As String

@@ -91,6 +91,8 @@ Function StartVim(Optional ByVal g As String) As Boolean
 
     Call SetStatusBarTemporarily(gVim.Msg.VimStarted & "(Load time: " & format(GetQueryPerformanceTime(), "0.000") & "s)", 3000)
 
+    Application.OnKey ("=")
+
 Finally:
     Application.EnableEvents = prevEvents
     Application.ScreenUpdating = prevScreen

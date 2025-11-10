@@ -360,6 +360,7 @@ Sub DefaultConfig()
         .Map "nmap gp PasteSpecial"
         .Map "nmap U PasteValue"
         .Map "nmap <C-S-q> PasteExact"
+        .Map "nmap <cmd>cons PasteCondensed"
         .Map "nmap fh AlignLeft"
         .Map "nmap fj AlignBottom"
         .Map "nmap fk AlignTop"

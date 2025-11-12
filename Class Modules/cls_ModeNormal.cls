@@ -137,6 +137,16 @@ Private Sub AppForLock_WorkbookDeactivate(ByVal Wb As Workbook)
     End If
 End Sub
 
+Private Sub App_SheetSelectionChange(ByVal Sh As Object, ByVal target As Range)
+    On Error GoTo Catch
+
+    gSelectionStamp = gSelectionStamp + 1
+    Exit Sub
+
+Catch:
+    Call ErrorHandler("ModeNormal.App_SheetSelectionChange")
+End Sub
+
 Private Sub Class_Initialize()
     Set App = Application
     If Not gVim.Vars.LockedSheet Is Nothing Then

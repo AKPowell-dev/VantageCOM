@@ -307,7 +307,7 @@ Function YearDisplayCycle(Optional ByVal g As String) As Boolean
     Dim formats As Variant
     formats = Array( _
         "yyyy", _
-        "mmm-yyyy" _
+        "mmm-yy" _
     )
     YearDisplayCycle = ApplyNumberFormatCycle(formats, lastIndex, lastAddress, lastActiveCellAddress, lastSelectionStamp)
 End Function

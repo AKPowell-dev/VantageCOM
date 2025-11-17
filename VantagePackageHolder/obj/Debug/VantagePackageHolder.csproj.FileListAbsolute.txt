@@ -1,0 +1,40 @@
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\bin\Debug\VantagePackageHolder.dll
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\bin\Debug\VantagePackageHolder.pdb
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\obj\Debug\VantagePackageHolder.csproj.AssemblyReference.cache
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\obj\Debug\VantagePackageHolder.csproj.CoreCompileInputs.cache
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\obj\Debug\VantagePackageHolder.dll
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\obj\Debug\VantagePackageHolder.pdb
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\bin\Debug\Extensibility.dll
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\bin\Debug\Microsoft.Office.Interop.Excel.dll
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\bin\Debug\Microsoft.Office.Interop.PowerPoint.dll
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\bin\Debug\Office.dll
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\bin\Debug\Microsoft.Vbe.Interop.dll
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\bin\Debug\stdole.dll
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\bin\Debug\Microsoft.Office.Interop.Excel.xml
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\bin\Debug\Office.xml
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\obj\Debug\VantageP.C2003F0A.Up2Date
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\bin\TempDebug\VantagePackageHolder.dll
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\bin\TempDebug\VantagePackageHolder.pdb
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\bin\TempDebug\Extensibility.dll
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\bin\TempDebug\Microsoft.Office.Interop.Excel.dll
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\bin\TempDebug\Microsoft.Office.Interop.PowerPoint.dll
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\bin\TempDebug\Office.dll
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\bin\TempDebug\Microsoft.Vbe.Interop.dll
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\bin\TempDebug\stdole.dll
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\bin\TempDebug\Microsoft.Office.Interop.Excel.xml
+C:\Users\andrep54\Vantage Add-in\VantagePackageHolder\bin\TempDebug\Office.xml
+C:\Users\andrep54\OneDrive - kochind.com\Documents\PARA\3. RESOURCES\Excel Add-Ins\Vim Package Holder V22\VantagePackageHolder\obj\Debug\VantagePackageHolder.csproj.AssemblyReference.cache
+C:\Users\andrep54\OneDrive - kochind.com\Documents\PARA\3. RESOURCES\Excel Add-Ins\Vim Package Holder V22\VantagePackageHolder\obj\Debug\VantagePackageHolder.csproj.CoreCompileInputs.cache
+C:\Users\andrep54\OneDrive - kochind.com\Documents\PARA\3. RESOURCES\Excel Add-Ins\Vim Package Holder V22\VantagePackageHolder\obj\Debug\VantagePackageHolder.dll
+C:\Users\andrep54\OneDrive - kochind.com\Documents\PARA\3. RESOURCES\Excel Add-Ins\Vim Package Holder V22\VantagePackageHolder\obj\Debug\VantagePackageHolder.pdb
+C:\Users\andrep54\OneDrive - kochind.com\Documents\PARA\3. RESOURCES\Excel Add-Ins\Vim Package Holder V22\VantagePackageHolder\bin\Debug\VantagePackageHolder.dll
+C:\Users\andrep54\OneDrive - kochind.com\Documents\PARA\3. RESOURCES\Excel Add-Ins\Vim Package Holder V22\VantagePackageHolder\bin\Debug\Extensibility.dll
+C:\Users\andrep54\OneDrive - kochind.com\Documents\PARA\3. RESOURCES\Excel Add-Ins\Vim Package Holder V22\VantagePackageHolder\bin\Debug\Microsoft.Office.Interop.Excel.dll
+C:\Users\andrep54\OneDrive - kochind.com\Documents\PARA\3. RESOURCES\Excel Add-Ins\Vim Package Holder V22\VantagePackageHolder\bin\Debug\Microsoft.Office.Interop.PowerPoint.dll
+C:\Users\andrep54\OneDrive - kochind.com\Documents\PARA\3. RESOURCES\Excel Add-Ins\Vim Package Holder V22\VantagePackageHolder\bin\Debug\Office.dll
+C:\Users\andrep54\OneDrive - kochind.com\Documents\PARA\3. RESOURCES\Excel Add-Ins\Vim Package Holder V22\VantagePackageHolder\bin\Debug\Microsoft.Vbe.Interop.dll
+C:\Users\andrep54\OneDrive - kochind.com\Documents\PARA\3. RESOURCES\Excel Add-Ins\Vim Package Holder V22\VantagePackageHolder\bin\Debug\stdole.dll
+C:\Users\andrep54\OneDrive - kochind.com\Documents\PARA\3. RESOURCES\Excel Add-Ins\Vim Package Holder V22\VantagePackageHolder\bin\Debug\Microsoft.Office.Interop.Excel.xml
+C:\Users\andrep54\OneDrive - kochind.com\Documents\PARA\3. RESOURCES\Excel Add-Ins\Vim Package Holder V22\VantagePackageHolder\bin\Debug\Office.xml
+C:\Users\andrep54\OneDrive - kochind.com\Documents\PARA\3. RESOURCES\Excel Add-Ins\Vim Package Holder V22\VantagePackageHolder\obj\Debug\VantageP.C2003F0A.Up2Date
+C:\Users\andrep54\OneDrive - kochind.com\Documents\PARA\3. RESOURCES\Excel Add-Ins\Vim Package Holder V22\VantagePackageHolder\bin\Debug\VantagePackageHolder.pdb

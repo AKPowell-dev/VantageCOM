@@ -44,50 +44,42 @@ Public Sub ClipboardUnhook()
 End Sub
 
 Public Sub ClipboardHandleCopy()
-    On Error GoTo FallbackCopy
-
-    If TypeName(Selection) = "Range" Then
-        ClipboardSetCopyRange Selection
-    Else
-        ClipboardSetCopyRange Nothing
-    End If
-
-    Application.CommandBars.ExecuteMso "Copy"
-    Exit Sub
-
-FallbackCopy:
-    ClipboardSetCopyRange Nothing
-    Application.CommandBars.ExecuteMso "Copy"
+    Dim engine As Object
+    On Error Resume Next
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Sub
+    engine.ClipboardHandleCopy
 End Sub
 
 Public Sub ClipboardHandleCut()
+    Dim engine As Object
     On Error Resume Next
-    ClipboardSetCopyRange Nothing
-    Application.CommandBars.ExecuteMso "Cut"
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Sub
+    engine.ClipboardHandleCut
 End Sub
 
 Public Sub ClipboardHandlePaste()
-    On Error GoTo FallbackPaste
-
-    Call EnsureClipboardPayload
-
-    Application.CommandBars.ExecuteMso "Paste"
-    Exit Sub
-
-FallbackPaste:
-    Application.CommandBars.ExecuteMso "Paste"
+    Dim engine As Object
+    On Error Resume Next
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Sub
+    engine.ClipboardHandlePaste
 End Sub
 
 Private Sub ClipboardHandlePasteSpecial(ByVal controlId As String)
-    On Error GoTo FailPaste
-
-    Call EnsureClipboardPayload
-
-    Application.CommandBars.ExecuteMso controlId
-    Exit Sub
-
-FailPaste:
-    Application.CommandBars.ExecuteMso controlId
+    Dim engine As Object
+    On Error Resume Next
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Sub
+    Select Case controlId
+        Case "PasteValues"
+            engine.ClipboardHandlePasteValues
+        Case "PasteFormulas"
+            engine.ClipboardHandlePasteFormulas
+        Case Else
+            engine.ClipboardOpenPasteSpecial
+    End Select
 End Sub
 
 Private Function ClipboardHasContent() As Boolean
@@ -107,50 +99,24 @@ Private Function ClipboardHasContent() As Boolean
     End If
 End Function
 
-Private Sub EnsureClipboardPayload()
-    If Application.CutCopyMode <> 0 Then Exit Sub
-    If ClipboardHasContent() Then Exit Sub
-    If gCopyRange Is Nothing Then Exit Sub
-    If Not IsRangeValid(gCopyRange) Then
-        Set gCopyRange = Nothing
-        Exit Sub
-    End If
-
-    Dim savedSelection As Range
-    Dim savedActive As Range
-
-    If TypeName(Selection) = "Range" Then
-        Set savedSelection = Selection
-        Set savedActive = ActiveCell
-    End If
-
-    gCopyRange.Copy
-
-    If Not savedSelection Is Nothing Then
-        SafeSelectRange savedSelection
-        If Not savedActive Is Nothing Then SafeActivateRange savedActive
-    End If
-End Sub
-
 Public Function ClipboardGetCopyRange() As Range
+    Dim engine As Object
     On Error Resume Next
-    If Not gCopyRange Is Nothing Then
-        Set ClipboardGetCopyRange = gCopyRange
-    End If
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    Set ClipboardGetCopyRange = engine.ClipboardGetCopyRange
 End Function
 
 Public Sub ClipboardSetCopyRange(ByVal rng As Range)
+    Dim engine As Object
     On Error Resume Next
-    If rng Is Nothing Then
-        Set gCopyRange = Nothing
-    Else
-        Set gCopyRange = rng
-    End If
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Sub
+    engine.ClipboardSetCopyRange rng
 End Sub
 
 Public Sub ClipboardOpenPasteSpecial()
-    EnsureClipboardPayload
-    Application.CommandBars.ExecuteMso "PasteSpecialDialog"
+    ClipboardHandlePasteSpecial "PasteSpecialDialog"
 End Sub
 
 Public Sub ClipboardHandlePasteValues()

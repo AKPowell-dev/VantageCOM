@@ -1,0 +1,29 @@
+REGEDIT4
+
+[HKEY_CLASSES_ROOT\VantagePackageHolder.Addin]
+@="VantagePackageHolder.Addin"
+
+[HKEY_CLASSES_ROOT\VantagePackageHolder.Addin\CLSID]
+@="{F5DA47BA-19D6-46CD-ACB7-BC918636925E}"
+
+[HKEY_CLASSES_ROOT\CLSID\{F5DA47BA-19D6-46CD-ACB7-BC918636925E}]
+@="VantagePackageHolder.Addin"
+
+[HKEY_CLASSES_ROOT\CLSID\{F5DA47BA-19D6-46CD-ACB7-BC918636925E}\InprocServer32]
+@="mscoree.dll"
+"ThreadingModel"="Both"
+"Class"="VantagePackageHolder.Addin"
+"Assembly"="VantagePackageHolder, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"
+"RuntimeVersion"="v4.0.30319"
+"CodeBase"="file:///C:/Users/andrep54/Vantage Add-in/VantagePackageHolder/bin/Debug/VantagePackageHolder.dll"
+
+[HKEY_CLASSES_ROOT\CLSID\{F5DA47BA-19D6-46CD-ACB7-BC918636925E}\InprocServer32\1.0.0.0]
+"Class"="VantagePackageHolder.Addin"
+"Assembly"="VantagePackageHolder, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"
+"RuntimeVersion"="v4.0.30319"
+"CodeBase"="file:///C:/Users/andrep54/Vantage Add-in/VantagePackageHolder/bin/Debug/VantagePackageHolder.dll"
+
+[HKEY_CLASSES_ROOT\CLSID\{F5DA47BA-19D6-46CD-ACB7-BC918636925E}\ProgId]
+@="VantagePackageHolder.Addin"
+
+[HKEY_CLASSES_ROOT\CLSID\{F5DA47BA-19D6-46CD-ACB7-BC918636925E}\Implemented Categories\{62C8FE65-4EBB-45E7-B440-6E39B2CDBF29}]

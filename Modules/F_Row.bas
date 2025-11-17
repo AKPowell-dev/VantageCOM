@@ -152,79 +152,48 @@ End Function
 Function InsertRows(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
 
-    Dim savedCell As Range
-    Dim target As Range
-
-    Set target = GetTargetRows(Entire)
-    If target Is Nothing Then
-        Exit Function
-    End If
-
     Call RepeatRegister("InsertRows")
     Call StopVisualMode
 
-    Application.ScreenUpdating = False
-
-    Set savedCell = ActiveCell
-    SafeSelectRange target
-    SafeActivateRange savedCell
-
-    Call KeyStroke(Alt_, I_, R_)
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.InsertRows gVim.Count1, False
+    Exit Function
 
 Catch:
-    Application.ScreenUpdating = True
     Call ErrorHandler("InsertRows")
 End Function
 
 Function AppendRows(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
 
-    Dim savedCell As Range
-    Dim target As Range
-
-    Set target = GetTargetRows(Entire)
-    If target Is Nothing Then
-        Exit Function
-    End If
-
     Call RepeatRegister("AppendRows")
     Call StopVisualMode
 
-    Set savedCell = ActiveCell
-
-    If target.item(target.Count).Row < ActiveSheet.Rows.Count Then
-        Set target = target.offset(1, 0)
-        Set savedCell = savedCell.offset(1, 0)
-    End If
-
-    Application.ScreenUpdating = False
-
-    SafeSelectRange target
-    SafeActivateRange savedCell
-
-    Call KeyStroke(Alt_, I_, R_)
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.InsertRows gVim.Count1, True
+    Exit Function
 
 Catch:
-    Application.ScreenUpdating = True
     Call ErrorHandler("AppendRows")
 End Function
 
 Function DeleteRows(Optional ByVal TargetType As eTargetRowType = Entire) As Boolean
     On Error GoTo Catch
 
-    Application.ScreenUpdating = False
-    If SelectRowsInternal(TargetType) = False Then
-        Application.ScreenUpdating = True
-        Exit Function
-    End If
-
     Call RepeatRegister("DeleteRows")
     Call StopVisualMode
 
-    Call KeyStroke(Ctrl_ + Minus_)
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.DeleteRows TargetType, gVim.Count1
+    Exit Function
 
 Catch:
-    Application.ScreenUpdating = True
     Call ErrorHandler("DeleteRows")
 End Function
 
@@ -273,14 +242,13 @@ End Function
 Function HideRows(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
 
-    If SelectRowsInternal(Entire) = False Then
-        Exit Function
-    End If
-
     Call RepeatRegister("HideRows")
     Call StopVisualMode
 
-    Call KeyStroke(Ctrl_ + k9_)
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.HideRows Entire, gVim.Count1, True
 
 Catch:
     Call ErrorHandler("HideRows")
@@ -289,14 +257,13 @@ End Function
 Function UnhideRows(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
 
-    If SelectRowsInternal(Entire) = False Then
-        Exit Function
-    End If
-
     Call RepeatRegister("UnhideRows")
     Call StopVisualMode
 
-    Call KeyStroke(Ctrl_ + Shift_ + k9_)
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.HideRows Entire, gVim.Count1, False
     Exit Function
 
 Catch:
@@ -306,38 +273,30 @@ End Function
 Function GroupRows(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
 
-    Application.ScreenUpdating = False
-    If SelectRowsInternal(Entire) = False Then
-        Application.ScreenUpdating = True
-        Exit Function
-    End If
-
     Call RepeatRegister("GroupRows")
     Call StopVisualMode
 
-    Call KeyStroke(Alt_ + Shift_ + Right_)
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.GroupRows gVim.Count1, True
 
 Catch:
-    Application.ScreenUpdating = True
     Call ErrorHandler("GroupRows")
 End Function
 
 Function UngroupRows(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
 
-    Application.ScreenUpdating = False
-    If SelectRowsInternal(Entire) = False Then
-        Application.ScreenUpdating = True
-        Exit Function
-    End If
-
     Call RepeatRegister("UngroupRows")
     Call StopVisualMode
 
-    Call KeyStroke(Alt_ + Shift_ + Left_)
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.GroupRows gVim.Count1, False
 
 Catch:
-    Application.ScreenUpdating = True
     Call ErrorHandler("UngroupRows")
 End Function
 

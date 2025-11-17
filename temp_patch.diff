@@ -1,0 +1,278 @@
+*** Begin Patch
+*** Update File: VantagePackageHolder/Services/FormatService.cs
+@@
+         public void CopyPasteSelectionToPowerPoint()
+         {
+             if (!CopySelectionAsPicturePrintSafe())
+             {
+                 System.Windows.Forms.MessageBox.Show(
+@@
+             _ppt.PasteClipboardIntoActiveSlide();
+         }
+ 
++        // ===== Formatting utilities migrated from VBA =====
++        public void ClearFormatting()
++        {
++            if (!RangeHelpers.TryGetActiveRange(_app, out var sel)) return;
++            using (new UiGuard(_app))
++            {
++                try { sel.Borders[Excel.XlBordersIndex.xlEdgeLeft].LineStyle = Excel.XlLineStyle.xlLineStyleNone; } catch { }
++                try { sel.Borders[Excel.XlBordersIndex.xlEdgeRight].LineStyle = Excel.XlLineStyle.xlLineStyleNone; } catch { }
++                try { sel.Borders[Excel.XlBordersIndex.xlEdgeTop].LineStyle = Excel.XlLineStyle.xlLineStyleNone; } catch { }
++                try { sel.Borders[Excel.XlBordersIndex.xlEdgeBottom].LineStyle = Excel.XlLineStyle.xlLineStyleNone; } catch { }
++                try { sel.Interior.ColorIndex = Excel.XlColorIndex.xlColorIndexNone; } catch { }
++                try { sel.NumberFormat = "#,##0_);(#,##0);--_)"; } catch { }
++                try { sel.Font.Bold = false; } catch { }
++                try { sel.Font.Italic = false; } catch { }
++                try { sel.Font.Underline = Excel.XlUnderlineStyle.xlUnderlineStyleNone; } catch { }
++                try { sel.Font.Color = ColorTranslator.ToOle(System.Drawing.Color.Black); } catch { }
++            }
++        }
++
++        private string _cycleFmtLastKey = string.Empty;
++        private int _cycleFmtNextStyle = 1;
++        public void CycleFormatting()
++        {
++            if (!RangeHelpers.TryGetActiveRange(_app, out var sel)) return;
++            using (new UiGuard(_app))
++            {
++                var key = RangeHelpers.BuildRangeKey(sel);
++                if (!string.Equals(key, _cycleFmtLastKey, StringComparison.Ordinal))
++                {
++                    _cycleFmtNextStyle = 1;
++                }
++
++                _cycleFmtLastKey = key;
++
++                var firstCell = sel.Cells[1, 1] as Excel.Range;
++                int BLUE = ColorTranslator.ToOle(System.Drawing.Color.FromArgb(0, 32, 96));
++                int RED = ColorTranslator.ToOle(System.Drawing.Color.FromArgb(153, 0, 0));
++                int LIGHTBLUE = ColorTranslator.ToOle(System.Drawing.Color.FromArgb(226, 234, 250));
++
++                // Determine next style based on first cell state
++                try
++                {
++                    int next = _cycleFmtNextStyle;
++                    int firstColor = Convert.ToInt32(firstCell.Font.Color);
++                    bool firstHasFill = Convert.ToInt32(firstCell.Interior.Pattern) != (int)Excel.XlPattern.xlPatternNone;
++                    int firstFill = firstHasFill ? Convert.ToInt32(firstCell.Interior.Color) : -1;
++
++                    if (firstColor == RED)
++                        next = 2;
++                    else if (firstHasFill && firstFill == BLUE)
++                        next = 3;
++                    else if (firstHasFill && firstFill == LIGHTBLUE)
++                        next = 0;
++                    else
++                        next = 1;
++
++                    // Apply to all selected cells
++                    sel.Font.Name = "Garamond";
++                    switch (next)
++                    {
++                        case 1: // Red font, no fill, bold, underlined
++                            sel.Interior.Pattern = Excel.XlPattern.xlPatternNone;
++                            sel.Font.Color = RED;
++                            sel.Font.Bold = true;
++                            sel.Font.Underline = Excel.XlUnderlineStyle.xlUnderlineStyleSingle;
++                            sel.Borders[Excel.XlBordersIndex.xlEdgeTop].LineStyle = Excel.XlLineStyle.xlLineStyleNone;
++                            sel.Borders[Excel.XlBordersIndex.xlEdgeBottom].LineStyle = Excel.XlLineStyle.xlLineStyleNone;
++                            break;
++                        case 2: // Dark blue fill, white font, bold
++                            sel.Interior.Pattern = Excel.XlPattern.xlPatternSolid;
++                            sel.Interior.Color = BLUE;
++                            sel.Font.Color = ColorTranslator.ToOle(System.Drawing.Color.White);
++                            sel.Font.Bold = true;
++                            sel.Font.Underline = Excel.XlUnderlineStyle.xlUnderlineStyleNone;
++                            sel.Borders[Excel.XlBordersIndex.xlEdgeTop].LineStyle = Excel.XlLineStyle.xlLineStyleNone;
++                            sel.Borders[Excel.XlBordersIndex.xlEdgeBottom].LineStyle = Excel.XlLineStyle.xlLineStyleNone;
++                            break;
++                        case 3: // Light blue fill, bold, top & bottom borders
++                            sel.Interior.Pattern = Excel.XlPattern.xlPatternSolid;
++                            sel.Interior.Color = LIGHTBLUE;
++                            sel.Font.Color = ColorTranslator.ToOle(System.Drawing.Color.Black);
++                            sel.Font.Bold = true;
++                            sel.Font.Underline = Excel.XlUnderlineStyle.xlUnderlineStyleNone;
++                            var top = sel.Borders[Excel.XlBordersIndex.xlEdgeTop];
++                            top.LineStyle = Excel.XlLineStyle.xlContinuous; top.Weight = Excel.XlBorderWeight.xlThin;
++                            var bottom = sel.Borders[Excel.XlBordersIndex.xlEdgeBottom];
++                            bottom.LineStyle = Excel.XlLineStyle.xlContinuous; bottom.Weight = Excel.XlBorderWeight.xlThin;
++                            break;
++                        default: // Reset
++                            sel.Interior.Pattern = Excel.XlPattern.xlPatternNone;
++                            sel.Font.Color = ColorTranslator.ToOle(System.Drawing.Color.Black);
++                            sel.Font.Bold = false;
++                            sel.Font.Underline = Excel.XlUnderlineStyle.xlUnderlineStyleNone;
++                            sel.Borders[Excel.XlBordersIndex.xlEdgeTop].LineStyle = Excel.XlLineStyle.xlLineStyleNone;
++                            sel.Borders[Excel.XlBordersIndex.xlEdgeBottom].LineStyle = Excel.XlLineStyle.xlLineStyleNone;
++                            break;
++                    }
++
++                    // Next cycle
++                    _cycleFmtNextStyle = next + 1;
++                    if (_cycleFmtNextStyle > 3) _cycleFmtNextStyle = 0;
++                }
++                finally
++                {
++                    ReleaseIfNeeded(firstCell);
++                }
++            }
++        }
++
++        public void LockCellReference()
++        {
++            if (!RangeHelpers.TryGetActiveRange(_app, out var sel)) return;
++            using (new UiGuard(_app))
++            {
++                object formulasObj;
++                try { formulasObj = sel.Formula; } catch { return; }
++
++                if (formulasObj is object[,] grid)
++                {
++                    int r0 = grid.GetLowerBound(0), r1 = grid.GetUpperBound(0);
++                    int c0 = grid.GetLowerBound(1), c1 = grid.GetUpperBound(1);
++                    for (int r = r0; r <= r1; r++)
++                    {
++                        for (int c = c0; c <= c1; c++)
++                        {
++                            if (grid[r, c] is string f && f.Length > 0 && f[0] == '=')
++                            {
++                                try { grid[r, c] = _app.ConvertFormula(f, Excel.XlReferenceStyle.xlA1, Excel.XlReferenceStyle.xlA1, Excel.XlReferenceType.xlAbsolute); }
++                                catch { }
++                            }
++                        }
++                    }
++                    try { sel.Formula = grid; } catch { }
++                }
++                else if (formulasObj is string fs)
++                {
++                    if (fs.Length > 0 && fs[0] == '=')
++                    {
++                        try { sel.Formula = _app.ConvertFormula(fs, Excel.XlReferenceStyle.xlA1, Excel.XlReferenceStyle.xlA1, Excel.XlReferenceType.xlAbsolute); } catch { }
++                    }
++                }
++            }
++        }
++
++        public void FlipSign()
++        {
++            if (!RangeHelpers.TryGetActiveRange(_app, out var sel)) return;
++            using (new UiGuard(_app))
++            {
++                bool arrayWarning = false;
++                foreach (Excel.Range cell in sel.Cells)
++                {
++                    try
++                    {
++                        if (cell.HasArray) { arrayWarning = true; continue; }
++                        if (cell.HasFormula)
++                        {
++                            var v = cell.Value2;
++                            if (v != null && double.TryParse(Convert.ToString(v), out _))
++                            {
++                                string f = Convert.ToString(cell.Formula);
++                                if (f.StartsWith("=-(") && f.EndsWith(")"))
++                                {
++                                    cell.Formula = "=" + f.Substring(3, f.Length - 4);
++                                }
++                                else if (f.StartsWith("="))
++                                {
++                                    cell.Formula = "=-(" + f.Substring(1) + ")";
++                                }
++                            }
++                        }
++                        else
++                        {
++                            var v = cell.Value2;
++                            if (v != null && double.TryParse(Convert.ToString(v), out double num))
++                            {
++                                cell.Value2 = -num;
++                            }
++                        }
++                    }
++                    catch { }
++                    finally { ReleaseIfNeeded(cell); }
++                }
++                if (arrayWarning)
++                {
++                    try { _app.StatusBar = "Skipped array formulas when flipping signs."; } catch { }
++                    try { System.Windows.Forms.Application.DoEvents(); } catch { }
++                    try { _app.StatusBar = false; } catch { }
++                }
++            }
++        }
++
++        public void ReverseSelectionOrder()
++        {
++            if (!RangeHelpers.TryGetActiveRange(_app, out var sel)) return;
++            if (sel.Areas.Count > 1) return;
++            long total = sel.Cells.CountLarge;
++            if (total < 2) return;
++
++            using (new UiGuard(_app))
++            {
++                var values = new object[total + 1];
++                var formulas = new string[total + 1];
++                var hasFormula = new bool[total + 1];
++
++                int i = 1;
++                foreach (Excel.Range cell in sel.Cells)
++                {
++                    try
++                    {
++                        if (Convert.ToBoolean(cell.MergeCells)) return;
++                        if (cell.HasArray) return;
++                        hasFormula[i] = cell.HasFormula;
++                        if (hasFormula[i]) formulas[i] = Convert.ToString(cell.Formula);
++                        else values[i] = cell.Value2;
++                        i++;
++                    }
++                    catch { return; }
++                    finally { ReleaseIfNeeded(cell); }
++                }
++
++                i = 1;
++                foreach (Excel.Range cell in sel.Cells)
++                {
++                    int src = (int)total - i + 1;
++                    try
++                    {
++                        if (hasFormula[src]) cell.Formula = formulas[src];
++                        else cell.Value2 = values[src];
++                        i++;
++                    }
++                    catch { return; }
++                    finally { ReleaseIfNeeded(cell); }
++                }
++            }
++        }
++
++        // Simple currency format cycle
++        private string _currencyCycleKey = string.Empty;
++        private int _currencyCycleIndex = 0;
++        public void CurrencyCycle()
++        {
++            if (!RangeHelpers.TryGetActiveRange(_app, out var sel)) return;
++            string key = RangeHelpers.BuildRangeKey(sel);
++            if (!string.Equals(key, _currencyCycleKey, StringComparison.Ordinal))
++            {
++                _currencyCycleIndex = 0;
++            }
++            _currencyCycleKey = key;
++
++            string pound = char.ConvertFromUtf32(0x00A3);
++            string euro = char.ConvertFromUtf32(0x20AC);
++            var formats = new[]
++            {
++                "$#,##0_);($#,##0);$--_)",
++                pound + "#,##0_);(" + pound + "#,##0);" + pound + "--_)",
++                euro + "#,##0_);(" + euro + "#,##0);" + euro + "--_)"
++            };
++
++            using (new UiGuard(_app))
++            {
++                try { sel.NumberFormat = formats[_currencyCycleIndex]; } catch { }
++            }
++            _currencyCycleIndex = (_currencyCycleIndex + 1) % formats.Length;
++        }
+*** End Patch

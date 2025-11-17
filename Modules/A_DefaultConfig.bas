@@ -226,8 +226,6 @@ Sub DefaultConfig()
         .Map "nmap <cmd>unique RemoveDuplicates"
 
         ' === Navigation & References ===
-        .Map "nmap <C-[> GoToPreviousReference"
-        .Map "nmap <C-]> GoToNextDependent"
         .Map "nmap <Space> SubstituteFollowLangMode"
         .Map "nmap <C-F2> LockCellReference"
         .Map "nmap : EnterCmdlineMode"

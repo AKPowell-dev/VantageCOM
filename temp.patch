@@ -1,0 +1,160 @@
+*** Begin Patch
+*** Update File: Modules/Z_Auxiliary.bas
+@@
+Sub FlipSign()
+-    Dim uiGuard As ExcelUiGuard
+-    Set uiGuard = SuppressExcelUi(True)
+-    Dim sel As Range
+-    Dim cell As Range
+-    Dim formulaText As String
+-    Dim arrayWarning As Boolean
+-    Dim innerFormula As String
+-    ' Ensure a valid range is selected
+-    If TypeName(Selection) <> "Range" Then Exit Sub
+-    If Selection.CountLarge = 0 Then Exit Sub
+-    Set sel = Selection
+-    ' Loop through all cells in the selection
+-    For Each cell In sel.Cells
+-        If cell.HasArray Then
+-            arrayWarning = True
+-        ElseIf cell.hasFormula Then
+-            If Not IsError(cell.value) And IsNumeric(cell.value) And Not IsEmpty(cell.value) Then
+-                formulaText = cell.formula
+-                If Len(formulaText) > 3 _
+-                    And Left$(formulaText, 3) = "=-(" _
+-                    And Right$(formulaText, 1) = ")" Then
+-                    innerFormula = Mid$(formulaText, 4, Len(formulaText) - 4)
+-                    cell.formula = "=" & innerFormula
+-                ElseIf Len(formulaText) > 1 And Left$(formulaText, 1) = "=" Then
+-                    cell.formula = "=-(" & Mid$(formulaText, 2) & ")"
+-                End If
+-            End If
+-        ElseIf Not IsError(cell.value) Then
+-            If IsNumeric(cell.value) And Not IsEmpty(cell.value) Then
+-                cell.value = -cell.value
+-            End If
+-        End If
+-    Next cell
+-    If arrayWarning Then
+-        Call SetStatusBarTemporarily("Skipped array formulas when flipping signs.", 2000)
+-    End If
++    Dim engine As Object
++    On Error GoTo CleanFail
++    Set engine = NetAddin()
++    If engine Is Nothing Then GoTo CleanExit
++    engine.FlipSign
++CleanExit:
++    Exit Sub
++CleanFail:
++    Call ErrorHandler("FlipSign")
++    Resume CleanExit
+ End Sub
+@@
+Sub ReverseSelectionOrder()
+-    Dim uiGuard As ExcelUiGuard
+-    Set uiGuard = SuppressExcelUi(True)
+-    On Error GoTo Catch
+-
+-    Dim sel As Range
+-    Dim cell As Range
+-    Dim total As Long
+-    Dim values() As Variant
+-    Dim formulas() As String
+-    Dim hasFormula() As Boolean
+-    Dim i As Long
+-    Dim srcIndex As Long
+-
+-    If TypeName(Selection) <> "Range" Then Exit Sub
+-    If Selection.Areas.Count > 1 Then
+-        Call SetStatusBarTemporarily("Reverse order requires a contiguous range.", 2000)
+-        Exit Sub
+-    End If
+-
+-    Set sel = Selection
+-    total = sel.Cells.CountLarge
+-    If total < 2 Then Exit Sub
+-
+-    ReDim values(1 To total)
+-    ReDim formulas(1 To total)
+-    ReDim hasFormula(1 To total)
+-
+-    i = 1
+-    For Each cell In sel.Cells
+-        If cell.MergeCells Then
+-            Call SetStatusBarTemporarily("Reverse order skips merged cells.", 2000)
+-            Exit Sub
+-        End If
+-        If cell.HasArray Then
+-            Call SetStatusBarTemporarily("Reverse order does not support array formulas.", 2000)
+-            Exit Sub
+-        End If
+-        hasFormula(i) = cell.hasFormula
+-        If hasFormula(i) Then
+-            formulas(i) = cell.formula
+-        Else
+-            values(i) = cell.value
+-        End If
+-        i = i + 1
+-    Next cell
+-
+-    For i = 1 To total
+-        srcIndex = total - i + 1
+-        With sel.Cells(i)
+-            If hasFormula(srcIndex) Then
+-                .formula = formulas(srcIndex)
+-            Else
+-                .value = values(srcIndex)
+-            End If
+-        End With
+-    Next i
+-
+-    Call SetStatusBarTemporarily("Selection order reversed.", 2000)
+-    Exit Sub
+-
+-Catch:
+-    Call ErrorHandler("ReverseSelectionOrder")
+-    Resume CleanExit
++    Dim engine As Object
++    On Error GoTo CleanFail
++    Set engine = NetAddin()
++    If engine Is Nothing Then GoTo CleanExit
++    engine.ReverseSelectionOrder
++CleanExit:
++    Exit Sub
++CleanFail:
++    Call ErrorHandler("ReverseSelectionOrder")
++    Resume CleanExit
+ End Sub
+@@
+Function CurrencyCycle(Optional ByVal g As String) As Boolean
+-    Static lastIndex As Long
+-    Static lastAddress As String
+-    Static lastActiveCellAddress As String
+-    Static lastSelectionStamp As Long
+-    Dim formats As Variant
+-    Dim poundSymbol As String
+-    Dim euroSymbol As String
+-
+-    poundSymbol = ChrW$(&HA3)
+-    euroSymbol = ChrW$(&H20AC)
+-
+-    formats = Array( _
+-        "$#,##0_);($#,##0);$--_)", _
+-        poundSymbol & "#,##0_);(" & poundSymbol & "#,##0);" & poundSymbol & "--_)", _
+-        euroSymbol & "#,##0_);(" & euroSymbol & "#,##0);" & euroSymbol & "--_)" _
+-    )
+-
+-    CurrencyCycle = ApplyNumberFormatCycle(formats, lastIndex, lastAddress, lastActiveCellAddress, lastSelectionStamp)
++    Dim engine As Object
++    On Error GoTo CleanFail
++    Set engine = NetAddin()
++    If engine Is Nothing Then GoTo CleanExit
++    engine.CurrencyCycle
++CleanExit:
++    CurrencyCycle = False
++    Exit Function
++CleanFail:
++    Call ErrorHandler("CurrencyCycle")
++    Resume CleanExit
+ End Function
+*** End Patch

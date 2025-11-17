@@ -152,79 +152,48 @@ End Function
 Function InsertColumns(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
 
-    Dim savedCell As Range
-    Dim target As Range
-
-    Set target = GetTargetColumns(Entire)
-    If target Is Nothing Then
-        Exit Function
-    End If
-
     Call RepeatRegister("InsertColumns")
     Call StopVisualMode
 
-    Application.ScreenUpdating = False
-
-    Set savedCell = ActiveCell
-    SafeSelectRange target
-    SafeActivateRange savedCell
-
-    Call KeyStroke(Alt_, I_, C_)
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.InsertColumns gVim.Count1, False
+    Exit Function
 
 Catch:
-    Application.ScreenUpdating = True
     Call ErrorHandler("InsertColumns")
 End Function
 
 Function AppendColumns(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
 
-    Dim savedCell As Range
-    Dim target As Range
-
-    Set target = GetTargetColumns(Entire)
-    If target Is Nothing Then
-        Exit Function
-    End If
-
     Call RepeatRegister("AppendColumns")
     Call StopVisualMode
 
-    Set savedCell = ActiveCell
-
-    If target.Item(target.Count).Column < ActiveSheet.Columns.Count Then
-        Set target = target.offset(0, 1)
-        Set savedCell = savedCell.offset(0, 1)
-    End If
-
-    Application.ScreenUpdating = False
-
-    SafeSelectRange target
-    SafeActivateRange savedCell
-
-    Call KeyStroke(Alt_, I_, C_)
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.InsertColumns gVim.Count1, True
+    Exit Function
 
 Catch:
-    Application.ScreenUpdating = True
     Call ErrorHandler("AppendColumns")
 End Function
 
 Function DeleteColumns(Optional ByVal TargetType As eTargetColumnType = Entire) As Boolean
     On Error GoTo Catch
 
-    Application.ScreenUpdating = False
-    If SelectColumnsInternal(TargetType) = False Then
-        Application.ScreenUpdating = True
-        Exit Function
-    End If
-
     Call RepeatRegister("DeleteColumns")
     Call StopVisualMode
 
-    Call KeyStroke(Ctrl_ + Minus_)
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.DeleteColumns TargetType, gVim.Count1
+    Exit Function
 
 Catch:
-    Application.ScreenUpdating = True
     Call ErrorHandler("DeleteColumns")
 End Function
 
@@ -273,14 +242,13 @@ End Function
 Function HideColumns(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
 
-    If SelectColumnsInternal(Entire) = False Then
-        Exit Function
-    End If
-
     Call RepeatRegister("HideColumns")
     Call StopVisualMode
 
-    Call KeyStroke(Ctrl_ + k0_)
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.HideColumns Entire, gVim.Count1, True
 
 Catch:
     Call ErrorHandler("HideColumns")
@@ -289,16 +257,13 @@ End Function
 Function UnhideColumns(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
 
-    If SelectColumnsInternal(Entire) = False Then
-        Exit Function
-    End If
-
     Call RepeatRegister("UnhideColumns")
     Call StopVisualMode
 
-    'ref: https://excel.nj-clucker.com/ctrl-shift-0-not-working/
-    'Call KeyStroke(Ctrl_ + Shift_ + k0_)
-    Call KeyStroke(Alt_, H_, O_, U_, L_)
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.HideColumns Entire, gVim.Count1, False
     Exit Function
 
 Catch:
@@ -308,38 +273,30 @@ End Function
 Function GroupColumns(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
 
-    Application.ScreenUpdating = False
-    If SelectColumnsInternal(Entire) = False Then
-        Application.ScreenUpdating = True
-        Exit Function
-    End If
-
     Call RepeatRegister("GroupColumns")
     Call StopVisualMode
 
-    Call KeyStroke(Alt_ + Shift_ + Right_)
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.GroupColumns gVim.Count1, True
 
 Catch:
-    Application.ScreenUpdating = True
     Call ErrorHandler("GroupColumns")
 End Function
 
 Function UngroupColumns(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
 
-    Application.ScreenUpdating = False
-    If SelectColumnsInternal(Entire) = False Then
-        Application.ScreenUpdating = True
-        Exit Function
-    End If
-
     Call RepeatRegister("UngroupColumns")
     Call StopVisualMode
 
-    Call KeyStroke(Alt_ + Shift_ + Left_)
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.GroupColumns gVim.Count1, False
 
 Catch:
-    Application.ScreenUpdating = True
     Call ErrorHandler("UngroupColumns")
 End Function
 

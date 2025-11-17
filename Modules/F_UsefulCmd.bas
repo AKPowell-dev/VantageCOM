@@ -169,52 +169,34 @@ End Function
 Function SmartFillColor(Optional ByVal g As String) As Boolean
     Call StopVisualMode
 
-    If TypeName(Selection) = "Range" Then
-        Call ChangeInteriorColor
-    ElseIf VarType(Selection) = vbObject Then
-        Call ChangeShapeFillColor
-    End If
+    Dim colorInfo As cls_FontColor
+    Set colorInfo = UF_ColorPicker.Launch()
+    If colorInfo Is Nothing Then Exit Function
+
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.ApplySmartFillColor colorInfo.IsNull, colorInfo.IsThemeColor, colorInfo.ThemeColor, colorInfo.TintAndShade, colorInfo.Color
 End Function
 
 Function SmartFontColor(Optional ByVal g As String) As Boolean
     Call StopVisualMode
 
     Dim colorInfo As cls_FontColor
-    Dim selObj As Object
     Dim applied As Boolean
-
-    On Error Resume Next
-    Set selObj = Selection
-    On Error GoTo 0
 
     Set colorInfo = UF_ColorPicker.Launch()
     If colorInfo Is Nothing Then Exit Function
 
-    applied = ChangeFontColor(colorInfo)
-    If Not applied Then
-        If Not selObj Is Nothing Then
-            If CanApplyShapeFontColor(selObj) Then
-                applied = ChangeShapeFontColor(colorInfo)
-            End If
-        End If
-    End If
-
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    applied = engine.ApplySmartFontColor(colorInfo.IsNull, colorInfo.IsThemeColor, colorInfo.ThemeColor, colorInfo.ObjectThemeColor, colorInfo.TintAndShade, colorInfo.Color)
     If Not applied Then
         Call SetStatusBarTemporarily("No text found to recolor.", 2000)
     End If
 
     SmartFontColor = False
-End Function
-
-Private Function CanApplyShapeFontColor(ByVal candidate As Object) As Boolean
-    On Error Resume Next
-    Dim rng As ShapeRange
-    Set rng = candidate.ShapeRange
-    If Err.Number = 0 Then
-        CanApplyShapeFontColor = True
-    End If
-    Err.Clear
-    On Error GoTo 0
 End Function
 
 Function ShowContextMenu(Optional ByVal g As String) As Boolean

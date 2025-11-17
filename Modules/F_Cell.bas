@@ -334,173 +334,45 @@ Function DecreaseDecimal(Optional ByVal g As String) As Boolean
     Next i
 End Function
 
-Private Sub ProcessNumber(ByVal isSubtract As Boolean, Optional ByVal isGrow As Boolean = False)
-    On Error GoTo Catch
-    If TypeName(Selection) <> "Range" Then
-        Exit Sub
-    End If
-
-    'Error if too many cells selected
-    If Selection.Count > 1048576 * 8 Then
-        Call SetStatusBarTemporarily(gVim.Msg.TooManyCells, 3000)
-        Exit Sub
-    End If
-
-    Dim procSign As Long: procSign = IIf(isSubtract, -1, 1)
-    Dim targetRange As Range: Set targetRange = Selection
-
-    ' Works for empty cell when only one cell is selected
-    If targetRange.Count = 1 And ActiveCell.Formula = "" Then
-        targetRange.value = procSign * gVim.Count1
-        Call StopVisualMode
-        Exit Sub
-    End If
-
-    Call StopVisualMode
-
-    Dim savedCalculation As XlCalculation: savedCalculation = Application.Calculation
-    If targetRange.Count > 1 Then
-        Application.ScreenUpdating = False
-        Application.EnableEvents = False
-        Application.Calculation = xlCalculationManual
-    End If
-
-    Dim startTime As Double: startTime = Timer()
-    Dim currentTime As Double
-    Dim inc As Long: inc = gVim.Count1
-    Dim rowInc As Long: rowInc = IIf(isGrow And targetRange.Rows.Count > 1, procSign, 0)
-    Dim colInc As Long: colInc = IIf(isGrow And targetRange.Rows.Count < 2, procSign, 0)
-
-    Dim i As Long: i = 1
-    Dim r As Long
-    Dim c As Long
-    Dim targetCell As Range
-
-    For r = 1 To targetRange.Rows.Count
-        For c = 1 To targetRange.Columns.Count
-            Set targetCell = targetRange.Cells(r, c)
-
-            If targetCell.Formula = "" Then
-                ' Do nothing
-
-            ElseIf InStr(targetCell.Formula, "=") = 0 Then
-                Dim n: n = CDec(inc * procSign)
-                Dim valueType As VbVarType: valueType = VarType(targetCell.value)
-
-                Select Case valueType
-                Case vbCurrency, vbByte, vbDate, vbDecimal, vbDouble, vbInteger, vbLong, vbSingle
-                    If InStr(targetCell.NumberFormatLocal, "%") > 0 Then
-                        targetCell.value = CDec(targetCell.value) + CDec(n / 100)
-                    Else
-                        targetCell.value = CDec(targetCell.value) + n
-                    End If
-                Case vbString
-                    Dim cellValue As String: cellValue = targetCell.value
-                    Dim newValue  As String: newValue = ""
-                    If Not cellValue Like "*[!0-9.-]*" Then
-                        If IsNumeric(cellValue) Then
-                            newValue = CDec(cellValue) + n
-                        End If
-                    End If
-
-                    If newValue = "" Then
-                        Dim j As Long
-                        If Right(cellValue, 1) Like "[0-9]" Then
-                            For j = 2 To 11
-                                If Right(cellValue, j) Like "*[!0-9]*" Then
-                                    Exit For
-                                End If
-                            Next j
-                            j = j - 1
-                            newValue = _
-                                Left(cellValue, Len(cellValue) - j) & _
-                                format(WorksheetFunction.Max(CDec(Right(cellValue, j)) + n, 0), String(j, "0"))
-                        ElseIf Left(cellValue, 1) Like "[0-9]" Then
-                            For j = 2 To 11
-                                If Left(cellValue, j) Like "*[!0-9]*" Then
-                                    Exit For
-                                End If
-                            Next j
-                            j = j - 1
-                            newValue = _
-                                format(WorksheetFunction.Max(CDec(Left(cellValue, j)) + n, 0), String(j, "0")) & _
-                                Mid(cellValue, j + 1)
-                        End If
-                    End If
-
-                    If newValue <> "" Then
-                        If targetCell.PrefixCharacter = "'" Then
-                            targetCell.value = "'" & newValue
-                        Else
-                            targetCell.value = newValue
-                        End If
-                    End If
-                End Select
-            End If
-            inc = inc + (gVim.Count1 * procSign * colInc)
-
-Continue:
-            'Avoid freeze
-            If (i And &HFFF) = 0 Then
-                'Show progress bar in status bar
-                Call SetStatusBar(gVim.Msg.ProcessingNumber, _
-                                 currentCount:=i, maximumCount:=Selection.Count, progressBar:=True)
-
-                currentTime = Timer
-                If currentTime < startTime Or currentTime - startTime > 2 Then
-                    DoEvents
-                    startTime = currentTime
-                    Application.Cursor = xlWait
-                End If
-            End If
-            i = i + 1
-        Next c
-
-        inc = inc + (gVim.Count1 * procSign * rowInc)
-    Next r
-
-    Call SetStatusBar
-    GoTo Finally
-
-Catch:
-    Call ErrorHandler("ProcessNumber")
-
-Finally:
-    Application.ScreenUpdating = True
-    Application.EnableEvents = True
-    Application.Calculation = savedCalculation
-    Application.Cursor = xlDefault
-    If savedCalculation = xlCalculationSemiautomatic Then
-        Application.Calculate
-    End If
-End Sub
 
 Function AddNumber(Optional ByVal g As String) As Boolean
     Call RepeatRegister("AddNumber")
     Call StopVisualMode
 
-    Call ProcessNumber(isSubtract:=False)
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.AdjustNumbers gVim.Count1, False, False
 End Function
 
 Function SubtractNumber(Optional ByVal g As String) As Boolean
     Call RepeatRegister("SubtractNumber")
     Call StopVisualMode
 
-    Call ProcessNumber(isSubtract:=True)
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.AdjustNumbers gVim.Count1, True, False
 End Function
 
 Function VisualAddNumber(Optional ByVal g As String) As Boolean
     Call RepeatRegister("VisualAddNumber")
     Call StopVisualMode
 
-    Call ProcessNumber(isSubtract:=False, isGrow:=True)
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.AdjustNumbers gVim.Count1, False, True
 End Function
 
 Function VisualSubtractNumber(Optional ByVal g As String) As Boolean
     Call RepeatRegister("VisualSubtractNumber")
     Call StopVisualMode
 
-    Call ProcessNumber(isSubtract:=True, isGrow:=True)
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.AdjustNumbers gVim.Count1, True, True
 End Function
 
 Function InsertCellsUp(Optional ByVal g As String) As Boolean
@@ -666,16 +538,10 @@ Function ChangeInteriorColor(Optional ByVal resultColor As cls_FontColor) As Boo
     End If
 
     If Not resultColor Is Nothing Then
-        With Selection.Interior
-            If resultColor.IsNull Then
-                .ColorIndex = xlNone
-            ElseIf resultColor.IsThemeColor Then
-                .ThemeColor = resultColor.ThemeColor
-                .TintAndShade = resultColor.TintAndShade
-            Else
-                .Color = resultColor.Color
-            End If
-        End With
+        Dim engine As Object
+        Set engine = NetAddin()
+        If engine Is Nothing Then Exit Function
+        engine.ApplyInteriorColor resultColor.IsNull, resultColor.IsThemeColor, resultColor.ThemeColor, resultColor.TintAndShade, resultColor.Color
 
         Call RepeatRegister("ChangeInteriorColor", resultColor)
         Call StopVisualMode
@@ -867,173 +733,15 @@ End Function
 Function ApplyAutoFillInner(Optional fallback As Boolean = False)
     On Error GoTo Catch
 
-    Dim baseRange As Range
-
-    Set baseRange = DetermineBaseRange()
-    If baseRange Is Nothing Then
-        Exit Function
-    End If
-
-    If baseRange.Count = 1 And IsNumeric(baseRange.Formula) Then
-        baseRange.AutoFill Selection, xlFillSeries
-    Else
-        baseRange.AutoFill Selection
-    End If
-
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.ApplyAutoFill
     Call StopVisualMode
     Exit Function
 
 Catch:
     Call ErrorHandler("ApplyAutoFillInner")
-End Function
-
-Private Function DetermineBaseRange() As Range
-    On Error GoTo Catch
-
-    Dim avgTop As Double
-    Dim avgLeft As Double
-    Dim avgBottom As Double
-    Dim avgRight As Double
-    Dim avgMax As Double
-
-    'n x n cells
-    If Selection.Columns.Count > 1 And Selection.Rows.Count > 1 Then
-        With Selection
-            avgTop = WorksheetFunction.CountA(Range(.Item(1), Cells(.Item(1).Row, .Item(.Count).Column))) / .Columns.Count
-            avgLeft = WorksheetFunction.CountA(Range(.Item(1), Cells(.Item(.Count).Row, .Item(1).Column))) / .Rows.Count
-            avgBottom = WorksheetFunction.CountA(Range(Cells(.Item(.Count).Row, .Item(1).Column), .Item(.Count))) / .Columns.Count
-            avgRight = WorksheetFunction.CountA(Range(Cells(.Item(1).Row, .Item(.Count).Column), .Item(.Count))) / .Rows.Count
-
-            'x - -
-            '- - -
-            '- - -
-            If .Item(1).Formula = "" Then
-                avgTop = 0
-                avgLeft = 0
-            End If
-
-            '- - -
-            '- - -
-            'x - -
-            If Cells(.Item(.Count).Row, .Item(1).Column).Formula = "" Then
-                avgLeft = 0
-                avgBottom = 0
-            End If
-
-            '- - x
-            '- - -
-            '- - -
-            If Cells(.Item(1).Row, .Item(.Count).Column).Formula = "" Then
-                avgTop = 0
-                avgRight = 0
-            End If
-
-            '- - -
-            '- - -
-            '- - x
-            If .Item(.Count).Formula = "" Then
-                avgBottom = 0
-                avgRight = 0
-            End If
-
-            avgMax = WorksheetFunction.Max(avgTop, avgLeft, avgBottom, avgRight)
-
-            Select Case avgMax
-                Case 0
-                    Call SetStatusBarTemporarily(gVim.Msg.UnableIdentifySource, 3000)
-                    Exit Function
-                Case avgTop
-                    Set DetermineBaseRange = Range(.Item(1), Cells(.Item(1).Row, .Item(.Count).Column))
-                    Set DetermineBaseRange = Range(DetermineBaseRange, InnerDataSearch(DetermineBaseRange, TopToBottom, .Rows.Count - 1))
-                Case avgLeft
-                    Set DetermineBaseRange = Range(.Item(1), Cells(.Item(.Count).Row, .Item(1).Column))
-                    Set DetermineBaseRange = Range(DetermineBaseRange, InnerDataSearch(DetermineBaseRange, LeftToRight, .Columns.Count - 1))
-                Case avgBottom
-                    Set DetermineBaseRange = Range(Cells(.Item(.Count).Row, .Item(1).Column), .Item(.Count))
-                    Set DetermineBaseRange = Range(DetermineBaseRange, InnerDataSearch(DetermineBaseRange, BottomToTop, .Rows.Count - 1))
-                Case avgRight
-                    Set DetermineBaseRange = Range(Cells(.Item(1).Row, .Item(.Count).Column), .Item(.Count))
-                    Set DetermineBaseRange = Range(DetermineBaseRange, InnerDataSearch(DetermineBaseRange, RightToLeft, .Columns.Count - 1))
-                Case Else
-                    Call DebugPrint("Unexpected values: " & avgMax & ", " & avgTop & ", " & avgLeft & ", " & avgBottom & ", " & avgRight, "determineBaseRange")
-                    Exit Function
-            End Select
-        End With
-
-    '1 x n or n x 1 cells
-    Else
-        If Selection.Item(1).Formula <> "" Then
-            If Selection.Item(2).Formula <> "" Then
-                If Selection.Columns.Count > 1 Then
-                    Set DetermineBaseRange = Range(Selection.Item(1), Selection.Item(1).End(xlToRight))
-                Else
-                    Set DetermineBaseRange = Range(Selection.Item(1), Selection.Item(1).End(xlDown))
-                End If
-            Else
-                Set DetermineBaseRange = Selection.Item(1)
-            End If
-        ElseIf Selection.Item(Selection.Count).Formula <> "" Then
-            If Selection.Item(Selection.Count - 1).Formula <> "" Then
-                If Selection.Columns.Count > 1 Then
-                    Set DetermineBaseRange = Range(Selection.Item(Selection.Count).End(xlToLeft), Selection.Item(Selection.Count))
-                Else
-                    Set DetermineBaseRange = Range(Selection.Item(Selection.Count).End(xlUp), Selection.Item(Selection.Count))
-                End If
-            Else
-                Set DetermineBaseRange = Selection.Item(Selection.Count)
-            End If
-        Else
-            'there is no data at first and last
-            Call SetStatusBarTemporarily(gVim.Msg.NoDataInSelectedCells, 3000)
-            Exit Function
-        End If
-    End If
-    Exit Function
-
-Catch:
-    Call ErrorHandler("DetermineBaseRange")
-End Function
-
-Private Function InnerDataSearch(ByVal targetRange As Range, _
-                                 ByVal searchMode As eSearchMode, _
-                                 ByVal searchLimit As Long, _
-                                 Optional ByVal searchCount As Long = 0, _
-                                 Optional ByVal expectCells As Long = 0) As Range
-    On Error GoTo Catch
-
-    Dim rowOff As Integer
-    Dim columnOff As Integer
-    Dim nonBlankCells As Long
-
-    If searchCount > searchLimit Then
-        Set InnerDataSearch = targetRange
-        Exit Function
-    End If
-
-    Select Case searchMode
-        Case TopToBottom
-            rowOff = 1
-        Case LeftToRight
-            columnOff = 1
-        Case BottomToTop
-            rowOff = -1
-        Case RightToLeft
-            columnOff = -1
-    End Select
-
-    nonBlankCells = WorksheetFunction.CountA(targetRange)
-
-    If searchCount = 0 Or expectCells = nonBlankCells Then
-        Set InnerDataSearch = InnerDataSearch(targetRange.offset(rowOff, columnOff), searchMode, searchLimit, searchCount + 1, nonBlankCells)
-
-        If InnerDataSearch Is Nothing Then
-            Set InnerDataSearch = targetRange
-        End If
-    End If
-    Exit Function
-
-Catch:
-    Call ErrorHandler("InnerDataSearch")
 End Function
 
 Private Function AutoSumInner(ByVal lastKey As Long)

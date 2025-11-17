@@ -1,14 +1,29 @@
 import argparse
+import csv
 import os
 import shutil
+import subprocess
 import sys
+import tempfile
+import time
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Sequence
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+
+try:
+    import winreg  # type: ignore[attr-defined]
+except ImportError:  # pragma: no cover - windows specific
+    winreg = None  # type: ignore
 
 XLAM_FILE_FORMAT = 55  # Excel constant xlOpenXMLAddIn
 DEFAULT_BUILD_DIRNAME = "build"
 AddinUnlockInfo = Dict[str, Any]
+DEFAULT_CSPROJ_RELATIVE = Path("VantagePackageHolder") / "VantagePackageHolder.csproj"
+ADDIN_PROG_ID = "VantagePackageHolder.Addin"
+ADDIN_CLSID = "{F5DA47BA-19D6-46CD-ACB7-BC918636925E}"
+ADDIN_FRIENDLY_NAME = "Vantage Package Holder Add-in"
+DEFAULT_REPO_ROOT = Path(r"C:\Users\andrep54\Vantage Add-in")
 
 
 def get_default_addins_folder() -> Optional[str]:
@@ -102,6 +117,343 @@ def collect_vba_sources(repo_dir: Path) -> Dict[str, Sequence[Path]]:
     sources["sheets"] = sheet_modules
 
     return sources
+
+
+def resolve_repo_dir(custom_root: Optional[str]) -> Path:
+    """Determine which folder contains the workbook sources."""
+    if custom_root:
+        candidate = Path(custom_root).expanduser()
+        if not candidate.exists():
+            raise RuntimeError(f"Specified repo root does not exist: {candidate}")
+        return candidate
+
+    if DEFAULT_REPO_ROOT.exists():
+        return DEFAULT_REPO_ROOT
+
+    return Path(__file__).resolve().parent
+
+
+def _resolve_csproj_path(repo_dir: Path, csproj_hint: Optional[str]) -> Optional[Path]:
+    """Return a resolved csproj path if it exists."""
+    if csproj_hint:
+        candidate = Path(csproj_hint)
+        if not candidate.is_absolute():
+            candidate = repo_dir / candidate
+        if not candidate.exists():
+            raise RuntimeError(f"Specified COM project does not exist: {candidate}")
+        return candidate
+
+    default_path = repo_dir / DEFAULT_CSPROJ_RELATIVE
+    return default_path if default_path.exists() else None
+
+
+def _read_assembly_name(csproj_path: Path) -> str:
+    """Parse the target assembly name from a csproj file."""
+    try:
+        tree = ET.parse(csproj_path)
+    except (ET.ParseError, OSError) as exc:
+        raise RuntimeError(f"Failed to parse project file: {csproj_path}") from exc
+
+    root = tree.getroot()
+    namespace = {"msb": "http://schemas.microsoft.com/developer/msbuild/2003"}
+    for node in root.findall(".//msb:AssemblyName", namespace):
+        if node.text and node.text.strip():
+            return node.text.strip()
+    return csproj_path.stem
+
+
+def _resolve_msbuild_command(msbuild_path: Optional[str] = None) -> List[str]:
+    """Locate an MSBuild executable (or dotnet fallback) and return the command list."""
+    if msbuild_path:
+        full_path = Path(msbuild_path)
+        if not full_path.exists():
+            raise RuntimeError(f"msbuild executable not found: {msbuild_path}")
+        return [str(full_path)]
+
+    env_path = os.environ.get("MSBUILD_EXE_PATH")
+    if env_path and Path(env_path).exists():
+        return [env_path]
+
+    which_msbuild = shutil.which("msbuild")
+    if which_msbuild:
+        return [which_msbuild]
+
+    program_files_x86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
+    vswhere = (
+        Path(program_files_x86)
+        / "Microsoft Visual Studio"
+        / "Installer"
+        / "vswhere.exe"
+    )
+    if vswhere.exists():
+        try:
+            output = subprocess.check_output(
+                [
+                    str(vswhere),
+                    "-latest",
+                    "-requires",
+                    "Microsoft.Component.MSBuild",
+                    "-find",
+                    "MSBuild\\**\\Bin\\MSBuild.exe",
+                ],
+                text=True,
+            ).strip()
+        except subprocess.CalledProcessError:
+            output = ""
+        for line in output.splitlines():
+            candidate = line.strip()
+            if candidate and Path(candidate).exists():
+                return [candidate]
+
+    dotnet = shutil.which("dotnet")
+    if dotnet:
+        return [dotnet, "msbuild"]
+
+    raise RuntimeError(
+        "Could not locate MSBuild. Install Visual Studio Build Tools or specify --msbuild."
+    )
+
+
+def _run_subprocess(command: Sequence[str], cwd: Optional[Path] = None) -> None:
+    """Run a command and raise a RuntimeError with context if it fails."""
+    try:
+        subprocess.run(command, check=True, cwd=str(cwd) if cwd else None)
+    except FileNotFoundError as exc:
+        raise RuntimeError(f"Command not found: {command[0]}") from exc
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(
+            f"Command failed (exit code {exc.returncode}): {' '.join(command)}"
+        ) from exc
+
+
+def build_com_addin(
+    repo_dir: Path,
+    csproj_hint: Optional[str],
+    configuration: str,
+    platform: str,
+    msbuild_path: Optional[str],
+) -> Optional[Path]:
+    """Build the COM add-in project if present and return the output DLL path."""
+    csproj_path = _resolve_csproj_path(repo_dir, csproj_hint)
+    if csproj_path is None:
+        return None
+
+    command = _resolve_msbuild_command(msbuild_path)
+    command = list(command) + [
+        str(csproj_path),
+        f"/p:Configuration={configuration}",
+        f"/p:Platform={platform}",
+        "/t:Build",
+    ]
+    print(f"Building COM add-in project: {' '.join(command)}")
+    _run_subprocess(command, cwd=csproj_path.parent)
+
+    assembly_name = _read_assembly_name(csproj_path)
+    output_path = (
+        csproj_path.parent / "bin" / configuration / f"{assembly_name}.dll"
+    )
+    if not output_path.exists():
+        raise RuntimeError(
+            f"MSBuild completed but the expected output was not found: {output_path}"
+        )
+    return output_path
+
+
+def stage_com_binary(built_path: Path, keep: int = 5) -> Path:
+    """Temporarily returns the original DLL path (staging disabled)."""
+    return built_path
+
+
+def _resolve_regasm_command(regasm_path: Optional[str]) -> List[str]:
+    """Locate regasm.exe if registration is requested."""
+    if regasm_path:
+        candidate = Path(regasm_path)
+        if not candidate.exists():
+            raise RuntimeError(f"regasm executable not found: {regasm_path}")
+        return [str(candidate)]
+
+    which_regasm = shutil.which("regasm")
+    if which_regasm:
+        return [which_regasm]
+
+    windir = Path(os.environ.get("WINDIR", r"C:\Windows"))
+    search_roots = [
+        windir / "Microsoft.NET" / "Framework64",
+        windir / "Microsoft.NET" / "Framework",
+    ]
+    for root in search_roots:
+        for regasm in sorted(root.glob("v*/RegAsm.exe"), reverse=True):
+            if regasm.exists():
+                return [str(regasm)]
+
+    raise RuntimeError(
+        "regasm.exe not found. Provide its path with --regasm or install the .NET Framework developer tools."
+    )
+
+
+def register_com_addin(dll_path: Path, regasm_path: Optional[str]) -> None:
+    """Register the compiled COM add-in using regasm."""
+    command = _resolve_regasm_command(regasm_path)
+    command = list(command) + [str(dll_path), "/codebase", "/nologo"]
+    print(f"Registering COM add-in: {' '.join(command)}")
+    _run_subprocess(command)
+
+
+def register_com_addin_per_user(dll_path: Path, regasm_path: Optional[str]) -> None:
+    """Register the COM add-in for the current user without requiring elevation."""
+    if winreg is None:
+        raise RuntimeError("winreg is unavailable on this platform; per-user registration is not supported.")
+
+    reg_script = _generate_reg_script(dll_path, regasm_path)
+    entries = _parse_reg_script(reg_script)
+    _apply_reg_entries(entries, codebase=str(dll_path.as_uri()))
+    _write_excel_addin_key(codebase=str(dll_path.as_uri()))
+    print("Registered COM add-in for the current user.")
+
+
+def _generate_reg_script(dll_path: Path, regasm_path: Optional[str]) -> str:
+    command = _resolve_regasm_command(regasm_path)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        reg_path = Path(tmpdir) / "addin.reg"
+        cmd = list(command) + [
+            str(dll_path),
+            f"/regfile:{reg_path}",
+            "/codebase",
+            "/nologo",
+        ]
+        _run_subprocess(cmd)
+        if reg_path.exists():
+            return reg_path.read_text(encoding="utf-8", errors="ignore")
+        default_reg = dll_path.with_suffix(".reg")
+        if default_reg.exists():
+            return default_reg.read_text(encoding="utf-8", errors="ignore")
+        raise RuntimeError("regasm did not produce a registry file; cannot continue.")
+
+
+def _parse_reg_script(script: str) -> List[Tuple[str, List[str]]]:
+    entries: List[Tuple[str, List[str]]] = []
+    current_key: Optional[str] = None
+    current_values: List[str] = []
+    for raw_line in script.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith(";") or line.upper().startswith("REGEDIT"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            if current_key is not None:
+                entries.append((current_key, current_values))
+            current_key = line[1:-1]
+            current_values = []
+        else:
+            current_values.append(line)
+    if current_key is not None:
+        entries.append((current_key, current_values))
+    return entries
+
+
+def _map_reg_key(raw_key: str) -> Optional[Tuple[int, str]]:
+    lowered = raw_key.lower()
+    if lowered.startswith("hkey_classes_root\\"):
+        sub = raw_key.split("\\", 1)[1]
+        return winreg.HKEY_CURRENT_USER, f"Software\\Classes\\{sub}"
+    if lowered.startswith("hkey_local_machine\\software\\classes\\"):
+        sub = raw_key.split("classes\\", 1)[1]
+        return winreg.HKEY_CURRENT_USER, f"Software\\Classes\\{sub}"
+    if lowered.startswith("hkey_local_machine\\software\\microsoft\\office\\"):
+        sub = raw_key.split("microsoft\\office\\", 1)[1]
+        return winreg.HKEY_CURRENT_USER, f"Software\\Microsoft\\Office\\{sub}"
+    if lowered.startswith("hkey_current_user\\"):
+        sub = raw_key.split("\\", 1)[1]
+        return winreg.HKEY_CURRENT_USER, sub
+    return None
+
+
+def _unescape_reg_string(token: str) -> str:
+    value = token[1:-1]
+    value = value.replace("\\\\", "\\").replace("\\\"", "\"")
+    return value
+
+
+def _apply_reg_entries(entries: List[Tuple[str, List[str]]], codebase: str) -> None:
+    for raw_key, raw_values in entries:
+        mapped = _map_reg_key(raw_key)
+        if not mapped:
+            continue
+        root, subkey = mapped
+        with winreg.CreateKeyEx(root, subkey, 0, winreg.KEY_WRITE) as handle:
+            for raw_value in raw_values:
+                if raw_value.startswith("@="):
+                    name = ""
+                    data = raw_value[2:]
+                else:
+                    if "=" not in raw_value:
+                        continue
+                    name_part, data = raw_value.split("=", 1)
+                    name = name_part.strip('"')
+
+                if data.startswith('"') and data.endswith('"'):
+                    value = _unescape_reg_string(data)
+                    if name.lower() == "codebase":
+                        value = codebase
+                    winreg.SetValueEx(handle, name, 0, winreg.REG_SZ, value)
+                elif data.lower().startswith("dword:"):
+                    winreg.SetValueEx(handle, name, 0, winreg.REG_DWORD, int(data[6:], 16))
+                else:
+                    raise RuntimeError(f"Unsupported registry value format: {raw_value}")
+
+
+def _write_excel_addin_key(codebase: str) -> None:
+    friendly = ADDIN_FRIENDLY_NAME
+    target = r"Software\Microsoft\Office\Excel\Addins\{}".format(ADDIN_PROG_ID)
+    with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, target, 0, winreg.KEY_WRITE) as handle:
+        winreg.SetValueEx(handle, "FriendlyName", 0, winreg.REG_SZ, friendly)
+        winreg.SetValueEx(handle, "Description", 0, winreg.REG_SZ, friendly)
+        winreg.SetValueEx(handle, "LoadBehavior", 0, winreg.REG_DWORD, 3)
+        winreg.SetValueEx(handle, "CommandLineSafe", 0, winreg.REG_DWORD, 0)
+        winreg.SetValueEx(handle, "CLSID", 0, winreg.REG_SZ, ADDIN_CLSID)
+
+
+def _list_excel_processes() -> List[int]:
+    try:
+        result = subprocess.run(
+            ["tasklist", "/FI", "IMAGENAME eq EXCEL.EXE", "/FO", "CSV", "/NH"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return []
+
+    pids: List[int] = []
+    for row in csv.reader(result.stdout.splitlines()):
+        if not row:
+            continue
+        name = row[0].strip().strip('"')
+        if name.upper() != "EXCEL.EXE":
+            continue
+        try:
+            pids.append(int(row[1]))
+        except (IndexError, ValueError):
+            continue
+    return pids
+
+
+def _ensure_excel_closed(timeout: float = 10.0) -> None:
+    pids = _list_excel_processes()
+    if not pids:
+        return
+
+    print("Closing Excel to release COM add-in DLL...")
+    for pid in pids:
+        subprocess.run(["taskkill", "/PID", str(pid), "/F"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if not _list_excel_processes():
+            print("Excel closed.")
+            return
+        time.sleep(0.5)
+
+    raise RuntimeError("Excel is still running. Close all Excel instances and rerun the command.")
 
 
 def ensure_pywin32():
@@ -389,9 +741,55 @@ def update_xlam(
     filename: str,
     build_dir: Optional[str] = None,
     excel_visible: bool = False,
+    repo_root: Optional[str] = None,
+    csproj_path: Optional[str] = None,
+    com_configuration: str = "Debug",
+    com_platform: str = "AnyCPU",
+    msbuild_path: Optional[str] = None,
+    skip_com_build: bool = False,
+    register_com: bool = False,
+    register_com_per_user: bool = False,
+    close_excel: bool = False,
+    regasm_path: Optional[str] = None,
 ) -> Path:
-    """Build the XLAM from source and copy it into the target add-in folder."""
-    repo_dir = Path(__file__).resolve().parent
+    """Build the COM add-in (optional), create the XLAM, and deploy both."""
+    if register_com and register_com_per_user:
+        raise RuntimeError("Choose either --register-com or --register-com-per-user, not both.")
+    if register_com_per_user and winreg is None:
+        raise RuntimeError("winreg is unavailable; per-user registration is not supported on this platform.")
+    if (register_com or register_com_per_user) and skip_com_build:
+        raise RuntimeError(
+            "Registration requires building the COM project. Remove --skip-com-build or the registration flag."
+        )
+
+    if close_excel:
+        _ensure_excel_closed()
+
+    repo_dir = resolve_repo_dir(repo_root)
+    com_output: Optional[Path] = None
+    if not skip_com_build:
+        com_output = build_com_addin(
+            repo_dir,
+            csproj_path,
+            com_configuration,
+            com_platform,
+            msbuild_path,
+        )
+        if com_output:
+            com_output = stage_com_binary(com_output)
+            print(f"COM add-in staged at: {com_output}")
+        else:
+            print("No COM add-in project detected. Skipping COM build.")
+
+        if register_com:
+            if com_output is None:
+                raise RuntimeError("Cannot register COM add-in because no DLL was built.")
+            register_com_addin(com_output, regasm_path)
+        elif register_com_per_user:
+            if com_output is None:
+                raise RuntimeError("Cannot register COM add-in because no DLL was built.")
+            register_com_addin_per_user(com_output, regasm_path)
+
     target_directory = Path(target_dir).expanduser()
     target_directory.mkdir(parents=True, exist_ok=True)
 
@@ -451,6 +849,58 @@ def parse_args(argv: Optional[Sequence[str]] = None):
         action="store_true",
         help="Show the Excel instance while building (useful for debugging).",
     )
+    parser.add_argument(
+        "--repo-root",
+        help=(
+            "Root directory for the VBA/C# sources "
+            "(default: C:\\Users\\andrep54\\Vantage Add-in if it exists, otherwise the script directory)."
+        ),
+    )
+    parser.add_argument(
+        "--csproj",
+        help=(
+            "Path to the COM add-in .csproj to build first "
+            "(default: ./VantagePackageHolder/VantagePackageHolder.csproj if it exists)."
+        ),
+    )
+    parser.add_argument(
+        "--skip-com-build",
+        action="store_true",
+        help="Skip building the COM add-in even if a project file is present.",
+    )
+    parser.add_argument(
+        "--configuration",
+        default="Debug",
+        help="MSBuild Configuration for the COM add-in build (default: Debug).",
+    )
+    parser.add_argument(
+        "--platform",
+        default="AnyCPU",
+        help="MSBuild Platform for the COM add-in build (default: AnyCPU).",
+    )
+    parser.add_argument(
+        "--msbuild",
+        help="Full path to msbuild.exe (default: auto-detect).",
+    )
+    parser.add_argument(
+        "--register-com",
+        action="store_true",
+        help="Register the compiled COM add-in using regasm after a successful build.",
+    )
+    parser.add_argument(
+        "--register-com-per-user",
+        action="store_true",
+        help="Register the COM add-in only for the current user (no admin rights required).",
+    )
+    parser.add_argument(
+        "--close-excel",
+        action="store_true",
+        help="Terminate running Excel instances before building to release locked DLLs.",
+    )
+    parser.add_argument(
+        "--regasm",
+        help="Full path to regasm.exe (default: auto-detect).",
+    )
     return parser.parse_args(argv)
 
 
@@ -466,7 +916,22 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         sys.exit(1)
 
     try:
-        update_xlam(target_dir, args.filename, args.build_dir, args.excel_visible)
+        update_xlam(
+            target_dir,
+            args.filename,
+            args.build_dir,
+            args.excel_visible,
+            repo_root=args.repo_root,
+            csproj_path=args.csproj,
+            com_configuration=args.configuration,
+            com_platform=args.platform,
+            msbuild_path=args.msbuild,
+            skip_com_build=args.skip_com_build,
+            register_com=args.register_com,
+            register_com_per_user=args.register_com_per_user,
+            close_excel=args.close_excel,
+            regasm_path=args.regasm,
+        )
     except RuntimeError as exc:
         print(str(exc), file=sys.stderr)
         sys.exit(1)

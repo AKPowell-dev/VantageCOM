@@ -139,7 +139,10 @@ Function ChangeFontColor(Optional ByVal resultColor As cls_FontColor) As Boolean
     End If
 
     If Not resultColor Is Nothing Then
-        If ApplyFontColorToSelection(resultColor) Then
+        Dim engine As Object
+        Set engine = NetAddin()
+        If engine Is Nothing Then Exit Function
+        If engine.ApplyFontColor(resultColor.IsNull, resultColor.IsThemeColor, resultColor.ThemeColor, resultColor.ObjectThemeColor, resultColor.TintAndShade, resultColor.Color) Then
             Call RepeatRegister("ChangeFontColor", resultColor)
             Call StopVisualMode
             ChangeFontColor = True
@@ -150,95 +153,3 @@ Function ChangeFontColor(Optional ByVal resultColor As cls_FontColor) As Boolean
 Catch:
     Call ErrorHandler("ChangeFontColor")
 End Function
-
-Private Function ApplyFontColorToSelection(ByVal colorInfo As cls_FontColor) As Boolean
-    Dim selObj As Object
-    Dim applied As Boolean
-
-    On Error Resume Next
-    Set selObj = Selection
-    On Error GoTo 0
-    If selObj Is Nothing Then Exit Function
-
-    If TrySetFontColor(selObj, colorInfo) Then
-        ApplyFontColorToSelection = True
-        Exit Function
-    End If
-
-    Select Case TypeName(selObj)
-        Case "DataLabels"
-            Dim lbl As Object
-            For Each lbl In selObj
-                applied = TrySetFontColor(lbl, colorInfo) Or applied
-            Next lbl
-            ApplyFontColorToSelection = applied
-        Case "DataLabel"
-            ApplyFontColorToSelection = TrySetFontColor(selObj, colorInfo)
-        Case "DataPoint"
-            If selObj.HasDataLabel Then
-                ApplyFontColorToSelection = TrySetFontColor(selObj.DataLabel, colorInfo)
-            End If
-        Case "Series"
-            If selObj.HasDataLabels Then
-                Dim dl As DataLabel
-                For Each dl In selObj.DataLabels
-                    applied = TrySetFontColor(dl, colorInfo) Or applied
-                Next dl
-                ApplyFontColorToSelection = applied
-            End If
-        Case "ShapeRange"
-            Dim shp As Shape
-            For Each shp In selObj
-                If shp.TextFrame2.HasText Then
-                    applied = TrySetFontColor(shp.TextFrame2.TextRange, colorInfo) Or applied
-                End If
-                If shp.HasChart Then
-                    applied = ApplyFontColorToSelection(shp.Chart) Or applied
-                End If
-            Next shp
-            ApplyFontColorToSelection = applied
-        Case "Chart"
-            On Error Resume Next
-            If selObj.HasTitle Then applied = TrySetFontColor(selObj.ChartTitle, colorInfo) Or applied
-            If selObj.HasDataTable Then applied = TrySetFontColor(selObj.DataTable, colorInfo) Or applied
-            ApplyFontColorToSelection = applied
-    End Select
-End Function
-
-Private Function TrySetFontColor(ByVal target As Object, ByVal colorInfo As cls_FontColor) As Boolean
-    Dim fontObj As Object
-    On Error GoTo Fail
-    Set fontObj = CallByName(target, "Font", VbGet)
-    Call ApplyFontColorToFontObject(fontObj, colorInfo)
-    TrySetFontColor = True
-    Exit Function
-Fail:
-    Err.Clear
-End Function
-
-Private Sub ApplyFontColorToFontObject(ByVal fontObj As Object, ByVal colorInfo As cls_FontColor)
-    If fontObj Is Nothing Then Exit Sub
-    If colorInfo Is Nothing Then Exit Sub
-    On Error GoTo CleanFail
-    If colorInfo.IsNull Then
-        fontObj.ColorIndex = xlAutomatic
-    ElseIf colorInfo.IsThemeColor Then
-        On Error Resume Next
-        fontObj.ThemeColor = colorInfo.ThemeColor
-        If Err.Number <> 0 Then
-            Err.Clear
-            fontObj.Color = colorInfo.Color
-        Else
-            fontObj.TintAndShade = colorInfo.TintAndShade
-        End If
-        On Error GoTo CleanFail
-    Else
-        fontObj.Color = colorInfo.Color
-    End If
-    Exit Sub
-
-CleanFail:
-    On Error Resume Next
-    fontObj.Color = colorInfo.Color
-    On Error GoTo 0
-End Sub

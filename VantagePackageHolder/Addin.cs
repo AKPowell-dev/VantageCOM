@@ -29,6 +29,7 @@ namespace VantagePackageHolder
             {
                 _appEvents = (AppEvents_Event)_excel;
                 _appEvents.SheetSelectionChange += OnSheetSelectionChange;
+                _appEvents.WindowActivate += OnWindowActivate;
             }
             catch
             {
@@ -41,6 +42,11 @@ namespace VantagePackageHolder
             try { _engine?.ResetCycleState(); } catch { }
         }
 
+        private void OnWindowActivate(Workbook wb, Window wn)
+        {
+            try { _engine?.ResetCycleState(); } catch { }
+        }
+
         public void OnDisconnection(ext_DisconnectMode removeMode, ref Array custom)
         {
             try
@@ -48,6 +54,7 @@ namespace VantagePackageHolder
                 if (_appEvents != null)
                 {
                     _appEvents.SheetSelectionChange -= OnSheetSelectionChange;
+                    _appEvents.WindowActivate -= OnWindowActivate;
                     _appEvents = null;
                 }
             }

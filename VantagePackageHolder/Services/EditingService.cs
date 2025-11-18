@@ -463,6 +463,1487 @@ namespace VantagePackageHolder
             }
         }
 
+        public void AdjustRowHeight(int delta)
+        {
+            if (delta == 0)
+            {
+                return;
+            }
+
+            if (!TryGetRowTarget(out var targetRows, out var currentHeight))
+            {
+                return;
+            }
+
+            using (new UiGuard(_app))
+            {
+                var updated = Math.Max(0.0, Math.Min(409.5, currentHeight + delta));
+                try { targetRows.RowHeight = updated; }
+                catch { }
+                finally { ReleaseCom(targetRows); }
+            }
+        }
+
+        public void AdjustColumnWidth(int delta)
+        {
+            if (delta == 0)
+            {
+                return;
+            }
+
+            if (!TryGetColumnTarget(out var targetColumns, out var currentWidth))
+            {
+                return;
+            }
+
+            using (new UiGuard(_app))
+            {
+                var updated = Math.Max(0.0, Math.Min(255.0, currentWidth + delta));
+                try { targetColumns.ColumnWidth = updated; }
+                catch { }
+                finally { ReleaseCom(targetColumns); }
+            }
+        }
+
+        public void MoveActiveCellBy(int rowDelta, int columnDelta)
+        {
+            if (rowDelta == 0 && columnDelta == 0)
+            {
+                return;
+            }
+
+            Excel.Range activeCell = null;
+            Excel.Worksheet sheet = null;
+            Excel.Range target = null;
+            var modifiers = Control.ModifierKeys;
+            bool ctrlPressed = (modifiers & Keys.Control) == Keys.Control;
+            bool shiftPressed = (modifiers & Keys.Shift) == Keys.Shift;
+
+            try
+            {
+                activeCell = _app.ActiveCell as Excel.Range;
+                sheet = activeCell?.Worksheet ?? _app.ActiveSheet as Excel.Worksheet;
+                if (sheet == null || activeCell == null)
+                {
+                    return;
+                }
+
+                if (ctrlPressed && TryMoveUsingEnd(activeCell, sheet, rowDelta, columnDelta, shiftPressed))
+                {
+                    return;
+                }
+
+                int maxRows = Convert.ToInt32(sheet.Rows.Count);
+                int maxCols = Convert.ToInt32(sheet.Columns.Count);
+
+                int destRow = Math.Max(1, Math.Min(maxRows, activeCell.Row + rowDelta));
+                int destCol = Math.Max(1, Math.Min(maxCols, activeCell.Column + columnDelta));
+
+                target = sheet.Cells[destRow, destCol] as Excel.Range;
+                RangeHelpers.SafeSelect(target);
+            }
+            catch
+            {
+                // ignore
+            }
+            finally
+            {
+                ReleaseCom(target);
+                ReleaseCom(activeCell);
+                ReleaseCom(sheet);
+            }
+        }
+
+        private bool TryMoveUsingEnd(Excel.Range activeCell, Excel.Worksheet sheet, int rowDelta, int columnDelta, bool extendSelection)
+        {
+            Excel.XlDirection? direction = null;
+            if (rowDelta != 0)
+            {
+                direction = rowDelta > 0 ? Excel.XlDirection.xlDown : Excel.XlDirection.xlUp;
+            }
+            else if (columnDelta != 0)
+            {
+                direction = columnDelta > 0 ? Excel.XlDirection.xlToRight : Excel.XlDirection.xlToLeft;
+            }
+
+            if (direction == null)
+            {
+                return false;
+            }
+
+            Excel.Range destination = null;
+            Excel.Range unionRange = null;
+            try
+            {
+                destination = activeCell.get_End(direction.Value);
+                if (!RangeHelpers.IsRangeValid(destination))
+                {
+                    return false;
+                }
+
+                if (extendSelection)
+                {
+                    unionRange = sheet.Range[destination, activeCell];
+                    RangeHelpers.SafeSelect(unionRange);
+                }
+                else
+                {
+                    RangeHelpers.SafeSelect(destination);
+                }
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+            finally
+            {
+                ReleaseCom(unionRange);
+                ReleaseCom(destination);
+            }
+        }
+
+        public void ActivateAdjacentSheet(int steps, bool forward)
+        {
+            steps = Math.Max(1, steps);
+
+            Excel.Workbook workbook = null;
+            Excel.Worksheet current = null;
+            Excel.Sheets sheets = null;
+
+            try
+            {
+                workbook = _app.ActiveWorkbook;
+                current = _app.ActiveSheet as Excel.Worksheet;
+                if (workbook == null || current == null)
+                {
+                    return;
+                }
+
+                sheets = workbook.Worksheets;
+                int total = sheets.Count;
+                if (total == 0)
+                {
+                    return;
+                }
+
+                int index = current.Index;
+                int guard = 0;
+
+                while (steps > 0 && guard < total * 2)
+                {
+                    index = forward ? (index % total) + 1 : ((index - 2 + total) % total) + 1;
+                    guard++;
+
+                    var candidate = sheets[index] as Excel.Worksheet;
+                    if (candidate == null)
+                    {
+                        continue;
+                    }
+
+                    bool visible = candidate.Visible == Excel.XlSheetVisibility.xlSheetVisible;
+                    if (visible)
+                    {
+                        steps--;
+                        if (steps == 0)
+                        {
+                            RangeHelpers.SafeActivateSheet(candidate);
+                        }
+                    }
+
+                    ReleaseCom(candidate);
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+            finally
+            {
+                ReleaseCom(sheets);
+                ReleaseCom(current);
+                ReleaseCom(workbook);
+            }
+        }
+
+        public void MoveActiveSheet(int steps, bool forward)
+        {
+            steps = Math.Max(1, steps);
+
+            Excel.Workbook workbook = null;
+            Excel.Worksheet current = null;
+            Excel.Sheets sheets = null;
+
+            try
+            {
+                workbook = _app.ActiveWorkbook;
+                current = _app.ActiveSheet as Excel.Worksheet;
+                if (workbook == null || current == null)
+                {
+                    return;
+                }
+
+                sheets = workbook.Worksheets;
+                int total = sheets.Count;
+                if (total < 2)
+                {
+                    return;
+                }
+
+                int index = current.Index;
+                int guard = 0;
+                int targetIndex = index;
+
+                while (steps > 0 && guard < total * 2)
+                {
+                    targetIndex = forward ? (targetIndex % total) + 1 : ((targetIndex - 2 + total) % total) + 1;
+                    guard++;
+
+                    var candidate = sheets[targetIndex] as Excel.Worksheet;
+                    if (candidate == null || candidate == current)
+                    {
+                        ReleaseCom(candidate);
+                        continue;
+                    }
+
+                    bool visible = candidate.Visible == Excel.XlSheetVisibility.xlSheetVisible;
+                    if (visible)
+                    {
+                        steps--;
+                        if (steps == 0)
+                        {
+                            object before = Type.Missing;
+                            object after = Type.Missing;
+                            if (forward)
+                            {
+                                after = candidate;
+                            }
+                            else
+                            {
+                                before = candidate;
+                            }
+
+                            current.Move(before, after);
+                        }
+                    }
+
+                    ReleaseCom(candidate);
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+            finally
+            {
+                ReleaseCom(sheets);
+                ReleaseCom(current);
+                ReleaseCom(workbook);
+            }
+        }
+
+        public void PasteEntireRows(Excel.Range source, int copies, bool pasteAfterActive)
+        {
+            if (!RangeHelpers.IsRangeValid(source))
+            {
+                return;
+            }
+
+            if (copies < 1)
+            {
+                copies = 1;
+            }
+
+            if (!TryGetActiveWorksheet(out var sheet))
+            {
+                return;
+            }
+
+            Excel.Range activeCell = null;
+            try { activeCell = _app.ActiveCell as Excel.Range; }
+            catch { activeCell = null; }
+
+            if (activeCell == null)
+            {
+                return;
+            }
+
+            int startRow = activeCell.Row + (pasteAfterActive ? 1 : 0);
+            int maxRow = Convert.ToInt32(sheet.Rows.Count);
+            startRow = Math.Max(1, Math.Min(startRow, maxRow));
+
+            int rowBlock = source.Rows.Count;
+            if (rowBlock < 1)
+            {
+                return;
+            }
+
+            int available = maxRow - startRow + 1;
+            int maxCopies = available / rowBlock;
+            if (maxCopies < 1)
+            {
+                return;
+            }
+
+            if (copies > maxCopies)
+            {
+                copies = maxCopies;
+            }
+
+            using (new UiGuard(_app))
+            {
+                Excel.Range insertBlock = null;
+                try
+                {
+                    int insertEnd = startRow + rowBlock * copies - 1;
+                    insertBlock = sheet.Range[sheet.Rows[startRow], sheet.Rows[insertEnd]];
+                    insertBlock.EntireRow.Insert(Excel.XlInsertShiftDirection.xlShiftDown, Excel.XlInsertFormatOrigin.xlFormatFromLeftOrAbove);
+
+                    for (int i = 0; i < copies; i++)
+                    {
+                        int destStart = startRow + i * rowBlock;
+                        var dest = sheet.Range[sheet.Rows[destStart], sheet.Rows[destStart + rowBlock - 1]];
+                        source.Copy(dest);
+                        ReleaseCom(dest);
+                    }
+
+                    source.Copy();
+                }
+                finally
+                {
+                    ReleaseCom(insertBlock);
+                    ReleaseCom(activeCell);
+                }
+            }
+        }
+
+        public void PasteEntireColumns(Excel.Range source, int copies, bool pasteAfterActive)
+        {
+            if (!RangeHelpers.IsRangeValid(source))
+            {
+                return;
+            }
+
+            if (copies < 1)
+            {
+                copies = 1;
+            }
+
+            if (!TryGetActiveWorksheet(out var sheet))
+            {
+                return;
+            }
+
+            Excel.Range activeCell = null;
+            try { activeCell = _app.ActiveCell as Excel.Range; }
+            catch { activeCell = null; }
+
+            if (activeCell == null)
+            {
+                return;
+            }
+
+            int startCol = activeCell.Column + (pasteAfterActive ? 1 : 0);
+            int maxCol = Convert.ToInt32(sheet.Columns.Count);
+            startCol = Math.Max(1, Math.Min(startCol, maxCol));
+
+            int colBlock = source.Columns.Count;
+            if (colBlock < 1)
+            {
+                return;
+            }
+
+            int available = maxCol - startCol + 1;
+            int maxCopies = available / colBlock;
+            if (maxCopies < 1)
+            {
+                return;
+            }
+
+            if (copies > maxCopies)
+            {
+                copies = maxCopies;
+            }
+
+            using (new UiGuard(_app))
+            {
+                Excel.Range insertBlock = null;
+                try
+                {
+                    int insertEnd = startCol + colBlock * copies - 1;
+                    insertBlock = sheet.Range[sheet.Columns[startCol], sheet.Columns[insertEnd]];
+                    insertBlock.EntireColumn.Insert(Excel.XlInsertShiftDirection.xlShiftToRight, Excel.XlInsertFormatOrigin.xlFormatFromLeftOrAbove);
+
+                    for (int i = 0; i < copies; i++)
+                    {
+                        int destStart = startCol + i * colBlock;
+                        var dest = sheet.Range[sheet.Columns[destStart], sheet.Columns[destStart + colBlock - 1]];
+                        source.Copy(dest);
+                        ReleaseCom(dest);
+                    }
+
+                    source.Copy();
+                }
+                finally
+                {
+                    ReleaseCom(insertBlock);
+                    ReleaseCom(activeCell);
+                }
+            }
+        }
+
+        public void ResizeSelection(int up, int down, int left, int right)
+        {
+            if (!RangeHelpers.TryGetActiveRange(_app, out var selection))
+            {
+                return;
+            }
+
+            if (up == 0 && down == 0 && left == 0 && right == 0)
+            {
+                return;
+            }
+
+            Excel.Range baseRange = selection;
+            Excel.Range activeCell = null;
+            Excel.Range visible = null;
+            Excel.Window window = null;
+            int screenTop = 1, screenBottom = 1, screenLeft = 1, screenRight = 1;
+
+            try { activeCell = _app.ActiveCell as Excel.Range; } catch { activeCell = null; }
+
+            try
+            {
+                window = _app.ActiveWindow;
+                visible = window?.VisibleRange;
+                if (visible != null)
+                {
+                    screenTop = visible.Row;
+                    screenLeft = visible.Column;
+                    screenBottom = Math.Max(screenTop, screenTop + visible.Rows.Count - 2);
+                    screenRight = Math.Max(screenLeft, screenLeft + visible.Columns.Count - 2);
+                }
+                else
+                {
+                    screenTop = selection.Row;
+                    screenBottom = selection.Row + selection.Rows.Count - 1;
+                    screenLeft = selection.Column;
+                    screenRight = selection.Column + selection.Columns.Count - 1;
+                }
+            }
+            catch
+            {
+                screenTop = selection.Row;
+                screenBottom = selection.Row + selection.Rows.Count - 1;
+                screenLeft = selection.Column;
+                screenRight = selection.Column + selection.Columns.Count - 1;
+            }
+
+            int maxRow = Convert.ToInt32(selection.Worksheet.Rows.Count);
+            int maxCol = Convert.ToInt32(selection.Worksheet.Columns.Count);
+
+            int firstRow = selection.Row;
+            int firstColumn = selection.Column;
+            int lastRow = firstRow + selection.Rows.Count - 1;
+            int lastColumn = firstColumn + selection.Columns.Count - 1;
+
+            int rowCount = selection.Rows.Count;
+            int colCount = selection.Columns.Count;
+
+            if (up < 0 && -up >= rowCount)
+            {
+                down = -(rowCount + up) + 1;
+                up = 0;
+                baseRange = OffsetRange(baseRange, rowCount - 1, 0);
+                baseRange = ResizeRange(baseRange, 1, baseRange.Columns.Count);
+            }
+            else if (down < 0 && -down >= rowCount)
+            {
+                up = -(rowCount + down) + 1;
+                down = 0;
+                baseRange = ResizeRange(baseRange, 1, baseRange.Columns.Count);
+            }
+            else if (left < 0 && -left >= colCount)
+            {
+                right = -(colCount + left) + 1;
+                left = 0;
+                baseRange = OffsetRange(baseRange, 0, colCount - 1);
+                baseRange = ResizeRange(baseRange, baseRange.Rows.Count, 1);
+            }
+            else if (right < 0 && -right >= colCount)
+            {
+                left = -(colCount + right) + 1;
+                right = 0;
+                baseRange = ResizeRange(baseRange, baseRange.Rows.Count, 1);
+            }
+
+            if (up > 0 && firstRow <= up)
+            {
+                up = firstRow - 1;
+            }
+            else if (down > 0 && lastRow + down > maxRow)
+            {
+                down = maxRow - lastRow;
+            }
+            else if (left > 0 && firstColumn <= left)
+            {
+                left = firstColumn - 1;
+            }
+            else if (right > 0 && lastColumn + right > maxCol)
+            {
+                right = maxCol - lastColumn;
+            }
+
+            using (new UiGuard(_app))
+            {
+                if (up != 0)
+                {
+                    var resized = OffsetRange(baseRange, -up, 0);
+                    var finalRange = ResizeRange(resized, baseRange.Rows.Count + up, baseRange.Columns.Count);
+                    RangeHelpers.SafeSelect(finalRange);
+                    SafeActivate(activeCell);
+                    RestoreScroll(window, screenTop, screenLeft);
+                    AdjustVerticalScroll(window, screenTop, screenBottom, firstRow - up);
+                }
+                else if (down != 0)
+                {
+                    var finalRange = ResizeRange(baseRange, baseRange.Rows.Count + down, baseRange.Columns.Count);
+                    RangeHelpers.SafeSelect(finalRange);
+                    SafeActivate(activeCell);
+                    RestoreScroll(window, screenTop, screenLeft);
+                    AdjustVerticalScroll(window, screenTop, screenBottom, lastRow + down);
+                }
+                else if (left != 0)
+                {
+                    var resized = OffsetRange(baseRange, 0, -left);
+                    var finalRange = ResizeRange(resized, baseRange.Rows.Count, baseRange.Columns.Count + left);
+                    RangeHelpers.SafeSelect(finalRange);
+                    SafeActivate(activeCell);
+                    RestoreScroll(window, screenTop, screenLeft);
+                    AdjustHorizontalScroll(window, screenLeft, screenRight, firstColumn - left);
+                }
+                else if (right != 0)
+                {
+                    var finalRange = ResizeRange(baseRange, baseRange.Rows.Count, baseRange.Columns.Count + right);
+                    RangeHelpers.SafeSelect(finalRange);
+                    SafeActivate(activeCell);
+                    RestoreScroll(window, screenTop, screenLeft);
+                    AdjustHorizontalScroll(window, screenLeft, screenRight, lastColumn + right);
+                }
+            }
+
+            ReleaseCom(visible);
+            ReleaseCom(activeCell);
+        }
+
+        public void ScrollHalf(bool scrollUp, int repeatCount)
+        {
+            if (repeatCount < 1)
+            {
+                repeatCount = 1;
+            }
+
+            Excel.Window window = null;
+            try { window = _app.ActiveWindow; }
+            catch { window = null; }
+
+            if (window == null)
+            {
+                return;
+            }
+
+            using (new UiGuard(_app))
+            {
+                object missing = Type.Missing;
+                int visibleRows = GetVisibleRowCount(window);
+                int half = Math.Max(1, visibleRows / 2);
+                int largeScrolls = repeatCount / 2;
+
+                for (int i = 0; i < largeScrolls; i++)
+                {
+                    if (scrollUp)
+                    {
+                        window.LargeScroll(missing, 1, missing, missing);
+                    }
+                    else
+                    {
+                        window.LargeScroll(1, missing, missing, missing);
+                    }
+                }
+
+                if ((repeatCount & 1) == 1)
+                {
+                    if (scrollUp)
+                    {
+                        window.SmallScroll(missing, half, missing, missing);
+                    }
+                    else
+                    {
+                        window.SmallScroll(half, missing, missing, missing);
+                    }
+                }
+            }
+
+            EnsureActiveCellVisible();
+        }
+
+        public void ScrollHalfHorizontal(bool scrollLeft, int repeatCount)
+        {
+            if (repeatCount < 1)
+            {
+                repeatCount = 1;
+            }
+
+            Excel.Window window = null;
+            try { window = _app.ActiveWindow; }
+            catch { window = null; }
+
+            if (window == null)
+            {
+                return;
+            }
+
+            using (new UiGuard(_app))
+            {
+                object missing = Type.Missing;
+                int visibleColumns = GetVisibleColumnCount(window);
+                int half = Math.Max(1, visibleColumns / 2);
+                int largeScrolls = repeatCount / 2;
+
+                for (int i = 0; i < largeScrolls; i++)
+                {
+                    if (scrollLeft)
+                    {
+                        window.LargeScroll(missing, missing, missing, 1);
+                    }
+                    else
+                    {
+                        window.LargeScroll(missing, missing, 1, missing);
+                    }
+                }
+
+                if ((repeatCount & 1) == 1)
+                {
+                    if (scrollLeft)
+                    {
+                        window.SmallScroll(missing, missing, missing, half);
+                    }
+                    else
+                    {
+                        window.SmallScroll(missing, missing, half, missing);
+                    }
+                }
+            }
+
+            EnsureActiveCellVisible();
+        }
+
+        public void ScrollActiveRowToTop(double scrollOffsetPoints)
+            => ScrollActiveRow(RowScrollPosition.Top, scrollOffsetPoints);
+
+        public void ScrollActiveRowToBottom(double scrollOffsetPoints)
+            => ScrollActiveRow(RowScrollPosition.Bottom, scrollOffsetPoints);
+
+        public void ScrollActiveRowToMiddle()
+            => ScrollActiveRow(RowScrollPosition.Middle, 0);
+
+        public void ScrollActiveColumnToLeft()
+            => ScrollActiveColumn(ColumnScrollPosition.Left);
+
+        public void ScrollActiveColumnToRight()
+            => ScrollActiveColumn(ColumnScrollPosition.Right);
+
+        public void ScrollActiveColumnToCenter()
+            => ScrollActiveColumn(ColumnScrollPosition.Center);
+
+        public void EnsureActiveCellVisible()
+        {
+            Excel.Window window = null;
+            Excel.Range visible = null;
+            Excel.Range activeCell = null;
+            try
+            {
+                window = _app.ActiveWindow;
+                if (window == null)
+                {
+                    return;
+                }
+
+                visible = window.VisibleRange;
+                activeCell = _app.ActiveCell as Excel.Range;
+                if (visible == null || activeCell == null)
+                {
+                    return;
+                }
+
+                int visibleTop = visible.Row;
+                int visibleLeft = visible.Column;
+                int visibleBottom = visible.Row + visible.Rows.Count - 1;
+                int visibleRight = visible.Column + visible.Columns.Count - 1;
+
+                int targetRow = activeCell.Row;
+                int targetCol = activeCell.Column;
+
+                if (targetRow < visibleTop || targetRow > visibleBottom || targetCol < visibleLeft || targetCol > visibleRight)
+                {
+                    int clampRow = Math.Min(Math.Max(targetRow, visibleTop), visibleBottom);
+                    int clampCol = Math.Min(Math.Max(targetCol, visibleLeft), visibleRight);
+                    try
+                    {
+                        var cell = activeCell.Worksheet.Cells[clampRow, clampCol] as Excel.Range;
+                        RangeHelpers.SafeSelect(cell);
+                        cell?.Activate();
+                        ReleaseCom(cell);
+                    }
+                    catch
+                    {
+                        // ignore
+                    }
+
+                    try { window.ScrollRow = visibleTop; } catch { }
+                    try { window.ScrollColumn = visibleLeft; } catch { }
+                }
+            }
+            finally
+            {
+                ReleaseCom(visible);
+                ReleaseCom(activeCell);
+            }
+        }
+
+        private void ScrollActiveRow(RowScrollPosition position, double scrollOffsetPoints)
+        {
+            if (!TryGetActiveWorksheet(out var sheet))
+            {
+                return;
+            }
+
+            Excel.Window window = null;
+            Excel.Range activeCell = null;
+
+            try
+            {
+                window = _app.ActiveWindow;
+                activeCell = _app.ActiveCell as Excel.Range;
+            }
+            catch
+            {
+                window = null;
+            }
+
+            if (window == null || activeCell == null)
+            {
+                ReleaseCom(activeCell);
+                return;
+            }
+
+            double usableHeight = GetRealUsableHeight(window);
+            double cellTop = 0;
+            double cellHeight = 0;
+            try
+            {
+                cellTop = Convert.ToDouble(activeCell.Top);
+                cellHeight = Convert.ToDouble(activeCell.Height);
+            }
+            catch
+            {
+                cellTop = 0;
+                cellHeight = 0;
+            }
+
+            double point;
+            double offset = Math.Max(0, scrollOffsetPoints);
+            switch (position)
+            {
+                case RowScrollPosition.Top:
+                    point = cellTop - GetDistanceAdjustedForZoom(offset, window);
+                    break;
+                case RowScrollPosition.Bottom:
+                    point = cellTop + cellHeight - GetDistanceAdjustedForZoom(Math.Max(0, usableHeight - offset), window);
+                    break;
+                default:
+                    point = cellTop + cellHeight / 2.0 - GetDistanceAdjustedForZoom(usableHeight, window) / 2.0;
+                    break;
+            }
+
+            int scrollRow = PointToRow(sheet, window, point, position, offset);
+            if (scrollRow > 0)
+            {
+                try { window.ScrollRow = scrollRow; } catch { }
+            }
+
+            ReleaseCom(activeCell);
+        }
+
+        private void ScrollActiveColumn(ColumnScrollPosition position)
+        {
+            if (!TryGetActiveWorksheet(out var sheet))
+            {
+                return;
+            }
+
+            Excel.Window window = null;
+            Excel.Range activeCell = null;
+
+            try
+            {
+                window = _app.ActiveWindow;
+                activeCell = _app.ActiveCell as Excel.Range;
+            }
+            catch
+            {
+                window = null;
+            }
+
+            if (window == null || activeCell == null)
+            {
+                ReleaseCom(activeCell);
+                return;
+            }
+
+            double usableWidth = GetRealUsableWidth(window);
+            double cellLeft = 0;
+            double cellWidth = 0;
+            try
+            {
+                cellLeft = Convert.ToDouble(activeCell.Left);
+                cellWidth = Convert.ToDouble(activeCell.Width);
+            }
+            catch
+            {
+                cellLeft = 0;
+                cellWidth = 0;
+            }
+
+            double point;
+            switch (position)
+            {
+                case ColumnScrollPosition.Left:
+                    try { window.ScrollColumn = activeCell.Column; } catch { }
+                    ReleaseCom(activeCell);
+                    return;
+                case ColumnScrollPosition.Right:
+                    point = cellLeft + cellWidth - GetDistanceAdjustedForZoom(usableWidth, window);
+                    break;
+                default:
+                    point = cellLeft + cellWidth / 2.0 - GetDistanceAdjustedForZoom(usableWidth, window) / 2.0;
+                    break;
+            }
+
+            int column = PointToColumn(sheet, window, point, position);
+            if (column > 0)
+            {
+                try { window.ScrollColumn = column; } catch { }
+            }
+
+            ReleaseCom(activeCell);
+        }
+
+        private double GetDistanceAdjustedForZoom(double value, Excel.Window window)
+        {
+            if (window == null)
+            {
+                return value;
+            }
+
+            double zoom;
+            try { zoom = Convert.ToDouble(window.Zoom); }
+            catch { zoom = 100d; }
+
+            double rate;
+            if (zoom > 90d && zoom < 110d)
+            {
+                rate = 1d;
+            }
+            else
+            {
+                rate = 103.32 / Math.Max(1d, zoom) - 0.05;
+            }
+
+            return value * rate;
+        }
+
+        private double GetRealUsableHeight(Excel.Window window)
+        {
+            if (window == null)
+            {
+                return 0;
+            }
+
+            double height;
+            try { height = window.UsableHeight; }
+            catch { height = 0; }
+
+            try
+            {
+                if (window.DisplayHeadings)
+                {
+                    var sheet = _app.ActiveSheet as Excel.Worksheet;
+                    height -= sheet?.StandardHeight ?? 0;
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+
+            return Math.Max(0, height);
+        }
+
+        private double GetRealUsableWidth(Excel.Window window)
+        {
+            if (window == null)
+            {
+                return 0;
+            }
+
+            double width;
+            try { width = window.UsableWidth; }
+            catch { width = 0; }
+
+            bool headings;
+            try { headings = window.DisplayHeadings; }
+            catch { headings = false; }
+
+            if (headings)
+            {
+                Excel.Range visible = null;
+                Excel.Range lastCell = null;
+                try
+                {
+                    visible = window.VisibleRange;
+                    if (visible != null)
+                    {
+                        lastCell = visible.Cells[visible.Count] as Excel.Range;
+                    }
+                    int maxRow = lastCell?.Row ?? 0;
+                    double headingWidth = 25d;
+                    if (maxRow >= 1000)
+                    {
+                        headingWidth += 6.75 * (Convert.ToString(maxRow).Length - 3);
+                    }
+
+                    width -= headingWidth;
+                }
+                catch
+                {
+                    // ignore
+                }
+                finally
+                {
+                    ReleaseCom(lastCell);
+                    ReleaseCom(visible);
+                }
+            }
+
+            return Math.Max(0, width);
+        }
+
+        private int PointToRow(Excel.Worksheet sheet, Excel.Window window, double point, RowScrollPosition position, double scrollOffset)
+        {
+            int rowCount = GetRowCount(sheet);
+            if (rowCount <= 0)
+            {
+                return 1;
+            }
+
+            double lastTop = GetRowTop(sheet, rowCount);
+            if (point > lastTop)
+            {
+                return rowCount;
+            }
+
+            if (point <= 0)
+            {
+                return 1;
+            }
+
+            double avg = GetAverageRowHeight(window);
+            int pred = (int)(point / avg) + 1;
+            pred = Math.Max(1, Math.Min(rowCount, pred));
+            double predTop = GetRowTop(sheet, pred);
+            double diff = point - predTop;
+
+            int l = pred;
+            int h = pred;
+            int i = 0;
+
+            while (Math.Abs(diff) > double.Epsilon && i < 20)
+            {
+                int tmp = (int)Math.Round(diff / avg + 0.5) * (1 << i);
+                if (tmp == 0)
+                {
+                    tmp = Math.Sign(diff) * (1 << i);
+                }
+
+                int candidate = pred + tmp;
+                candidate = Math.Max(1, Math.Min(rowCount, candidate));
+
+                if (diff < 0)
+                {
+                    h = l;
+                    l = candidate;
+                }
+                else
+                {
+                    l = h;
+                    h = candidate;
+                }
+
+                double lTop = GetRowTop(sheet, l);
+                double hTop = GetRowTop(sheet, h);
+                if (lTop <= point && point < hTop)
+                {
+                    break;
+                }
+
+                i++;
+            }
+
+            while (h - l >= 2)
+            {
+                int m = (int)Math.Round(l + (h - l) / 2.0 - 0.25, MidpointRounding.AwayFromZero);
+                double mTop = GetRowTop(sheet, m);
+                if (point < mTop)
+                {
+                    h = m;
+                }
+                else
+                {
+                    l = m;
+                }
+            }
+
+            int result = l;
+            double rowTop = GetRowTop(sheet, result);
+            double rowHeight = GetRowHeight(sheet, result);
+
+            switch (position)
+            {
+                case RowScrollPosition.Middle:
+                    if ((point - rowTop) >= rowHeight / 2.0)
+                    {
+                        result++;
+                    }
+                    break;
+                case RowScrollPosition.Top:
+                    if (point > rowTop)
+                    {
+                        result++;
+                    }
+                    break;
+                case RowScrollPosition.Bottom:
+                    if (point - scrollOffset > rowTop)
+                    {
+                        result++;
+                    }
+                    break;
+            }
+
+            return Math.Max(1, Math.Min(rowCount, result));
+        }
+
+        private int PointToColumn(Excel.Worksheet sheet, Excel.Window window, double point, ColumnScrollPosition position)
+        {
+            int columnCount = GetColumnCount(sheet);
+            if (point > GetColumnLeft(sheet, columnCount))
+            {
+                return columnCount;
+            }
+
+            if (point <= 0)
+            {
+                return 1;
+            }
+
+            double avg = GetAverageColumnWidth(window);
+            int pred = (int)(point / avg) + 1;
+            pred = Math.Max(1, Math.Min(columnCount, pred));
+            double predLeft = GetColumnLeft(sheet, pred);
+            double diff = point - predLeft;
+
+            int l = pred;
+            int h = pred;
+            int i = 0;
+
+            while (Math.Abs(diff) > double.Epsilon && i < 20)
+            {
+                int tmp = (int)Math.Round(diff / avg + 0.5) * (1 << i);
+                if (tmp == 0)
+                {
+                    tmp = Math.Sign(diff) * (1 << i);
+                }
+
+                int candidate = pred + tmp;
+                candidate = Math.Max(1, Math.Min(columnCount, candidate));
+
+                if (diff < 0)
+                {
+                    h = l;
+                    l = candidate;
+                }
+                else
+                {
+                    l = h;
+                    h = candidate;
+                }
+
+                double lLeft = GetColumnLeft(sheet, l);
+                double hLeft = GetColumnLeft(sheet, h);
+                if (lLeft <= point && point < hLeft)
+                {
+                    break;
+                }
+
+                i++;
+            }
+
+            while (h - l >= 2)
+            {
+                int m = (int)Math.Round(l + (h - l) / 2.0 - 0.25, MidpointRounding.AwayFromZero);
+                double mLeft = GetColumnLeft(sheet, m);
+                if (point < mLeft)
+                {
+                    h = m;
+                }
+                else
+                {
+                    l = m;
+                }
+            }
+
+            int result = l;
+            double colLeft = GetColumnLeft(sheet, result);
+            double colWidth = GetColumnWidth(sheet, result);
+
+            switch (position)
+            {
+                case ColumnScrollPosition.Center:
+                    if ((point - colLeft) >= colWidth / 2.0)
+                    {
+                        result++;
+                    }
+                    break;
+                case ColumnScrollPosition.Right:
+                    if (point > colLeft)
+                    {
+                        result++;
+                    }
+                    break;
+            }
+
+            return Math.Max(1, Math.Min(columnCount, result));
+        }
+
+        private int GetRowCount(Excel.Worksheet sheet)
+        {
+            try { return Convert.ToInt32(sheet.Rows.Count); }
+            catch { return 1048576; }
+        }
+
+        private int GetColumnCount(Excel.Worksheet sheet)
+        {
+            try { return Convert.ToInt32(sheet.Columns.Count); }
+            catch { return 16384; }
+        }
+
+        private double GetRowTop(Excel.Worksheet sheet, int rowIndex)
+        {
+            Excel.Range row = null;
+            try
+            {
+                row = sheet.Rows[rowIndex] as Excel.Range;
+                return row == null ? 0 : Convert.ToDouble(row.Top);
+            }
+            catch
+            {
+                return 0;
+            }
+            finally
+            {
+                ReleaseCom(row);
+            }
+        }
+
+        private double GetRowHeight(Excel.Worksheet sheet, int rowIndex)
+        {
+            Excel.Range row = null;
+            try
+            {
+                row = sheet.Rows[rowIndex] as Excel.Range;
+                return row == null ? 0 : Convert.ToDouble(row.Height);
+            }
+            catch
+            {
+                return 0;
+            }
+            finally
+            {
+                ReleaseCom(row);
+            }
+        }
+
+        private double GetColumnLeft(Excel.Worksheet sheet, int columnIndex)
+        {
+            Excel.Range column = null;
+            try
+            {
+                column = sheet.Columns[columnIndex] as Excel.Range;
+                return column == null ? 0 : Convert.ToDouble(column.Left);
+            }
+            catch
+            {
+                return 0;
+            }
+            finally
+            {
+                ReleaseCom(column);
+            }
+        }
+
+        private double GetColumnWidth(Excel.Worksheet sheet, int columnIndex)
+        {
+            Excel.Range column = null;
+            try
+            {
+                column = sheet.Columns[columnIndex] as Excel.Range;
+                return column == null ? 0 : Convert.ToDouble(column.Width);
+            }
+            catch
+            {
+                return 0;
+            }
+            finally
+            {
+                ReleaseCom(column);
+            }
+        }
+
+        private double GetAverageRowHeight(Excel.Window window)
+        {
+            Excel.Range visible = null;
+            try
+            {
+                visible = window.VisibleRange;
+                if (visible == null)
+                {
+                    return 15d;
+                }
+
+                double height = Convert.ToDouble(visible.Height);
+                int rows = Math.Max(1, Convert.ToInt32(visible.Rows.Count));
+                return height / rows;
+            }
+            catch
+            {
+                return 15d;
+            }
+            finally
+            {
+                ReleaseCom(visible);
+            }
+        }
+
+        private double GetAverageColumnWidth(Excel.Window window)
+        {
+            Excel.Range visible = null;
+            try
+            {
+                visible = window.VisibleRange;
+                if (visible == null)
+                {
+                    return 8.43;
+                }
+
+                double width = Convert.ToDouble(visible.Width);
+                int columns = Math.Max(1, Convert.ToInt32(visible.Columns.Count));
+                return width / columns;
+            }
+            catch
+            {
+                return 8.43;
+            }
+            finally
+            {
+                ReleaseCom(visible);
+            }
+        }
+
+        private int GetVisibleColumnCount(Excel.Window window)
+        {
+            Excel.Range visible = null;
+            try
+            {
+                visible = window.VisibleRange;
+                if (visible == null)
+                {
+                    return 1;
+                }
+
+                return Math.Max(1, visible.Columns.Count);
+            }
+            catch
+            {
+                return 1;
+            }
+            finally
+            {
+                ReleaseCom(visible);
+            }
+        }
+
+        private bool TryGetActiveWorksheet(out Excel.Worksheet sheet)
+        {
+            sheet = null;
+            try
+            {
+                sheet = _app.ActiveSheet as Excel.Worksheet;
+            }
+            catch
+            {
+                sheet = null;
+            }
+
+            return sheet != null;
+        }
+
+        private Excel.Range OffsetRange(Excel.Range range, int rowOffset, int columnOffset)
+        {
+            if (range == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                return range.Offset[rowOffset, columnOffset];
+            }
+            catch
+            {
+                return range;
+            }
+        }
+
+        private Excel.Range ResizeRange(Excel.Range range, int rows, int columns)
+        {
+            if (range == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                return range.Resize[rows, columns];
+            }
+            catch
+            {
+                return range;
+            }
+        }
+
+        private void SafeActivate(Excel.Range cell)
+        {
+            if (!RangeHelpers.IsRangeValid(cell))
+            {
+                return;
+            }
+
+            try
+            {
+                cell.Activate();
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        private void RestoreScroll(Excel.Window window, int scrollRow, int scrollColumn)
+        {
+            if (window == null)
+            {
+                return;
+            }
+
+            try { window.ScrollRow = scrollRow; } catch { }
+            try { window.ScrollColumn = scrollColumn; } catch { }
+        }
+
+        private void AdjustVerticalScroll(Excel.Window window, int screenTop, int screenBottom, int anchorRow)
+        {
+            if (window == null)
+            {
+                return;
+            }
+
+            object missing = Type.Missing;
+            if (screenTop > anchorRow)
+            {
+                int delta = screenTop - anchorRow;
+                if (delta > 0)
+                {
+                    try { window.SmallScroll(delta, missing, missing, missing); } catch { }
+                }
+            }
+            else if (screenBottom < anchorRow)
+            {
+                int delta = anchorRow - screenBottom;
+                if (delta > 0)
+                {
+                    try { window.SmallScroll(missing, delta, missing, missing); } catch { }
+                }
+            }
+        }
+
+        private void AdjustHorizontalScroll(Excel.Window window, int screenLeft, int screenRight, int anchorColumn)
+        {
+            if (window == null)
+            {
+                return;
+            }
+
+            object missing = Type.Missing;
+            if (screenLeft > anchorColumn)
+            {
+                int delta = screenLeft - anchorColumn;
+                if (delta > 0)
+                {
+                    try { window.SmallScroll(missing, missing, missing, delta); } catch { }
+                }
+            }
+            else if (screenRight < anchorColumn)
+            {
+                int delta = anchorColumn - screenRight;
+                if (delta > 0)
+                {
+                    try { window.SmallScroll(missing, missing, delta, missing); } catch { }
+                }
+            }
+        }
+
+        private int GetVisibleRowCount(Excel.Window window)
+        {
+            Excel.Range range = null;
+            try
+            {
+                range = window.VisibleRange;
+                if (range == null)
+                {
+                    return 1;
+                }
+
+                return Math.Max(1, range.Rows.Count);
+            }
+            catch
+            {
+                return 1;
+            }
+            finally
+            {
+                ReleaseCom(range);
+            }
+        }
+
         private bool TryProcessCell(Excel.Range cell, double delta, int procSign, int step)
         {
             string formula = Convert.ToString(cell.Formula);
@@ -1230,6 +2711,88 @@ namespace VantagePackageHolder
             }
         }
 
+        private bool TryGetRowTarget(out Excel.Range targetRows, out double currentHeight)
+        {
+            targetRows = null;
+            currentHeight = 0;
+            Excel.Range selection = null;
+            Excel.Range firstRow = null;
+
+            try
+            {
+                if (RangeHelpers.TryGetActiveRange(_app, out selection))
+                {
+                    firstRow = selection.Rows[1] as Excel.Range ?? selection.Cells[1, 1] as Excel.Range;
+                    targetRows = selection.EntireRow;
+                }
+                else
+                {
+                    firstRow = _app.ActiveCell as Excel.Range;
+                    targetRows = firstRow?.EntireRow;
+                }
+
+                if (firstRow == null || targetRows == null)
+                {
+                    return false;
+                }
+
+                currentHeight = Convert.ToDouble(firstRow.RowHeight);
+                return true;
+            }
+            catch
+            {
+                ReleaseCom(targetRows);
+                targetRows = null;
+                return false;
+            }
+            finally
+            {
+                ReleaseCom(firstRow);
+                ReleaseCom(selection);
+            }
+        }
+
+        private bool TryGetColumnTarget(out Excel.Range targetColumns, out double currentWidth)
+        {
+            targetColumns = null;
+            currentWidth = 0;
+            Excel.Range selection = null;
+            Excel.Range firstColumn = null;
+
+            try
+            {
+                if (RangeHelpers.TryGetActiveRange(_app, out selection))
+                {
+                    firstColumn = selection.Columns[1] as Excel.Range ?? selection.Cells[1, 1] as Excel.Range;
+                    targetColumns = selection.EntireColumn;
+                }
+                else
+                {
+                    firstColumn = _app.ActiveCell as Excel.Range;
+                    targetColumns = firstColumn?.EntireColumn;
+                }
+
+                if (firstColumn == null || targetColumns == null)
+                {
+                    return false;
+                }
+
+                currentWidth = Convert.ToDouble(firstColumn.ColumnWidth);
+                return true;
+            }
+            catch
+            {
+                ReleaseCom(targetColumns);
+                targetColumns = null;
+                return false;
+            }
+            finally
+            {
+                ReleaseCom(firstColumn);
+                ReleaseCom(selection);
+            }
+        }
+
         private double CountA(Excel.Range range)
         {
             try
@@ -1265,6 +2828,20 @@ namespace VantagePackageHolder
             LeftToRight,
             BottomToTop,
             RightToLeft
+        }
+
+        private enum RowScrollPosition
+        {
+            Top = -1,
+            Middle = 0,
+            Bottom = 1
+        }
+
+        private enum ColumnScrollPosition
+        {
+            Left = -1,
+            Center = 0,
+            Right = 1
         }
 
         private enum RowTargetType

@@ -29,6 +29,35 @@ namespace VantagePackageHolder
             return false;
         }
 
+        public static bool TryGetRangeOrActiveCell(Excel.Application app, out Excel.Range range)
+        {
+            if (TryGetActiveRange(app, out range))
+            {
+                return true;
+            }
+
+            range = null;
+            if (app == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (app.ActiveCell is Excel.Range cell)
+                {
+                    range = cell;
+                    return true;
+                }
+            }
+            catch
+            {
+                range = null;
+            }
+
+            return false;
+        }
+
         public static bool IsRangeValid(Excel.Range range)
         {
             if (range == null)

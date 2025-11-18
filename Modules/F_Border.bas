@@ -74,101 +74,123 @@ End Function
 
 Function ToggleBorderAround(Optional ByVal LineStyle As XlLineStyle = xlContinuous, _
                             Optional ByVal Weight As XlBorderWeight = xlThin) As Boolean
-    ToggleBorderAround = InvokeBorderToggle("Around", LineStyle, Weight, "ToggleBorderAround")
+    Call InvokeBorderToggle("Around", LineStyle, Weight, "ToggleBorderAround")
+    ToggleBorderAround = False
 End Function
 
 Function ToggleBorderLeft(Optional ByVal LineStyle As XlLineStyle = xlContinuous, _
                           Optional ByVal Weight As XlBorderWeight = xlThin) As Boolean
-    ToggleBorderLeft = InvokeBorderToggle("Left", LineStyle, Weight, "ToggleBorderLeft")
+    Call InvokeBorderToggle("Left", LineStyle, Weight, "ToggleBorderLeft")
+    ToggleBorderLeft = False
 End Function
 
 Function ToggleBorderTop(Optional ByVal LineStyle As XlLineStyle = xlContinuous, _
                          Optional ByVal Weight As XlBorderWeight = xlThin) As Boolean
-    ToggleBorderTop = InvokeBorderToggle("Top", LineStyle, Weight, "ToggleBorderTop")
+    Call InvokeBorderToggle("Top", LineStyle, Weight, "ToggleBorderTop")
+    ToggleBorderTop = False
 End Function
 
 Function ToggleBorderBottom(Optional ByVal LineStyle As XlLineStyle = xlContinuous, _
                             Optional ByVal Weight As XlBorderWeight = xlThin) As Boolean
-    ToggleBorderBottom = InvokeBorderToggle("Bottom", LineStyle, Weight, "ToggleBorderBottom")
+    Call InvokeBorderToggle("Bottom", LineStyle, Weight, "ToggleBorderBottom")
+    ToggleBorderBottom = False
 End Function
 
 Function ToggleBorderRight(Optional ByVal LineStyle As XlLineStyle = xlContinuous, _
                            Optional ByVal Weight As XlBorderWeight = xlThin) As Boolean
-    ToggleBorderRight = InvokeBorderToggle("Right", LineStyle, Weight, "ToggleBorderRight")
+    Call InvokeBorderToggle("Right", LineStyle, Weight, "ToggleBorderRight")
+    ToggleBorderRight = False
 End Function
 
 Function ToggleBorderInnerHorizontal(Optional ByVal LineStyle As XlLineStyle = xlContinuous, _
                                      Optional ByVal Weight As XlBorderWeight = xlThin) As Boolean
-    ToggleBorderInnerHorizontal = InvokeBorderToggle("InsideHorizontal", LineStyle, Weight, "ToggleBorderInnerHorizontal")
+    Call InvokeBorderToggle("InsideHorizontal", LineStyle, Weight, "ToggleBorderInnerHorizontal")
+    ToggleBorderInnerHorizontal = False
 End Function
 
 Function ToggleBorderInnerVertical(Optional ByVal LineStyle As XlLineStyle = xlContinuous, _
                                    Optional ByVal Weight As XlBorderWeight = xlThin) As Boolean
-    ToggleBorderInnerVertical = InvokeBorderToggle("InsideVertical", LineStyle, Weight, "ToggleBorderInnerVertical")
+    Call InvokeBorderToggle("InsideVertical", LineStyle, Weight, "ToggleBorderInnerVertical")
+    ToggleBorderInnerVertical = False
 End Function
 
 Function ToggleBorderInner(Optional ByVal LineStyle As XlLineStyle = xlContinuous, _
                            Optional ByVal Weight As XlBorderWeight = xlThin) As Boolean
-    ToggleBorderInner = InvokeBorderToggle("InsideBoth", LineStyle, Weight, "ToggleBorderInner")
+    Call InvokeBorderToggle("InsideBoth", LineStyle, Weight, "ToggleBorderInner")
+    ToggleBorderInner = False
 End Function
 
 Function ToggleBorderDiagonalUp(Optional ByVal LineStyle As XlLineStyle = xlContinuous, _
                                 Optional ByVal Weight As XlBorderWeight = xlThin) As Boolean
-    ToggleBorderDiagonalUp = InvokeBorderToggle("DiagonalUp", LineStyle, Weight, "ToggleBorderDiagonalUp")
+    Call InvokeBorderToggle("DiagonalUp", LineStyle, Weight, "ToggleBorderDiagonalUp")
+    ToggleBorderDiagonalUp = False
 End Function
 
 Function ToggleBorderDiagonalDown(Optional ByVal LineStyle As XlLineStyle = xlContinuous, _
                                   Optional ByVal Weight As XlBorderWeight = xlThin) As Boolean
-    ToggleBorderDiagonalDown = InvokeBorderToggle("DiagonalDown", LineStyle, Weight, "ToggleBorderDiagonalDown")
+    Call InvokeBorderToggle("DiagonalDown", LineStyle, Weight, "ToggleBorderDiagonalDown")
+    ToggleBorderDiagonalDown = False
 End Function
 
 Function ToggleBorderAll(Optional ByVal LineStyle As XlLineStyle = xlContinuous, _
                          Optional ByVal Weight As XlBorderWeight = xlThin) As Boolean
-    ToggleBorderAll = InvokeBorderToggle("All", LineStyle, Weight, "ToggleBorderAll")
+    Call InvokeBorderToggle("All", LineStyle, Weight, "ToggleBorderAll")
+    ToggleBorderAll = False
 End Function
 
 Function DeleteBorderAround(Optional ByVal g As String) As Boolean
-    DeleteBorderAround = InvokeBorderDelete("Around", "DeleteBorderAround")
+    Call InvokeBorderDelete("Around", "DeleteBorderAround")
+    DeleteBorderAround = False
 End Function
 
 Function DeleteBorderLeft(Optional ByVal g As String) As Boolean
-    DeleteBorderLeft = InvokeBorderDelete("Left", "DeleteBorderLeft")
+    Call InvokeBorderDelete("Left", "DeleteBorderLeft")
+    DeleteBorderLeft = False
 End Function
 
 Function DeleteBorderTop(Optional ByVal g As String) As Boolean
-    DeleteBorderTop = InvokeBorderDelete("Top", "DeleteBorderTop")
+    Call InvokeBorderDelete("Top", "DeleteBorderTop")
+    DeleteBorderTop = False
 End Function
 
 Function DeleteBorderBottom(Optional ByVal g As String) As Boolean
-    DeleteBorderBottom = InvokeBorderDelete("Bottom", "DeleteBorderBottom")
+    Call InvokeBorderDelete("Bottom", "DeleteBorderBottom")
+    DeleteBorderBottom = False
 End Function
 
 Function DeleteBorderRight(Optional ByVal g As String) As Boolean
-    DeleteBorderRight = InvokeBorderDelete("Right", "DeleteBorderRight")
+    Call InvokeBorderDelete("Right", "DeleteBorderRight")
+    DeleteBorderRight = False
 End Function
 
 Function DeleteBorderInnerHorizontal(Optional ByVal g As String) As Boolean
-    DeleteBorderInnerHorizontal = InvokeBorderDelete("InsideHorizontal", "DeleteBorderInnerHorizontal")
+    Call InvokeBorderDelete("InsideHorizontal", "DeleteBorderInnerHorizontal")
+    DeleteBorderInnerHorizontal = False
 End Function
 
 Function DeleteBorderInnerVertical(Optional ByVal g As String) As Boolean
-    DeleteBorderInnerVertical = InvokeBorderDelete("InsideVertical", "DeleteBorderInnerVertical")
+    Call InvokeBorderDelete("InsideVertical", "DeleteBorderInnerVertical")
+    DeleteBorderInnerVertical = False
 End Function
 
 Function DeleteBorderInner(Optional ByVal g As String) As Boolean
-    DeleteBorderInner = InvokeBorderDelete("InsideBoth", "DeleteBorderInner")
+    Call InvokeBorderDelete("InsideBoth", "DeleteBorderInner")
+    DeleteBorderInner = False
 End Function
 
 Function DeleteBorderDiagonalUp(Optional ByVal g As String) As Boolean
-    DeleteBorderDiagonalUp = InvokeBorderDelete("DiagonalUp", "DeleteBorderDiagonalUp")
+    Call InvokeBorderDelete("DiagonalUp", "DeleteBorderDiagonalUp")
+    DeleteBorderDiagonalUp = False
 End Function
 
 Function DeleteBorderDiagonalDown(Optional ByVal g As String) As Boolean
-    DeleteBorderDiagonalDown = InvokeBorderDelete("DiagonalDown", "DeleteBorderDiagonalDown")
+    Call InvokeBorderDelete("DiagonalDown", "DeleteBorderDiagonalDown")
+    DeleteBorderDiagonalDown = False
 End Function
 
 Function DeleteBorderAll(Optional ByVal g As String) As Boolean
-    DeleteBorderAll = InvokeBorderDelete("All", "DeleteBorderAll")
+    Call InvokeBorderDelete("All", "DeleteBorderAll")
+    DeleteBorderAll = False
 End Function
 
 Function SetBorderColorAround(Optional ByVal g As String) As Boolean

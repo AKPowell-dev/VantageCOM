@@ -379,28 +379,11 @@ Function NarrowColumnsWidth(Optional ByVal g As String) As Boolean
     Call RepeatRegister("NarrowColumnsWidth")
     Call StopVisualMode
 
-    Dim currentWidth As Double
-    Dim targetColumns As Range
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
 
-    If TypeName(Selection) = "Range" Then
-        If Not IsNull(Selection.EntireColumn.ColumnWidth) Then
-            currentWidth = Selection.EntireColumn.ColumnWidth
-        Else
-            currentWidth = ActiveCell.EntireColumn.ColumnWidth
-        End If
-        Set targetColumns = Selection.EntireColumn
-    Else
-        currentWidth = ActiveCell.EntireColumn.ColumnWidth
-        Set targetColumns = ActiveCell.EntireColumn
-    End If
-
-    If currentWidth - gVim.Count1 < 0 Then
-        targetColumns.EntireColumn.ColumnWidth = 0
-    Else
-        targetColumns.EntireColumn.ColumnWidth = currentWidth - gVim.Count1
-    End If
-
-    Set targetColumns = Nothing
+    engine.AdjustColumnWidth -gVim.Count1
     Exit Function
 
 Catch:
@@ -413,28 +396,11 @@ Function WideColumnsWidth(Optional ByVal g As String) As Boolean
     Call RepeatRegister("WideColumnsWidth")
     Call StopVisualMode
 
-    Dim currentWidth As Double
-    Dim targetColumns As Range
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
 
-    If TypeName(Selection) = "Range" Then
-        If Not IsNull(Selection.EntireColumn.ColumnWidth) Then
-            currentWidth = Selection.EntireColumn.ColumnWidth
-        Else
-            currentWidth = ActiveCell.EntireColumn.ColumnWidth
-        End If
-        Set targetColumns = Selection.EntireColumn
-    Else
-        currentWidth = ActiveCell.EntireColumn.ColumnWidth
-        Set targetColumns = ActiveCell.EntireColumn
-    End If
-
-    If currentWidth + gVim.Count1 > 255 Then
-        targetColumns.EntireColumn.ColumnWidth = 255
-    Else
-        targetColumns.EntireColumn.ColumnWidth = currentWidth + gVim.Count1
-    End If
-
-    Set targetColumns = Nothing
+    engine.AdjustColumnWidth gVim.Count1
     Exit Function
 
 Catch:

@@ -5,6 +5,13 @@ Option Private Module
 Function NextSheet(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
 
+    Dim engine As Object
+    Set engine = NetAddin()
+    If Not engine Is Nothing Then
+        engine.ActivateAdjacentSheet gVim.Count1, True
+        Exit Function
+    End If
+
     Dim i As Long
 
     With ActiveWorkbook
@@ -36,6 +43,13 @@ End Function
 
 Function PreviousSheet(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
+
+    Dim engine As Object
+    Set engine = NetAddin()
+    If Not engine Is Nothing Then
+        engine.ActivateAdjacentSheet gVim.Count1, False
+        Exit Function
+    End If
 
     Dim i As Long
 
@@ -102,6 +116,13 @@ End Function
 Function MoveSheetForward(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
 
+    Dim engine As Object
+    Set engine = NetAddin()
+    If Not engine Is Nothing Then
+        engine.MoveActiveSheet gVim.Count1, True
+        Exit Function
+    End If
+
     Dim idx As Integer
     Dim cnt As Integer
     Dim n As Integer
@@ -143,6 +164,13 @@ End Function
 
 Function MoveSheetBack(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
+
+    Dim engine As Object
+    Set engine = NetAddin()
+    If Not engine Is Nothing Then
+        engine.MoveActiveSheet gVim.Count1, False
+        Exit Function
+    End If
 
     Dim idx As Integer
     Dim cnt As Integer

@@ -3,196 +3,118 @@ Option Explicit
 Option Private Module
 
 Function MoveUp()
-    Dim r As Long
-    If gVim.Count1 = 1 Then
-        keybd_event vbKeyUp, 0, EXTENDED_KEY Or 0, 0
-        keybd_event vbKeyUp, 0, EXTENDED_KEY Or KEYUP, 0
-    Else
-        r = ActiveCell.Row - gVim.Count1
-        If r < 1 Then
-            r = 1
+    On Error GoTo Catch
+
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Or IsShiftPressed() Then
+        Dim r As Long
+        If gVim.Count1 = 1 Then
+            keybd_event vbKeyUp, 0, EXTENDED_KEY Or 0, 0
+            keybd_event vbKeyUp, 0, EXTENDED_KEY Or KEYUP, 0
+        Else
+            r = ActiveCell.Row - gVim.Count1
+            If r < 1 Then r = 1
+            ActiveSheet.Cells(r, ActiveCell.Column).Select
         End If
-        ActiveSheet.Cells(r, ActiveCell.Column).Select
+    Else
+        engine.MoveActiveCellBy -gVim.Count1, 0
     End If
+    Exit Function
+
+Catch:
+    Call ErrorHandler("MoveUp")
 End Function
 
 Function MoveDown()
-    Dim r As Long
-    If gVim.Count1 = 1 Then
-        keybd_event vbKeyDown, 0, EXTENDED_KEY Or 0, 0
-        keybd_event vbKeyDown, 0, EXTENDED_KEY Or KEYUP, 0
-    Else
-        r = ActiveCell.Row + gVim.Count1
-        If r > ActiveSheet.Rows.Count Then
-            r = ActiveSheet.Rows.Count
+    On Error GoTo Catch
+
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Or IsShiftPressed() Then
+        Dim r As Long
+        If gVim.Count1 = 1 Then
+            keybd_event vbKeyDown, 0, EXTENDED_KEY Or 0, 0
+            keybd_event vbKeyDown, 0, EXTENDED_KEY Or KEYUP, 0
+        Else
+            r = ActiveCell.Row + gVim.Count1
+            If r > ActiveSheet.Rows.Count Then r = ActiveSheet.Rows.Count
+            ActiveSheet.Cells(r, ActiveCell.Column).Select
         End If
-        ActiveSheet.Cells(r, ActiveCell.Column).Select
+    Else
+        engine.MoveActiveCellBy gVim.Count1, 0
     End If
+    Exit Function
+
+Catch:
+    Call ErrorHandler("MoveDown")
 End Function
 
 Function MoveLeft()
-    Dim c As Long
-    If gVim.Count1 = 1 Then
-        keybd_event vbKeyLeft, 0, EXTENDED_KEY Or 0, 0
-        keybd_event vbKeyLeft, 0, EXTENDED_KEY Or KEYUP, 0
-    Else
-        c = ActiveCell.Column - gVim.Count1
-        If c < 1 Then
-            c = 1
+    On Error GoTo Catch
+
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Or IsShiftPressed() Then
+        Dim c As Long
+        If gVim.Count1 = 1 Then
+            keybd_event vbKeyLeft, 0, EXTENDED_KEY Or 0, 0
+            keybd_event vbKeyLeft, 0, EXTENDED_KEY Or KEYUP, 0
+        Else
+            c = ActiveCell.Column - gVim.Count1
+            If c < 1 Then c = 1
+            ActiveSheet.Cells(ActiveCell.Row, c).Select
         End If
-        ActiveSheet.Cells(ActiveCell.Row, c).Select
+    Else
+        engine.MoveActiveCellBy 0, -gVim.Count1
     End If
+    Exit Function
+
+Catch:
+    Call ErrorHandler("MoveLeft")
 End Function
 
 Function MoveRight()
-    Dim c As Long
-    If gVim.Count1 = 1 Then
-        keybd_event vbKeyRight, 0, EXTENDED_KEY Or 0, 0
-        keybd_event vbKeyRight, 0, EXTENDED_KEY Or KEYUP, 0
-    Else
-        c = ActiveCell.Column + gVim.Count1
-        If c > ActiveSheet.Columns.Count Then
-            c = ActiveSheet.Columns.Count
+    On Error GoTo Catch
+
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Or IsShiftPressed() Then
+        Dim c As Long
+        If gVim.Count1 = 1 Then
+            keybd_event vbKeyRight, 0, EXTENDED_KEY Or 0, 0
+            keybd_event vbKeyRight, 0, EXTENDED_KEY Or KEYUP, 0
+        Else
+            c = ActiveCell.Column + gVim.Count1
+            If c > ActiveSheet.Columns.Count Then c = ActiveSheet.Columns.Count
+            ActiveSheet.Cells(ActiveCell.Row, c).Select
         End If
-        ActiveSheet.Cells(ActiveCell.Row, c).Select
+    Else
+        engine.MoveActiveCellBy 0, gVim.Count1
     End If
+    Exit Function
+
+Catch:
+    Call ErrorHandler("MoveRight")
 End Function
 
 Private Function ResizeInner(Optional Up As Long = 0, _
                              Optional Down As Long = 0, _
                              Optional Left As Long = 0, _
                              Optional Right As Long = 0)
-    On Error GoTo Catch
+    On Error GoTo CleanFail
 
-    Dim r As Long
-    Dim c As Long
-    Dim firstRow As Long
-    Dim firstColumn As Long
-    Dim lastRow As Long
-    Dim lastColumn As Long
-    Dim screenTop As Long
-    Dim screenBottom As Long
-    Dim screenLeft As Long
-    Dim screenRight As Long
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
 
-    Dim actCell As Range
-    Dim baseRange As Range
-
-    '?l??????
-    r = Selection.Rows.Count
-    c = Selection.Columns.Count
-
-    firstRow = Selection.item(1).Row
-    firstColumn = Selection.item(1).Column
-    lastRow = Selection(Selection.Count).Row
-    lastColumn = Selection(Selection.Count).Column
-
-    screenTop = ActiveWindow.VisibleRange.item(1).Row
-    screenBottom = ActiveWindow.VisibleRange.item(ActiveWindow.VisibleRange.Count).Row - 1
-    screenLeft = ActiveWindow.VisibleRange.item(1).Column
-    screenRight = ActiveWindow.VisibleRange.item(ActiveWindow.VisibleRange.Count).Column - 1
-
-    '?Z????????????
-    Set actCell = ActiveCell
-    Set baseRange = Selection
-
-    '?????z???????????v?Z
-    If Up < 0 And -Up >= r Then
-        Down = -(r + Up) + 1
-        Up = 0
-        Set baseRange = baseRange.offset(rowOffset:=r - 1).Resize(RowSize:=1)
-    ElseIf Down < 0 And -Down >= r Then
-        Up = -(r + Down) + 1
-        Down = 0
-        Set baseRange = baseRange.Resize(RowSize:=1)
-    ElseIf Left < 0 And -Left >= c Then
-        Right = -(c + Left) + 1
-        Left = 0
-        Set baseRange = baseRange.offset(ColumnOffset:=c - 1).Resize(ColumnSize:=1)
-    ElseIf Right < 0 And -Right >= c Then
-        Left = -(c + Right) + 1
-        Right = 0
-        Set baseRange = baseRange.Resize(ColumnSize:=1)
-    End If
-
-    '???E???z???????????}????
-    If Up > 0 And firstRow <= Up Then
-        Up = firstRow - 1
-    ElseIf Down > 0 And lastRow + Down > ActiveSheet.Rows.Count Then
-        Down = ActiveSheet.Rows.Count - lastRow
-    ElseIf Left > 0 And firstColumn <= Left Then
-        Left = firstColumn - 1
-    ElseIf Right > 0 And lastColumn + Right > ActiveSheet.Columns.Count Then
-        Right = ActiveSheet.Columns.Count - lastColumn
-    End If
-
-    '????????????????????
-    If Up <> 0 Then
-        baseRange.offset(rowOffset:=-Up).Resize(RowSize:=baseRange.Rows.Count + Up).Select
-        SafeActivateRange actCell
-
-        ActiveWindow.ScrollRow = screenTop
-        ActiveWindow.ScrollColumn = screenLeft
-
-        If screenTop > firstRow - Up Then
-            ActiveWindow.SmallScroll Up:=screenTop - (firstRow - Up)
-        ElseIf screenBottom < firstRow - Up Then
-            ActiveWindow.SmallScroll Down:=(firstRow - Up) - screenBottom
-        End If
-
-    '????????????????????
-    ElseIf Down <> 0 Then
-        baseRange.Resize(RowSize:=baseRange.Rows.Count + Down).Select
-        SafeActivateRange actCell
-
-        ActiveWindow.ScrollRow = screenTop
-        ActiveWindow.ScrollColumn = screenLeft
-
-        If screenTop > lastRow + Down Then
-            ActiveWindow.SmallScroll Up:=screenTop - (lastRow + Down)
-        ElseIf screenBottom < lastRow + Down Then
-            ActiveWindow.SmallScroll Down:=(lastRow + Down) - screenBottom
-        End If
-
-    '????????????????????
-    ElseIf Left <> 0 Then
-        baseRange.offset(ColumnOffset:=-Left).Resize(ColumnSize:=baseRange.Columns.Count + Left).Select
-        SafeActivateRange actCell
-
-        ActiveWindow.ScrollRow = screenTop
-        ActiveWindow.ScrollColumn = screenLeft
-
-        If screenLeft > firstColumn - Left Then
-            ActiveWindow.SmallScroll ToLeft:=screenLeft - (firstColumn - Left)
-        ElseIf screenRight < firstColumn - Left Then
-            ActiveWindow.SmallScroll ToRight:=(firstColumn - Left) - screenRight
-        End If
-
-    '?E??????????????????
-    ElseIf Right <> 0 Then
-        baseRange.Resize(ColumnSize:=baseRange.Columns.Count + Right).Select
-        SafeActivateRange actCell
-
-        ActiveWindow.ScrollRow = screenTop
-        ActiveWindow.ScrollColumn = screenLeft
-
-        If screenLeft > lastColumn + Right Then
-            ActiveWindow.SmallScroll ToLeft:=screenLeft - (lastColumn + Right)
-        ElseIf screenRight < lastColumn + Right Then
-            ActiveWindow.SmallScroll ToRight:=(lastColumn + Right) - screenRight
-        End If
-
-    End If
-
-    Set actCell = Nothing
-    Set baseRange = Nothing
-
+    engine.ResizeSelection Up, Down, Left, Right
+CleanExit:
     Exit Function
-
-Catch:
+CleanFail:
     Call ErrorHandler("ResizeInner")
+    Resume CleanExit
 End Function
-
 Function MoveUpWithShift()
     Dim r As Long
     If gVim.Count1 = 1 Then
@@ -263,6 +185,10 @@ Function MoveRightWithShift()
             Call ResizeInner(Right:=gVim.Count1)
         End If
     End If
+End Function
+
+Private Function IsShiftPressed() As Boolean
+    IsShiftPressed = ((GetAsyncKeyState(vbKeyShift) And &H8000) <> 0)
 End Function
 
 Function MoveToFirstRow(Optional ByVal g As String) As Boolean

@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows.Forms;
 using Excel = Microsoft.Office.Interop.Excel;
 using Office = Microsoft.Office.Core;
@@ -700,32 +702,48 @@ namespace VantagePackageHolder
 
         public bool CopySelectionAsPicturePrintSafe()
         {
-            var selection = _app.Selection;
-            if (selection == null)
+            object selection = null;
+            try
+            {
+                selection = _app.Selection;
+            }
+            catch
             {
                 return false;
             }
 
-            if (!CopySelectionAsPicture(selection))
-            {
-                if (!CopySelectionAsPicture(ResolveFallbackCopyTarget(selection)))
-                {
-                    return false;
-                }
-            }
-
-            return _clipboard.ClipboardHasContent();
+            return CopySelectionAsPicturePrintSafeInternal(selection);
         }
 
         public void CopyPasteSelectionToPowerPoint()
         {
-            if (!CopySelectionAsPicturePrintSafe())
+            object selection = null;
+            try
             {
-                System.Windows.Forms.MessageBox.Show(
+                selection = _app.Selection;
+            }
+            catch
+            {
+                selection = null;
+            }
+
+            if (selection == null || string.Equals(GetComTypeName(selection), "Nothing", StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show(
+                    "Please select a range, chart, or shape first.",
+                    "Copy to PowerPoint",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Exclamation);
+                return;
+            }
+
+            if (!CopySelectionAsPicturePrintSafeInternal(selection))
+            {
+                MessageBox.Show(
                     "Unable to copy selection as picture (print view). Try selecting a different range or chart.",
                     "Copy to PowerPoint",
-                    System.Windows.Forms.MessageBoxButtons.OK,
-                    System.Windows.Forms.MessageBoxIcon.Exclamation);
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Exclamation);
                 return;
             }
 
@@ -833,6 +851,197 @@ namespace VantagePackageHolder
             }
         }
 
+        // ===== Formatting utilities migrated from VBA =====
+        public void IncreaseFontSize(int steps) => AdjustFontSize(Math.Max(1, steps));
+        public void DecreaseFontSize(int steps) => AdjustFontSize(-Math.Max(1, steps));
+
+        private void AdjustFontSize(int delta)
+        {
+            if (delta == 0)
+            {
+                return;
+            }
+
+            if (!RangeHelpers.TryGetRangeOrActiveCell(_app, out var sel))
+            {
+                return;
+            }
+
+            using (new UiGuard(_app))
+            {
+                double baseSize = ResolveFontSize(sel);
+                double updated = Math.Max(1d, baseSize + delta);
+                try { sel.Font.Size = updated; }
+                catch { }
+            }
+        }
+
+        private double ResolveFontSize(Excel.Range selection)
+        {
+            try
+            {
+                return Convert.ToDouble(selection.Font.Size);
+            }
+            catch
+            {
+                try
+                {
+                    var cell = _app.ActiveCell as Excel.Range;
+                    if (cell != null)
+                    {
+                        return Convert.ToDouble(cell.Font.Size);
+                    }
+                }
+                catch { }
+
+                return 11d;
+            }
+        }
+
+        public void AlignLeft() => ApplyHorizontalAlignment(Excel.XlHAlign.xlHAlignLeft);
+        public void AlignCenter() => ApplyHorizontalAlignment(Excel.XlHAlign.xlHAlignCenter);
+        public void AlignRight() => ApplyHorizontalAlignment(Excel.XlHAlign.xlHAlignRight);
+
+        public void AlignTop() => ApplyVerticalAlignment(Excel.XlVAlign.xlVAlignTop);
+        public void AlignMiddle() => ApplyVerticalAlignment(Excel.XlVAlign.xlVAlignCenter);
+        public void AlignBottom() => ApplyVerticalAlignment(Excel.XlVAlign.xlVAlignBottom);
+
+        private void ApplyHorizontalAlignment(Excel.XlHAlign alignment)
+        {
+            if (!RangeHelpers.TryGetRangeOrActiveCell(_app, out var sel))
+            {
+                return;
+            }
+
+            using (new UiGuard(_app))
+            {
+                try { sel.HorizontalAlignment = alignment; }
+                catch { }
+            }
+        }
+
+        private void ApplyVerticalAlignment(Excel.XlVAlign alignment)
+        {
+            if (!RangeHelpers.TryGetRangeOrActiveCell(_app, out var sel))
+            {
+                return;
+            }
+
+            using (new UiGuard(_app))
+            {
+                try { sel.VerticalAlignment = alignment; }
+                catch { }
+            }
+        }
+
+        public void ToggleBold() => ToggleFontBooleanProperty(f => f.Bold, (font, value) => font.Bold = value, defaultState: false);
+        public void ToggleItalic() => ToggleFontBooleanProperty(f => f.Italic, (font, value) => font.Italic = value, defaultState: false);
+        public void ToggleStrikethrough() => ToggleFontBooleanProperty(f => f.Strikethrough, (font, value) => font.Strikethrough = value, defaultState: false);
+
+        private void ToggleFontBooleanProperty(Func<Excel.Font, object> getter, Action<Excel.Font, bool> setter, bool defaultState)
+        {
+            if (getter == null || setter == null)
+            {
+                return;
+            }
+
+            if (!RangeHelpers.TryGetRangeOrActiveCell(_app, out var sel))
+            {
+                return;
+            }
+
+            using (new UiGuard(_app))
+            {
+                bool current = defaultState;
+                try
+                {
+                    var raw = getter(sel.Font);
+                    current = CoerceToBool(raw, defaultState);
+                }
+                catch
+                {
+                    current = defaultState;
+                }
+
+                try { setter(sel.Font, !current); }
+                catch { }
+            }
+        }
+
+        private bool CoerceToBool(object value, bool defaultValue)
+        {
+            switch (value)
+            {
+                case bool b:
+                    return b;
+                case int i:
+                    return i != 0;
+                case double d:
+                    return Math.Abs(d) > double.Epsilon;
+                default:
+                    return defaultValue;
+            }
+        }
+
+        public void ToggleUnderline()
+        {
+            if (!RangeHelpers.TryGetRangeOrActiveCell(_app, out var sel))
+            {
+                return;
+            }
+
+            using (new UiGuard(_app))
+            {
+                Excel.XlUnderlineStyle next = Excel.XlUnderlineStyle.xlUnderlineStyleSingle;
+                try
+                {
+                    var current = (Excel.XlUnderlineStyle)Convert.ToInt32(sel.Font.Underline);
+                    next = current == Excel.XlUnderlineStyle.xlUnderlineStyleNone
+                        ? Excel.XlUnderlineStyle.xlUnderlineStyleSingle
+                        : Excel.XlUnderlineStyle.xlUnderlineStyleNone;
+                }
+                catch
+                {
+                    next = Excel.XlUnderlineStyle.xlUnderlineStyleSingle;
+                }
+
+                try { sel.Font.Underline = next; }
+                catch { }
+            }
+        }
+
+        public void ShowFontDialog()
+        {
+            using (new UiGuard(_app))
+            {
+                try
+                {
+                    var dialog = _app.Dialogs[Excel.XlBuiltInDialog.xlDialogFormatFont];
+                    dialog?.Show();
+                }
+                catch
+                {
+                    // ignore dialog failures
+                }
+            }
+        }
+
+        public void ShowFormatNumberDialog()
+        {
+            using (new UiGuard(_app))
+            {
+                try
+                {
+                    var dialog = _app.Dialogs[Excel.XlBuiltInDialog.xlDialogFormatNumber];
+                    dialog?.Show();
+                }
+                catch
+                {
+                    // ignore dialog failures
+                }
+            }
+        }
+
         public void ClearFormatting()
         {
             if (!RangeHelpers.TryGetActiveRange(_app, out var sel)) return;
@@ -868,19 +1077,26 @@ namespace VantagePackageHolder
                 Excel.Range firstCell = null;
                 try
                 {
-                    firstCell = sel.Cells[1, 1] as Excel.Range;
                     int BLUE = ColorTranslator.ToOle(Color.FromArgb(0, 32, 96));
                     int RED = ColorTranslator.ToOle(Color.FromArgb(153, 0, 0));
                     int LIGHTBLUE = ColorTranslator.ToOle(Color.FromArgb(226, 234, 250));
 
                     int next = _cycleFmtNextStyle;
-                    int firstColor = Convert.ToInt32(firstCell.Font.Color);
-                    bool firstHasFill = Convert.ToInt32(firstCell.Interior.Pattern) != (int)Excel.XlPattern.xlPatternNone;
-                    int firstFill = firstHasFill ? Convert.ToInt32(firstCell.Interior.Color) : -1;
-                    if (firstColor == RED) next = 2;
-                    else if (firstHasFill && firstFill == BLUE) next = 3;
-                    else if (firstHasFill && firstFill == LIGHTBLUE) next = 0;
-                    else next = 1;
+                    if (selectionMoved)
+                    {
+                        next = 1;
+                    }
+                    else
+                    {
+                        firstCell = sel.Cells[1, 1] as Excel.Range;
+                        int firstColor = Convert.ToInt32(firstCell.Font.Color);
+                        bool firstHasFill = Convert.ToInt32(firstCell.Interior.Pattern) != (int)Excel.XlPattern.xlPatternNone;
+                        int firstFill = firstHasFill ? Convert.ToInt32(firstCell.Interior.Color) : -1;
+                        if (firstColor == RED) next = 2;
+                        else if (firstHasFill && firstFill == BLUE) next = 3;
+                        else if (firstHasFill && firstFill == LIGHTBLUE) next = 0;
+                        else next = 1;
+                    }
 
                     sel.Font.Name = "Garamond";
                     switch (next)
@@ -1525,7 +1741,14 @@ namespace VantagePackageHolder
 
             try
             {
-                chart.ChartArea.Format.Line.Visible = Office.MsoTriState.msoFalse;
+                try
+                {
+                    chart.ChartArea.Format.Line.Visible = Office.MsoTriState.msoFalse;
+                }
+                catch
+                {
+                    // ignore
+                }
             }
             catch
             {
@@ -1939,7 +2162,7 @@ namespace VantagePackageHolder
 
         private void ToggleBorder(BorderDescriptor descriptor, int lineStyle, int weight)
         {
-            if (!RangeHelpers.TryGetActiveRange(_app, out var selection))
+            if (!RangeHelpers.TryGetRangeOrActiveCell(_app, out var selection))
             {
                 return;
             }
@@ -1957,7 +2180,7 @@ namespace VantagePackageHolder
 
         private void DeleteBorder(BorderDescriptor descriptor)
         {
-            if (!RangeHelpers.TryGetActiveRange(_app, out var selection))
+            if (!RangeHelpers.TryGetRangeOrActiveCell(_app, out var selection))
             {
                 return;
             }
@@ -1971,7 +2194,7 @@ namespace VantagePackageHolder
 
         private void ApplyBorderColor(BorderDescriptor descriptor, BorderColorSpec spec)
         {
-            if (!RangeHelpers.TryGetActiveRange(_app, out var selection))
+            if (!RangeHelpers.TryGetRangeOrActiveCell(_app, out var selection))
             {
                 return;
             }
@@ -2579,257 +2802,248 @@ namespace VantagePackageHolder
         #endregion
 
         #region CopySelection helpers
-        private bool CopySelectionAsPicture(object target)
+        private bool CopySelectionAsPicturePrintSafeInternal(object selection)
         {
-            if (target == null)
+            if (selection == null)
             {
                 return false;
             }
 
-            if (target is Excel.Range range)
+            var typeName = GetComTypeName(selection);
+            if (string.Equals(typeName, "Nothing", StringComparison.OrdinalIgnoreCase))
             {
-                return CopyRangePictureReliable(range);
+                return false;
             }
 
-            if (TryCopyAsPicture(target, Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlPicture))
+            bool success;
+            switch (selection)
             {
-                return true;
-            }
-
-            if (TryCopyAsPicture(target, Excel.XlPictureAppearance.xlScreen, Excel.XlCopyPictureFormat.xlPicture))
-            {
-                return true;
-            }
-
-            object parent = target;
-            for (int i = 0; i < 10 && parent != null; i++)
-            {
-                parent = GetParent(parent);
-                if (parent == null)
-                {
+                case Excel.Range range:
+                    success = CopyRangePicture(range);
                     break;
-                }
-
-                if (TryCopyAsPicture(parent, Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlPicture))
-                {
-                    return true;
-                }
-                if (TryCopyAsPicture(parent, Excel.XlPictureAppearance.xlScreen, Excel.XlCopyPictureFormat.xlPicture))
-                {
-                    return true;
-                }
+                case Excel.ChartObject chartObject:
+                    success = CopyChartPicture(chartObject?.Chart);
+                    break;
+                case Excel.Chart chart:
+                    success = CopyChartPicture(chart);
+                    break;
+                case Excel.Shape shape:
+                    success = CopyShapePicture(shape);
+                    break;
+                default:
+                    success = CopyViaReflection(selection);
+                    break;
             }
 
-            return false;
+            if (success)
+            {
+                ClearCutCopyMode();
+            }
+
+            return success;
         }
 
-        private bool CopyRangePictureReliable(Excel.Range rng)
+        private bool CopyRangePicture(Excel.Range range)
         {
-            if (!RangeHelpers.IsRangeValid(rng))
+            if (!RangeHelpers.IsRangeValid(range))
             {
                 return false;
             }
 
-            Excel.Worksheet ws = rng.Worksheet;
-            Excel.Range area = rng.Areas.Count > 1 ? rng.Areas[1] : rng;
-
-            Excel.Window originalWindow = null;
-            Excel.Worksheet originalSheet = null;
+            Excel.Range area = range;
+            try
+            {
+                if (range.Areas.Count > 1)
+                {
+                    area = range.Areas[1] as Excel.Range ?? range;
+                }
+            }
+            catch
+            {
+                area = range;
+            }
 
             try
             {
-                originalWindow = _app.ActiveWindow;
-                originalSheet = originalWindow?.ActiveSheet as Excel.Worksheet;
+                (area.Worksheet?.Parent as Excel.Workbook)?.Activate();
+                area.Worksheet?.Activate();
+                RangeHelpers.SafeSelect(area);
             }
             catch
             {
                 // ignore
             }
 
-            for (int attempt = 1; attempt <= 4; attempt++)
+            if (TryCopyToClipboard(() => area.CopyPicture(Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlPicture)))
             {
-                _app.CutCopyMode = Excel.XlCutCopyMode.xlCopy;
-
-                try
-                {
-                    if (ws != null && ws != _app.ActiveSheet)
-                    {
-                        ws.Activate();
-                    }
-                }
-                catch
-                {
-                    // ignore
-                }
-
-                var anchorCell = area.Cells[1, 1] as Excel.Range;
-                if (anchorCell != null)
-                {
-                    RangeHelpers.SafeSelect(anchorCell);
-                }
-                try
-                {
-                    switch (attempt)
-                    {
-                        case 1:
-                            area.CopyPicture(Excel.XlPictureAppearance.xlScreen, Excel.XlCopyPictureFormat.xlPicture);
-                            break;
-                        case 2:
-                            area.CopyPicture(Excel.XlPictureAppearance.xlScreen, Excel.XlCopyPictureFormat.xlBitmap);
-                            break;
-                        case 3:
-                            area.CopyPicture(Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlPicture);
-                            break;
-                        default:
-                            area.CopyPicture(Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlBitmap);
-                            break;
-                    }
-
-                    WaitForClipboardReady(400);
-                    Excel.ShapeRange pastedRange = null;
-                    try
-                    {
-                        dynamic shapes = ws.Shapes;
-                        pastedRange = shapes.Paste();
-                    }
-                    catch
-                    {
-                        pastedRange = null;
-                    }
-                    if (pastedRange == null || pastedRange.Count == 0)
-                    {
-                        continue;
-                    }
-
-                    var shape = pastedRange.Item(1) as Excel.Shape;
-                    if (shape == null)
-                    {
-                        continue;
-                    }
-
-                    double w = Convert.ToDouble(area.Width);
-                    double h = Convert.ToDouble(area.Height);
-                    bool okSize = Math.Abs(Convert.ToDouble(shape.Width) - w) <= (w * 0.1 + 2) &&
-                                  Math.Abs(Convert.ToDouble(shape.Height) - h) <= (h * 0.1 + 2);
-                    shape.Copy();
-                    WaitForClipboardReady(500);
-                    shape.Delete();
-                    if (okSize)
-                    {
-                        return true;
-                    }
-                }
-                catch
-                {
-                    // ignore and retry
-                }
-
-                System.Windows.Forms.Application.DoEvents();
+                return true;
             }
 
-            try
+            if (TryCopyToClipboard(() => area.CopyPicture(Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlBitmap)))
             {
-                originalWindow?.Activate();
-                originalSheet?.Activate();
-            }
-            catch
-            {
-                // ignore
+                return true;
             }
 
-            return false;
+            if (TryCopyToClipboard(() => area.CopyPicture(Excel.XlPictureAppearance.xlScreen, Excel.XlCopyPictureFormat.xlPicture)))
+            {
+                return true;
+            }
+
+            return TryCopyToClipboard(() => area.Copy());
         }
 
-        private bool TryCopyAsPicture(object target, Excel.XlPictureAppearance appearance, Excel.XlCopyPictureFormat format)
+        private bool CopyChartPicture(Excel.Chart chart)
+        {
+            if (chart == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                (chart.Parent as Excel.Worksheet)?.Activate();
+                chart.Activate();
+            }
+            catch
+            {
+                // ignore
+            }
+
+            if (TryCopyToClipboard(() => chart.CopyPicture(Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlPicture)))
+            {
+                return true;
+            }
+
+            if (TryCopyToClipboard(() => chart.CopyPicture(Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlBitmap)))
+            {
+                return true;
+            }
+
+            return TryCopyToClipboard(() => chart.Copy());
+        }
+
+        private bool CopyShapePicture(Excel.Shape shape)
+        {
+            if (shape == null)
+            {
+                return false;
+            }
+
+            bool hasChart = false;
+            try
+            {
+                hasChart = Convert.ToBoolean(shape.HasChart);
+            }
+            catch
+            {
+                hasChart = false;
+            }
+
+            try
+            {
+                if (shape.Parent is Excel.Worksheet ws)
+                {
+                    (ws.Parent as Excel.Workbook)?.Activate();
+                    ws.Activate();
+                }
+
+                shape.Select();
+            }
+            catch
+            {
+                // ignore
+            }
+
+            if (hasChart && shape.Chart != null)
+            {
+                return CopyChartPicture(shape.Chart);
+            }
+
+            if (TryCopyToClipboard(() => shape.CopyPicture(Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlPicture)))
+            {
+                return true;
+            }
+
+            if (TryCopyToClipboard(() => shape.CopyPicture(Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlBitmap)))
+            {
+                return true;
+            }
+
+            return TryCopyToClipboard(() => shape.Copy());
+        }
+
+        private bool CopyViaReflection(object target)
+        {
+            if (TryInvokeCopyPicture(target, Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlPicture))
+            {
+                return true;
+            }
+
+            if (TryInvokeCopyPicture(target, Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlBitmap))
+            {
+                return true;
+            }
+
+            return TryInvokeCopy(target);
+        }
+
+        private bool TryCopyToClipboard(Action copyAction)
         {
             try
             {
-                switch (target)
-                {
-                    case Excel.Range range:
-                        range.CopyPicture(appearance, format);
-                        break;
-                    case Excel.Shape shape:
-                        shape.CopyPicture(appearance, format);
-                        break;
-                    case Excel.Chart chart:
-                        chart.CopyPicture(appearance, format);
-                        break;
-                    default:
-                        return false;
-                }
-
-                WaitForClipboardReady(400);
-                return _clipboard.ClipboardHasContent();
+                copyAction();
             }
             catch
             {
                 return false;
             }
+
+            WaitForClipboardReady(600);
+            return _clipboard.ClipboardHasContent();
         }
 
-        private object ResolveFallbackCopyTarget(object selection)
-        {
-            object probe = selection;
-            while (probe != null)
-            {
-                switch (probe)
-                {
-                    case Excel.Range _:
-                    case Excel.ChartObject _:
-                    case Excel.Chart _:
-                    case Excel.Shape _:
-                        return probe;
-                }
-
-                probe = GetParent(probe);
-            }
-
-            try
-            {
-                if (_app.ActiveChart != null)
-                {
-                    return _app.ActiveChart;
-                }
-            }
-            catch
-            {
-                // ignore
-            }
-
-            if (_app.Selection is Excel.Range range)
-            {
-                return range;
-            }
-
-            return null;
-        }
-
-        private static object GetParent(object obj)
+        private bool TryInvokeCopyPicture(object target, Excel.XlPictureAppearance appearance, Excel.XlCopyPictureFormat format)
         {
             try
             {
-                return obj.GetType().GetProperty("Parent")?.GetValue(obj);
+                target.GetType().InvokeMember(
+                    "CopyPicture",
+                    BindingFlags.InvokeMethod,
+                    null,
+                    target,
+                    new object[] { appearance, format });
             }
             catch
             {
-                return null;
+                return false;
             }
+
+            WaitForClipboardReady(600);
+            return _clipboard.ClipboardHasContent();
         }
 
-        private void WaitForClipboardReady(int maxMillis)
+        private bool TryInvokeCopy(object target)
         {
-            var start = DateTime.UtcNow;
-            while ((DateTime.UtcNow - start).TotalMilliseconds < maxMillis)
+            try
             {
-                if (_clipboard.ClipboardHasContent())
-                {
-                    return;
-                }
-
-                System.Windows.Forms.Application.DoEvents();
+                target.GetType().InvokeMember(
+                    "Copy",
+                    BindingFlags.InvokeMethod,
+                    null,
+                    target,
+                    Array.Empty<object>());
             }
+            catch
+            {
+                return false;
+            }
+
+            WaitForClipboardReady(600);
+            return _clipboard.ClipboardHasContent();
         }
+
+        private static string GetComTypeName(object obj)
+            => obj?.GetType().Name ?? string.Empty;
         #endregion
 
         private sealed class NumberFormatCycleState
@@ -3468,6 +3682,41 @@ namespace VantagePackageHolder
                 // ignore
             }
         }
+
+        private void ClearCutCopyMode()
+        {
+            try
+            {
+                _app.CutCopyMode = (Excel.XlCutCopyMode)0;
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        private void WaitForClipboardReady(int maxMillis)
+        {
+            var deadline = Environment.TickCount + Math.Max(50, maxMillis);
+            while (Environment.TickCount < deadline)
+            {
+                try
+                {
+                    if (_clipboard.ClipboardHasContent())
+                    {
+                        return;
+                    }
+                }
+                catch
+                {
+                    // ignore
+                }
+
+                Application.DoEvents();
+                Thread.Sleep(15);
+            }
+        }
     }
 }
+
 

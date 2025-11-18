@@ -379,28 +379,11 @@ Function NarrowRowsHeight(Optional ByVal g As String) As Boolean
     Call RepeatRegister("NarrowRowsHeight")
     Call StopVisualMode
 
-    Dim currentHeight As Double
-    Dim targetRows As Range
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
 
-    If TypeName(Selection) = "Range" Then
-        If Not IsNull(Selection.EntireRow.RowHeight) Then
-            currentHeight = Selection.EntireRow.RowHeight
-        Else
-            currentHeight = ActiveCell.EntireRow.RowHeight
-        End If
-        Set targetRows = Selection.EntireRow
-    Else
-        currentHeight = ActiveCell.EntireRow.RowHeight
-        Set targetRows = ActiveCell.EntireRow
-    End If
-
-    If currentHeight - gVim.Count1 < 0 Then
-        targetRows.EntireRow.RowHeight = 0
-    Else
-        targetRows.EntireRow.RowHeight = currentHeight - gVim.Count1
-    End If
-
-    Set targetRows = Nothing
+    engine.AdjustRowHeight -gVim.Count1
     Exit Function
 
 Catch:
@@ -413,28 +396,11 @@ Function WideRowsHeight(Optional ByVal g As String) As Boolean
     Call RepeatRegister("WideRowsHeight")
     Call StopVisualMode
 
-    Dim currentHeight As Double
-    Dim targetRows As Range
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
 
-    If TypeName(Selection) = "Range" Then
-        If Not IsNull(Selection.EntireRow.RowHeight) Then
-            currentHeight = Selection.EntireRow.RowHeight
-        Else
-            currentHeight = ActiveCell.EntireRow.RowHeight
-        End If
-        Set targetRows = Selection.EntireRow
-    Else
-        currentHeight = ActiveCell.EntireRow.RowHeight
-        Set targetRows = ActiveCell.EntireRow
-    End If
-
-    If currentHeight + gVim.Count1 > 409.5 Then
-        targetRows.EntireRow.RowHeight = 409.5
-    Else
-        targetRows.EntireRow.RowHeight = currentHeight + gVim.Count1
-    End If
-
-    Set targetRows = Nothing
+    engine.AdjustRowHeight gVim.Count1
     Exit Function
 
 Catch:

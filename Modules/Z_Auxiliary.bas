@@ -72,6 +72,19 @@ Function TogglePlainKeyMappings(Optional ByVal g As String) As Boolean
     Call SetStatusBarTemporarily(statusMessage, 2000)
 End Function
 
+Function OverrideShortcuts(Optional ByVal g As String) As Boolean
+    On Error GoTo CleanFail
+
+    Call StartVim
+CleanExit:
+    OverrideShortcuts = False
+    Exit Function
+
+CleanFail:
+    Call ErrorHandler("OverrideShortcuts")
+    Resume CleanExit
+End Function
+
 Public Function LaunchResearchLink(Optional ByVal g As String) As Boolean
     Dim target As String
     Select Case LCase$(Trim$(g))
@@ -447,14 +460,144 @@ Catch:
 End Sub
 
 Sub CopyPasteAsPictureToPPT()
-    Dim engine As Object
     On Error GoTo CleanFail
-    Set engine = NetAddin()
-    If engine Is Nothing Then Exit Sub
-    engine.CopySelectionToPowerPoint
+
+    Dim pptApp As Object
+    Dim pptWindow As Object
+    Dim pptSlide As Object
+    Dim pptShape As Object
+    Dim pastedShp As Object
+    Dim sel As Object
+    Dim hadTarget As Boolean
+    Dim targetLeft As Single, targetTop As Single, targetWidth As Single, targetHeight As Single
+    Dim desiredZ As Long, i As Long
+
+    If TypeName(Selection) = "Nothing" Then
+        MsgBox "Please select a range, chart, or shape first.", vbExclamation
+        Exit Sub
+    End If
+    Set sel = Selection
+
+    If Not CopySelectionAsPicturePrintSafe(sel) Then
+        MsgBox "Unable to copy selection as picture (print view). Try selecting a different range or chart.", vbExclamation
+        Exit Sub
+    End If
+
+    On Error Resume Next
+    Set pptApp = GetObject(, "PowerPoint.Application")
+    On Error GoTo CleanFail
+    If pptApp Is Nothing Then
+        MsgBox "PowerPoint is not running. Please open a presentation.", vbExclamation
+        Exit Sub
+    End If
+
+    Set pptWindow = pptApp.ActiveWindow
+    If pptWindow Is Nothing Then
+        MsgBox "No active PowerPoint window detected. Please select a slide and try again.", vbExclamation
+        Exit Sub
+    End If
+
+    Set pptSlide = pptWindow.View.Slide
+    If pptSlide Is Nothing Then
+        MsgBox "Please make sure a slide is selected in PowerPoint before running this command.", vbExclamation
+        Exit Sub
+    End If
+
+    On Error Resume Next
+    Set pptShape = pptWindow.Selection.ShapeRange
+    On Error GoTo 0
+    If Not pptShape Is Nothing Then
+        hadTarget = True
+        targetLeft = pptShape.Left
+        targetTop = pptShape.Top
+        targetWidth = pptShape.Width
+        targetHeight = pptShape.Height
+        If TypeName(pptShape) = "ShapeRange" And pptShape.Count > 0 Then
+            desiredZ = pptShape(1).ZOrderPosition
+        Else
+            desiredZ = pptShape.ZOrderPosition
+        End If
+    End If
+
+    On Error Resume Next
+    Set pastedShp = pptSlide.Shapes.PasteSpecial(DataType:=2)
+    If pastedShp Is Nothing Then Set pastedShp = pptSlide.Shapes.Paste
+    On Error GoTo CleanFail
+
+    If TypeName(pastedShp) = "ShapeRange" Then
+        Set pastedShp = pastedShp(1)
+    End If
+
+    If hadTarget Then
+        Dim scaledWidth As Double
+        Dim scaledHeight As Double
+        Dim scaleFactor As Double
+        Dim scaleY As Double
+        Dim offsetLeft As Double
+        Dim offsetTop As Double
+
+        scaledWidth = pastedShp.Width
+        scaledHeight = pastedShp.Height
+
+        If pastedShp.Width > 0 And pastedShp.Height > 0 Then
+            If targetWidth > 0 And targetHeight > 0 Then
+                scaleFactor = targetWidth / pastedShp.Width
+                scaleY = targetHeight / pastedShp.Height
+                If scaleY < scaleFactor Then scaleFactor = scaleY
+            ElseIf targetWidth > 0 Then
+                scaleFactor = targetWidth / pastedShp.Width
+            ElseIf targetHeight > 0 Then
+                scaleFactor = targetHeight / pastedShp.Height
+            Else
+                scaleFactor = 1
+            End If
+
+            If scaleFactor > 0 Then
+                scaledWidth = pastedShp.Width * scaleFactor
+                scaledHeight = pastedShp.Height * scaleFactor
+            End If
+        End If
+
+        pastedShp.Width = scaledWidth
+        pastedShp.Height = scaledHeight
+
+        If targetWidth > 0 Then
+            offsetLeft = targetLeft + (targetWidth - scaledWidth) / 2
+        Else
+            offsetLeft = targetLeft
+        End If
+
+        If targetHeight > 0 Then
+            offsetTop = targetTop + (targetHeight - scaledHeight) / 2
+        Else
+            offsetTop = targetTop
+        End If
+
+        pastedShp.Left = offsetLeft
+        pastedShp.Top = offsetTop
+
+        pptShape.Delete
+
+        If desiredZ > 0 Then
+            If desiredZ > pptSlide.Shapes.Count Then desiredZ = pptSlide.Shapes.Count
+            pastedShp.ZOrder msoSendToBack
+            For i = 1 To desiredZ - 1
+                pastedShp.ZOrder msoBringForward
+            Next i
+        End If
+    Else
+        With pastedShp
+            .Left = (pptSlide.Master.Width - .Width) / 2
+            .Top = (pptSlide.Master.Height - .Height) / 2
+        End With
+    End If
+
+    pastedShp.Select
+    pptApp.Activate
     Exit Sub
+
 CleanFail:
-    Call ErrorHandler("CopyPasteAsPictureToPPT")
+    MsgBox "Error: " & Err.Description, vbCritical, "CopyPasteAsPictureToPPT"
 End Sub
 
 
@@ -516,15 +659,222 @@ Private Sub CopyCellPresentation(ByVal srcCell As Range, ByVal destCell As Range
 End Sub
 
 Private Function CopySelectionAsPicturePrintSafe(sel As Object) As Boolean
-    Dim engine As Object
-    On Error GoTo CleanExit
-    Set engine = NetAddin()
-    If engine Is Nothing Then GoTo CleanExit
-    CopySelectionAsPicturePrintSafe = engine.CopySelectionAsPicturePrintSafe
-CleanExit:
+    Dim t As String
+    t = TypeName(sel)
+
+    On Error Resume Next
+
+    Select Case t
+        Case "Range"
+            sel.Parent.Activate
+            sel.Worksheet.Activate
+            sel.Select
+            Dim r As Range
+            Set r = sel
+            If r.Areas.Count > 1 Then Set r = r.Areas(1)
+
+            Err.Clear
+            r.CopyPicture appearance:=xlPrinter, format:=xlPicture
+            If Err.Number <> 0 Then
+                Err.Clear: r.CopyPicture appearance:=xlPrinter, format:=xlBitmap
+                If Err.Number <> 0 Then
+                    Err.Clear: r.CopyPicture appearance:=xlScreen, format:=xlPicture
+                    If Err.Number <> 0 Then
+                        Err.Clear: r.Copy
+                    End If
+                End If
+            End If
+
+        Case "ChartObject"
+            sel.Parent.Activate
+            sel.Activate
+            Err.Clear
+            sel.Chart.CopyPicture format:=xlPicture, appearance:=xlPrinter
+            If Err.Number <> 0 Then
+                Err.Clear: sel.Chart.CopyPicture format:=xlBitmap, appearance:=xlPrinter
+                If Err.Number <> 0 Then
+                    Err.Clear: sel.Chart.Copy
+                End If
+            End If
+
+        Case "Chart"
+            sel.Parent.Activate
+            sel.Activate
+            Err.Clear
+            sel.CopyPicture format:=xlPicture, appearance:=xlPrinter
+            If Err.Number <> 0 Then
+                Err.Clear: sel.CopyPicture format:=xlBitmap, appearance:=xlPrinter
+                If Err.Number <> 0 Then
+                    Err.Clear: sel.Copy
+                End If
+            End If
+
+        Case "Shape"
+            Dim hasChart As Boolean
+            hasChart = False
+            On Error Resume Next
+            hasChart = CBool(sel.HasChart)
+            On Error GoTo 0
+            sel.Parent.Parent.Activate
+            Err.Clear
+            If hasChart Then
+                sel.Chart.CopyPicture format:=xlPicture, appearance:=xlPrinter
+                If Err.Number <> 0 Then
+                    Err.Clear: sel.Chart.CopyPicture format:=xlBitmap, appearance:=xlPrinter
+                    If Err.Number <> 0 Then Err.Clear: sel.Chart.Copy
+                End If
+            Else
+                sel.Select
+                Err.Clear: sel.CopyPicture appearance:=xlPrinter, format:=xlPicture
+                If Err.Number <> 0 Then
+                    Err.Clear: sel.CopyPicture appearance:=xlPrinter, format:=xlBitmap
+                    If Err.Number <> 0 Then Err.Clear: sel.Copy
+                End If
+            End If
+
+        Case Else
+            Err.Clear
+            On Error Resume Next
+            CallByName sel, "CopyPicture", VbMethod, xlPrinter, xlPicture
+            If Err.Number <> 0 Then
+                Err.Clear: CallByName sel, "CopyPicture", VbMethod, xlPrinter, xlBitmap
+                If Err.Number <> 0 Then
+                    Err.Clear: CallByName sel, "Copy", VbMethod
+                End If
+            End If
+    End Select
+
+    Call WaitForClipboardReady(600)
+    CopySelectionAsPicturePrintSafe = HasClipboardContent()
+    On Error GoTo 0
 End Function
 
+Public Sub UnlockWorkbookAndSheets()
+    Dim targetWorkbook As Workbook
+    Dim ws As Worksheet
+    Dim unlockedSheets As Long
+    Dim failedList As String
+    Dim foundPassword As String
+    Dim workbookUnlocked As Boolean
 
+    Set targetWorkbook = ThisWorkbook
+
+    If IsTargetProtected(targetWorkbook) Then
+        workbookUnlocked = AttemptHashBypass(targetWorkbook, foundPassword)
+        If Not workbookUnlocked Then
+            failedList = "Workbook structure/windows" & vbNewLine
+        End If
+    End If
+
+    For Each ws In targetWorkbook.Worksheets
+        If IsTargetProtected(ws) Then
+            If AttemptHashBypass(ws, foundPassword) Then
+                unlockedSheets = unlockedSheets + 1
+            Else
+                failedList = failedList & ws.Name & vbNewLine
+            End If
+        End If
+    Next ws
+
+    If Len(failedList) = 0 Then
+        MsgBox "Finished: unlocked " & unlockedSheets & " protected sheet(s)." & IIf(workbookUnlocked, _
+            vbNewLine & "Workbook structure/windows also unlocked.", vbNullString), vbInformation
+    Else
+        MsgBox "Finished but the following items are still protected:" & vbNewLine & failedList, vbExclamation
+    End If
+End Sub
+
+Private Function AttemptHashBypass(ByVal target As Object, ByRef recoveredPassword As String) As Boolean
+    Dim alphabet(0 To 1) As Integer
+    Dim positions(1 To 12) As Integer
+    Dim candidate As String
+    Dim idx As Integer
+    Dim done As Boolean
+
+    alphabet(0) = 65
+    alphabet(1) = 66
+
+    For idx = LBound(positions) To UBound(positions)
+        positions(idx) = alphabet(0)
+    Next idx
+
+    AttemptHashBypass = TryUnprotectTarget(target, "", recoveredPassword)
+    If AttemptHashBypass Then Exit Function
+
+    Do While Not done
+        candidate = BuildCandidate(positions)
+        If TryUnprotectTarget(target, candidate, recoveredPassword) Then
+            AttemptHashBypass = True
+            Exit Function
+        End If
+
+        done = Not IncrementPositions(positions, alphabet)
+    Loop
+End Function
+
+Private Function TryUnprotectTarget(ByVal target As Object, ByVal passwordAttempt As String, ByRef recoveredPassword As String) As Boolean
+    Dim typeNameValue As String
+    Dim stillProtected As Boolean
+
+    typeNameValue = TypeName(target)
+
+    On Error Resume Next
+    target.Unprotect passwordAttempt
+
+    Select Case typeNameValue
+        Case "Worksheet"
+            stillProtected = target.ProtectContents Or target.ProtectDrawingObjects Or target.ProtectScenarios
+        Case "Workbook"
+            stillProtected = target.ProtectStructure Or target.ProtectWindows
+        Case Else
+            stillProtected = target.ProtectContents
+    End Select
+    On Error GoTo 0
+
+    If Not stillProtected Then
+        recoveredPassword = passwordAttempt
+        TryUnprotectTarget = True
+    End If
+End Function
+
+Private Function BuildCandidate(ByRef positions() As Integer) As String
+    Dim idx As Integer
+
+    BuildCandidate = ""
+    For idx = LBound(positions) To UBound(positions)
+        BuildCandidate = BuildCandidate & Chr$(positions(idx))
+    Next idx
+End Function
+
+Private Function IncrementPositions(ByRef positions() As Integer, ByRef alphabet() As Integer) As Boolean
+    Dim idx As Integer
+
+    For idx = UBound(positions) To LBound(positions) Step -1
+        If positions(idx) = alphabet(UBound(alphabet)) Then
+            positions(idx) = alphabet(LBound(alphabet))
+        Else
+            positions(idx) = alphabet(LBound(alphabet)) + 1
+            IncrementPositions = True
+            Exit Function
+        End If
+    Next idx
+End Function
+
+Private Function IsTargetProtected(ByVal target As Object) As Boolean
+    Dim typeNameValue As String
+
+    typeNameValue = TypeName(target)
+    Select Case typeNameValue
+        Case "Worksheet"
+            IsTargetProtected = target.ProtectContents Or target.ProtectDrawingObjects Or target.ProtectScenarios
+        Case "Workbook"
+            IsTargetProtected = target.ProtectStructure Or target.ProtectWindows
+        Case Else
+            On Error Resume Next
+            IsTargetProtected = target.ProtectContents
+            On Error GoTo 0
+    End Select
+End Function
 
 '===========================================
 ' Quick font helpers
@@ -1177,107 +1527,29 @@ Fail:
 End Function
 
 Sub FlipSign()
-    Dim uiGuard As ExcelUiGuard
-    Set uiGuard = SuppressExcelUi(True)
-    Dim sel As Range
-    Dim cell As Range
-    Dim formulaText As String
-    Dim arrayWarning As Boolean
-    Dim innerFormula As String
-    ' Ensure a valid range is selected
-    If TypeName(Selection) <> "Range" Then Exit Sub
-    If Selection.CountLarge = 0 Then Exit Sub
-    Set sel = Selection
-    ' Loop through all cells in the selection
-    For Each cell In sel.Cells
-        If cell.HasArray Then
-            arrayWarning = True
-        ElseIf cell.hasFormula Then
-            If Not IsError(cell.value) And IsNumeric(cell.value) And Not IsEmpty(cell.value) Then
-                formulaText = cell.formula
-                If Len(formulaText) > 3 _
-                    And Left$(formulaText, 3) = "=-(" _
-                    And Right$(formulaText, 1) = ")" Then
-                    innerFormula = Mid$(formulaText, 4, Len(formulaText) - 4)
-                    cell.formula = "=" & innerFormula
-                ElseIf Len(formulaText) > 1 And Left$(formulaText, 1) = "=" Then
-                    cell.formula = "=-(" & Mid$(formulaText, 2) & ")"
-                End If
-            End If
-        ElseIf Not IsError(cell.value) Then
-            If IsNumeric(cell.value) And Not IsEmpty(cell.value) Then
-                cell.value = -cell.value
-            End If
-        End If
-    Next cell
-    If arrayWarning Then
-        Call SetStatusBarTemporarily("Skipped array formulas when flipping signs.", 2000)
-    End If
+    On Error GoTo CleanFail
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Sub
+    engine.FlipSign
+CleanExit:
+    Exit Sub
+CleanFail:
+    Call ErrorHandler("FlipSign")
+    Resume CleanExit
 End Sub
 
 Sub ReverseSelectionOrder()
-    Dim uiGuard As ExcelUiGuard
-    Set uiGuard = SuppressExcelUi(True)
-    On Error GoTo Catch
-
-    Dim sel As Range
-    Dim cell As Range
-    Dim total As Long
-    Dim values() As Variant
-    Dim formulas() As String
-    Dim hasFormula() As Boolean
-    Dim i As Long
-    Dim srcIndex As Long
-
-    If TypeName(Selection) <> "Range" Then Exit Sub
-    If Selection.Areas.Count > 1 Then
-        Call SetStatusBarTemporarily("Reverse order requires a contiguous range.", 2000)
-        Exit Sub
-    End If
-
-    Set sel = Selection
-    total = sel.Cells.CountLarge
-    If total < 2 Then Exit Sub
-
-    ReDim values(1 To total)
-    ReDim formulas(1 To total)
-    ReDim hasFormula(1 To total)
-
-    i = 1
-    For Each cell In sel.Cells
-        If cell.MergeCells Then
-            Call SetStatusBarTemporarily("Reverse order skips merged cells.", 2000)
-            Exit Sub
-        End If
-        If cell.HasArray Then
-            Call SetStatusBarTemporarily("Reverse order does not support array formulas.", 2000)
-            Exit Sub
-        End If
-        hasFormula(i) = cell.hasFormula
-        If hasFormula(i) Then
-            formulas(i) = cell.formula
-        Else
-            values(i) = cell.value
-        End If
-        i = i + 1
-    Next cell
-
-    For i = 1 To total
-        srcIndex = total - i + 1
-        With sel.Cells(i)
-            If hasFormula(srcIndex) Then
-                .formula = formulas(srcIndex)
-            Else
-                .value = values(srcIndex)
-            End If
-        End With
-    Next i
-
-    Call SetStatusBarTemporarily("Selection order reversed.", 2000)
+    On Error GoTo CleanFail
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Sub
+    engine.ReverseSelectionOrder
+CleanExit:
     Exit Sub
-
-Catch:
+CleanFail:
     Call ErrorHandler("ReverseSelectionOrder")
+    Resume CleanExit
 End Sub
 
 Sub FormatChart_FG()
@@ -1377,8 +1649,8 @@ Sub MoveLeftSmart()
     If gScrollLockMode Then ScrollLockScroll 0, -steps: gVim.Count1 = 1: Exit Sub
     Set engine = NetAddin()
     If engine Is Nothing Then GoTo FallBackLeft
-    If Not engine.MoveSelectedLabels(-DATA_LABEL_STEP, 0#) Then
-        If Not engine.MoveSelectedChart(-CHART_MOVE_STEP, 0#) Then GoTo FallBackLeft
+    If Not engine.MoveSelectedLabels(-DATA_LABEL_STEP * steps, 0#) Then
+        If Not engine.MoveSelectedChart(-CHART_MOVE_STEP * steps, 0#) Then GoTo FallBackLeft
     End If
     gVim.Count1 = 1
     Exit Sub
@@ -1393,8 +1665,8 @@ Sub MoveRightSmart()
     If gScrollLockMode Then ScrollLockScroll 0, steps: gVim.Count1 = 1: Exit Sub
     Set engine = NetAddin()
     If engine Is Nothing Then GoTo FallBackRight
-    If Not engine.MoveSelectedLabels(DATA_LABEL_STEP, 0#) Then
-        If Not engine.MoveSelectedChart(CHART_MOVE_STEP, 0#) Then GoTo FallBackRight
+    If Not engine.MoveSelectedLabels(DATA_LABEL_STEP * steps, 0#) Then
+        If Not engine.MoveSelectedChart(CHART_MOVE_STEP * steps, 0#) Then GoTo FallBackRight
     End If
     gVim.Count1 = 1
     Exit Sub
@@ -1409,8 +1681,8 @@ Sub MoveUpSmart()
     If gScrollLockMode Then ScrollLockScroll -steps, 0: gVim.Count1 = 1: Exit Sub
     Set engine = NetAddin()
     If Not engine Is Nothing Then
-        If engine.MoveSelectedLabels(0#, -DATA_LABEL_STEP) Then gVim.Count1 = 1: Exit Sub
-        If engine.MoveSelectedChart(0#, -CHART_MOVE_STEP) Then gVim.Count1 = 1: Exit Sub
+        If engine.MoveSelectedLabels(0#, -DATA_LABEL_STEP * steps) Then gVim.Count1 = 1: Exit Sub
+        If engine.MoveSelectedChart(0#, -CHART_MOVE_STEP * steps) Then gVim.Count1 = 1: Exit Sub
     End If
     Dim i As Long: For i = 1 To steps: KeyStroke Up_: Next i
     gVim.Count1 = 1
@@ -1422,8 +1694,8 @@ Sub MoveDownSmart()
     If gScrollLockMode Then ScrollLockScroll steps, 0: gVim.Count1 = 1: Exit Sub
     Set engine = NetAddin()
     If Not engine Is Nothing Then
-        If engine.MoveSelectedLabels(0#, DATA_LABEL_STEP) Then gVim.Count1 = 1: Exit Sub
-        If engine.MoveSelectedChart(0#, CHART_MOVE_STEP) Then gVim.Count1 = 1: Exit Sub
+        If engine.MoveSelectedLabels(0#, DATA_LABEL_STEP * steps) Then gVim.Count1 = 1: Exit Sub
+        If engine.MoveSelectedChart(0#, CHART_MOVE_STEP * steps) Then gVim.Count1 = 1: Exit Sub
     End If
     Dim i As Long: For i = 1 To steps: KeyStroke Down_: Next i
     gVim.Count1 = 1
@@ -1698,3 +1970,208 @@ Private Function IsAltKeyDown() As Boolean
                    Or ((GetAsyncKeyState(AltRight_) And &H8000) <> 0)
 End Function
 
+'===========================================
+' Workbook utilities
+'===========================================
+Sub Econs_Output_PPT_V2()
+    Const layoutName As String = "content no text"
+    Const targetSheetName As String = "Inputs"
+
+    Dim originalCalc As XlCalculation
+    Dim originalEvents As Boolean
+    Dim originalScreen As Boolean
+
+    originalCalc = Application.Calculation
+    originalEvents = Application.EnableEvents
+    originalScreen = Application.ScreenUpdating
+
+    On Error GoTo CleanFail
+    Application.EnableEvents = False
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+
+    Dim pptApp As Object, pptPres As Object
+    Dim slide As Object, customLayout As Object
+    Dim wb As Workbook, wsInputs As Worksheet, pic As Object
+    Dim slideWidth As Single
+    Dim cases As Variant, c As Variant
+    Dim userInput As String
+    Dim i As Long, key As Variant
+    Dim rng As Range
+    Dim ws As Worksheet
+    Dim restartInput As Boolean
+    Dim caseCell As Range
+    Static wbOutputMap As Object
+    Static wbOutputOwner As String
+
+    Set wb = ActiveWorkbook
+    If wb Is Nothing Then
+        MsgBox "No active workbook found. Please open your Excel file and try again.", vbExclamation
+        GoTo CleanExit
+    End If
+
+    Set wsInputs = Nothing
+    For Each ws In wb.Worksheets
+        If StrComp(ws.Name, targetSheetName, vbTextCompare) = 0 Then
+            Set wsInputs = ws
+            Exit For
+        End If
+    Next ws
+    If wsInputs Is Nothing Then
+        MsgBox "Worksheet '" & targetSheetName & "' was not found in " & wb.Name & ".", vbExclamation
+        GoTo CleanExit
+    End If
+
+    Set caseCell = Nothing
+    On Error Resume Next
+    Set caseCell = wsInputs.Range("case1")
+    If caseCell Is Nothing Then
+        Set caseCell = wb.Names("case1").RefersToRange
+    End If
+    On Error GoTo 0
+    If caseCell Is Nothing Then
+        MsgBox "Named cell or range 'case1' was not found on the Inputs sheet.", vbExclamation
+        GoTo CleanExit
+    End If
+
+    If wbOutputMap Is Nothing Then Set wbOutputMap = CreateObject("Scripting.Dictionary")
+    If wbOutputOwner <> wb.FullName Then
+        wbOutputMap.RemoveAll
+        wbOutputOwner = wb.FullName
+    End If
+
+    On Error Resume Next
+    Set pptApp = GetObject(Class:="PowerPoint.Application")
+    If pptApp Is Nothing Then Set pptApp = CreateObject(Class:="PowerPoint.Application")
+    On Error GoTo CleanFail
+    If pptApp Is Nothing Then
+        MsgBox "Unable to start PowerPoint.", vbExclamation
+        GoTo CleanExit
+    End If
+    pptApp.Visible = True
+
+    If pptApp.Presentations.Count = 0 Then
+        MsgBox "No PowerPoint presentations are open. Please open one and try again.", vbExclamation
+        GoTo CleanExit
+    End If
+    Set pptPres = pptApp.ActivePresentation
+
+    Set customLayout = Nothing
+    Dim d As Object, cl As Object
+    For Each d In pptPres.Designs
+        For Each cl In d.SlideMaster.CustomLayouts
+            If LCase$(cl.Name) = layoutName Then
+                Set customLayout = cl
+                Exit For
+            End If
+        Next cl
+        If Not customLayout Is Nothing Then Exit For
+    Next d
+    If customLayout Is Nothing Then
+        MsgBox "Custom layout '" & layoutName & "' not found in the active presentation.", vbExclamation
+        GoTo CleanExit
+    End If
+    slideWidth = pptPres.PageSetup.SlideWidth
+
+SelectOutputs:
+    If wbOutputMap.Count = 0 Or restartInput Then
+        wbOutputMap.RemoveAll
+        Dim numOutputs As Long
+        Dim outName As String, rngName As String
+        Dim defaultsNames As Variant
+        Dim defaultsRanges As Variant
+        Dim idx As Long
+
+        defaultsNames = Array("Cash Flows", "Valuations & Returns", "Operating Build", "Output 4", "Output 5")
+        defaultsRanges = Array("CF", "RET", "OP", "OUT4", "OUT5")
+
+        numOutputs = Application.InputBox("How many outputs to create? (1-5)", "Number of Outputs", 2, , , , , 1)
+        If numOutputs < 1 Or numOutputs > 5 Then GoTo CleanExit
+
+        For idx = 1 To numOutputs
+            Dim namePrompt As String
+            Dim rangePrompt As String
+            Dim defaultName As String
+            Dim defaultRange As String
+
+            If idx <= UBound(defaultsNames) + 1 Then
+                defaultName = defaultsNames(idx - 1)
+                defaultRange = defaultsRanges(idx - 1)
+            Else
+                defaultName = "Output " & idx
+                defaultRange = "OUT" & idx
+            End If
+
+            namePrompt = "Enter display name for output #" & idx & ":"
+            rangePrompt = "Enter named range for '" & defaultName & "':"
+
+            outName = InputBox(namePrompt, "Output Name", defaultName)
+            If Trim$(outName) = "" Then GoTo CleanExit
+            rngName = InputBox(rangePrompt, "Named Range", defaultRange)
+            If Trim$(rngName) = "" Then GoTo CleanExit
+            wbOutputMap(outName) = rngName
+        Next idx
+
+        restartInput = False
+    End If
+
+CasesInput:
+    userInput = InputBox("Enter the cases to print, separated by commas:" & vbCrLf & _
+                         "Type 'restart' to change output selection.", _
+                         "Case Selection", "Base, Upside, Downside")
+    If Trim$(userInput) = "" Then GoTo CleanExit
+    If LCase$(Trim$(userInput)) = "restart" Then
+        restartInput = True
+        GoTo SelectOutputs
+    End If
+
+    cases = Split(userInput, ",")
+
+    Dim caseName As String
+    For i = LBound(cases) To UBound(cases)
+        caseName = Trim$(cases(i))
+        If caseName <> "" Then
+            caseCell.Value = caseName
+            Application.CalculateFull
+            DoEvents
+
+            For Each key In wbOutputMap.Keys
+                Set rng = Nothing
+                On Error Resume Next
+                Set rng = wb.Names(wbOutputMap(key)).RefersToRange
+                On Error GoTo 0
+
+                If rng Is Nothing Then
+                    MsgBox "Named range '" & wbOutputMap(key) & "' not found. Skipping output '" & key & "'.", vbExclamation
+                Else
+                    Set slide = pptPres.Slides.AddSlide(pptPres.Slides.Count + 1, customLayout)
+                    rng.CopyPicture Appearance:=xlPrinter, Format:=xlPicture
+                    slide.Shapes.Paste
+                    Set pic = slide.Shapes(slide.Shapes.Count)
+                    With pic
+                        .LockAspectRatio = msoTrue
+                        If .Width > 0 Then .ScaleWidth (9.5 * 72) / .Width, msoFalse, msoScaleFromTopLeft
+                        .Left = (slideWidth - .Width) / 2
+                        .Top = 0.74 * 72
+                    End With
+
+                    If Not slide.Shapes.Title Is Nothing Then
+                        slide.Shapes.Title.TextFrame.TextRange.Text = key & " | " & caseName
+                    End If
+                End If
+            Next key
+        End If
+    Next i
+
+CleanExit:
+    On Error Resume Next
+    Application.Calculation = originalCalc
+    Application.ScreenUpdating = originalScreen
+    Application.EnableEvents = originalEvents
+    On Error GoTo 0
+    Exit Sub
+
+CleanFail:
+    MsgBox "Error running econs export: " & Err.Description, vbCritical
+    Resume CleanExit
+End Sub

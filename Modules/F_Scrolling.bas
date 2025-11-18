@@ -15,178 +15,96 @@ Private Enum eColumnSearchMode
 End Enum
 
 Private Function ActivateCellInVisibleRange()
-    On Error GoTo Catch
-
-    Dim targetRow As Long
-    Dim targetColumn As Long
-    Dim visibleTop As Long, visibleBottom As Long
-    Dim visibleLeft As Long, visibleRight As Long
-
-    targetRow = ActiveCell.Row
-    targetColumn = ActiveCell.Column
-
-    With ActiveWindow.VisibleRange
-        visibleTop = .item(1).Row
-        visibleBottom = PointToRow(.item(.Count).Top - 1, xlNone)
-        visibleLeft = .item(1).Column
-        visibleRight = PointToColumn(.item(.Count).Left - 1, xlNone)
-    End With
-
-    If targetRow < visibleTop Then
-        targetRow = visibleTop
-    ElseIf targetRow > visibleBottom Then
-        targetRow = visibleBottom
-    End If
-
-    If targetColumn < visibleLeft Then
-        targetColumn = visibleLeft
-    ElseIf targetColumn > visibleRight Then
-        targetColumn = visibleRight
-    End If
-
-    If TypeName(Selection) = "Range" Then
-        If ActiveCell.Row <> targetRow Or ActiveCell.Column <> targetColumn Then
-            SafeActivateRange Cells(targetRow, targetColumn)
-            ActiveWindow.ScrollRow = visibleTop
-            ActiveWindow.ScrollColumn = visibleLeft
-        End If
-    End If
+    On Error GoTo CleanFail
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
+    engine.EnsureActiveCellVisible
+CleanExit:
     Exit Function
-
-Catch:
+CleanFail:
     Call ErrorHandler("ActivateCellInVisibleRange")
+    Resume CleanExit
 End Function
 
 Function ScrollUpHalf(Optional ByVal g As String) As Boolean
-    On Error GoTo Catch
+    On Error GoTo CleanFail
 
-    Dim topRowVisible As Long
-    Dim scrollWidth As Integer
-    Dim targetRow As Long
+    Dim engine As Object
+    Dim repeatCount As Long
 
-    If gVim.Count1 > 1 Then
-        Application.ScreenUpdating = False
-        ActiveWindow.LargeScroll Up:=gVim.Count1 \ 2
-        Application.ScreenUpdating = True
-    End If
+    repeatCount = gVim.Count1
+    If repeatCount < 1 Then repeatCount = 1
 
-    If (gVim.Count1 And 1) = 1 Then
-        topRowVisible = ActiveWindow.VisibleRange.Row
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
 
-        scrollWidth = ActiveWindow.VisibleRange.Rows.Count / 2
-        targetRow = topRowVisible - scrollWidth
-
-        If targetRow < 1 Then
-            targetRow = 1
-        End If
-
-        ActiveWindow.SmallScroll Up:=scrollWidth
-    End If
-
-    Call ActivateCellInVisibleRange
+    engine.ScrollHalf True, repeatCount
+CleanExit:
     Exit Function
-
-Catch:
+CleanFail:
     Call ErrorHandler("ScrollUpHalf")
+    Resume CleanExit
 End Function
 
 Function ScrollDownHalf(Optional ByVal g As String) As Boolean
-    On Error GoTo Catch
+    On Error GoTo CleanFail
 
-    Dim topRowVisible As Long
-    Dim scrollWidth As Integer
-    Dim targetRow As Long
+    Dim engine As Object
+    Dim repeatCount As Long
 
-    If gVim.Count1 > 1 Then
-        Application.ScreenUpdating = False
-        ActiveWindow.LargeScroll Down:=gVim.Count1 \ 2
-        Application.ScreenUpdating = True
-    End If
+    repeatCount = gVim.Count1
+    If repeatCount < 1 Then repeatCount = 1
 
-    If (gVim.Count1 And 1) = 1 Then
-        topRowVisible = ActiveWindow.VisibleRange.Row
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
 
-        scrollWidth = ActiveWindow.VisibleRange.Rows.Count / 2
-        targetRow = topRowVisible + scrollWidth
-
-        If targetRow > ActiveSheet.Rows.Count Then
-            targetRow = ActiveSheet.Rows.Count
-        End If
-
-        ActiveWindow.SmallScroll Down:=scrollWidth
-    End If
-
-    Call ActivateCellInVisibleRange
+    engine.ScrollHalf False, repeatCount
+CleanExit:
     Exit Function
-
-Catch:
+CleanFail:
     Call ErrorHandler("ScrollDownHalf")
+    Resume CleanExit
 End Function
 
 Function ScrollLeftHalf(Optional ByVal g As String) As Boolean
-    On Error GoTo Catch
+    On Error GoTo CleanFail
 
-    Dim leftColVisible As Long
-    Dim scrollWidth As Integer
-    Dim targetCol As Long
+    Dim engine As Object
+    Dim repeats As Long
 
-    If gVim.Count1 > 1 Then
-        Application.ScreenUpdating = False
-        ActiveWindow.LargeScroll ToLeft:=gVim.Count1 \ 2
-        Application.ScreenUpdating = True
-    End If
+    repeats = gVim.Count1
+    If repeats < 1 Then repeats = 1
 
-    If (gVim.Count1 And 1) = 1 Then
-        leftColVisible = ActiveWindow.VisibleRange.Column
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
 
-        scrollWidth = ActiveWindow.VisibleRange.Columns.Count / 2
-        targetCol = leftColVisible - scrollWidth
-
-        If targetCol < 1 Then
-            targetCol = 1
-        End If
-
-        ActiveWindow.SmallScroll ToLeft:=scrollWidth
-    End If
-
-    Call ActivateCellInVisibleRange
+    engine.ScrollHalfHorizontal True, repeats
+CleanExit:
     Exit Function
-
-Catch:
+CleanFail:
     Call ErrorHandler("ScrollLeftHalf")
+    Resume CleanExit
 End Function
 
 Function ScrollRightHalf(Optional ByVal g As String) As Boolean
-    On Error GoTo Catch
+    On Error GoTo CleanFail
 
-    Dim leftColVisible As Long
-    Dim scrollWidth As Integer
-    Dim targetCol As Long
+    Dim engine As Object
+    Dim repeats As Long
 
-    If gVim.Count1 > 1 Then
-        Application.ScreenUpdating = False
-        ActiveWindow.LargeScroll ToRight:=gVim.Count1 \ 2
-        Application.ScreenUpdating = True
-    End If
+    repeats = gVim.Count1
+    If repeats < 1 Then repeats = 1
 
-    If (gVim.Count1 And 1) = 1 Then
-        leftColVisible = ActiveWindow.VisibleRange.Column
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
 
-        scrollWidth = ActiveWindow.VisibleRange.Columns.Count / 2
-        targetCol = leftColVisible + scrollWidth
-
-        If targetCol > ActiveSheet.Columns.Count Then
-            targetCol = ActiveSheet.Columns.Count
-        End If
-
-        ActiveWindow.SmallScroll ToRight:=scrollWidth
-    End If
-
-    Call ActivateCellInVisibleRange
+    engine.ScrollHalfHorizontal False, repeats
+CleanExit:
     Exit Function
-
-Catch:
+CleanFail:
     Call ErrorHandler("ScrollRightHalf")
+    Resume CleanExit
 End Function
 
 
@@ -529,60 +447,109 @@ Private Function GetRealUsableWidth() As Double
 End Function
 
 Function ScrollCurrentTop(Optional ByVal g As String) As Boolean
+    On Error GoTo CleanFail
+
+    Dim engine As Object
     If gVim.Count > 0 Then
         Call MoveToSpecifiedRow(CStr(gVim.Count))
     End If
-    ActiveWindow.ScrollRow = PointToRow(ActiveCell.Top - GetLengthWithZoomConsidered(gVim.Config.ScrollOffset), modeTop)
+
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
+    engine.ScrollActiveRowToTop gVim.Config.ScrollOffset
+CleanExit:
+    Exit Function
+CleanFail:
+    Call ErrorHandler("ScrollCurrentTop")
+    Resume CleanExit
 End Function
 
 Function ScrollCurrentBottom(Optional ByVal g As String) As Boolean
+    On Error GoTo CleanFail
+
+    Dim engine As Object
     If gVim.Count > 0 Then
         Call MoveToSpecifiedRow(CStr(gVim.Count))
     End If
 
-    Dim uh As Double
-    uh = GetRealUsableHeight()
-
-    ActiveWindow.ScrollRow = PointToRow(ActiveCell.Top + ActiveCell.Height - GetLengthWithZoomConsidered(uh - gVim.Config.ScrollOffset), modeBottom)
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
+    engine.ScrollActiveRowToBottom gVim.Config.ScrollOffset
+CleanExit:
+    Exit Function
+CleanFail:
+    Call ErrorHandler("ScrollCurrentBottom")
+    Resume CleanExit
 End Function
 
 Function ScrollCurrentMiddle(Optional ByVal g As String) As Boolean
+    On Error GoTo CleanFail
+
+    Dim engine As Object
     If gVim.Count > 0 Then
         Call MoveToSpecifiedRow(CStr(gVim.Count))
     End If
 
-    Dim uh As Double
-    uh = GetRealUsableHeight()
-
-    ActiveWindow.ScrollRow = PointToRow(ActiveCell.Top + ActiveCell.Height / 2 - GetLengthWithZoomConsidered(uh) / 2, modeMiddle)
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
+    engine.ScrollActiveRowToMiddle
+CleanExit:
+    Exit Function
+CleanFail:
+    Call ErrorHandler("ScrollCurrentMiddle")
+    Resume CleanExit
 End Function
 
 Function ScrollCurrentLeft(Optional ByVal g As String) As Boolean
+    On Error GoTo CleanFail
+
+    Dim engine As Object
     If gVim.Count > 0 Then
         Call MoveToNthColumn
     End If
 
-    ActiveWindow.ScrollColumn = ActiveCell.Column
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
+    engine.ScrollActiveColumnToLeft
+CleanExit:
+    Exit Function
+CleanFail:
+    Call ErrorHandler("ScrollCurrentLeft")
+    Resume CleanExit
 End Function
 
 Function ScrollCurrentRight(Optional ByVal g As String) As Boolean
+    On Error GoTo CleanFail
+
+    Dim engine As Object
     If gVim.Count > 0 Then
         Call MoveToNthColumn
     End If
 
-    Dim uw As Double
-    uw = GetRealUsableWidth()
-
-    ActiveWindow.ScrollColumn = PointToColumn(ActiveCell.Left + ActiveCell.Width - GetLengthWithZoomConsidered(uw), modeRight)
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
+    engine.ScrollActiveColumnToRight
+CleanExit:
+    Exit Function
+CleanFail:
+    Call ErrorHandler("ScrollCurrentRight")
+    Resume CleanExit
 End Function
 
 Function ScrollCurrentCenter(Optional ByVal g As String) As Boolean
+    On Error GoTo CleanFail
+
+    Dim engine As Object
     If gVim.Count > 0 Then
         Call MoveToNthColumn
     End If
 
-    Dim uw As Double
-    uw = GetRealUsableWidth()
-
-    ActiveWindow.ScrollColumn = PointToColumn(ActiveCell.Left + ActiveCell.Width / 2 - GetLengthWithZoomConsidered(uw) / 2, modeCenter)
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
+    engine.ScrollActiveColumnToCenter
+CleanExit:
+    Exit Function
+CleanFail:
+    Call ErrorHandler("ScrollCurrentCenter")
+    Resume CleanExit
 End Function

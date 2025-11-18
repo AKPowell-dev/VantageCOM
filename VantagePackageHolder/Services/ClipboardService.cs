@@ -52,6 +52,49 @@ namespace VantagePackageHolder
             ExecuteMsoSafe("PasteFormulas");
         }
 
+        public void PasteValuesSmart()
+        {
+            using (new UiGuard(_app, hideStatusBar: true))
+            {
+                var cutCopyMode = _app.CutCopyMode;
+                if (cutCopyMode == Excel.XlCutCopyMode.xlCopy || cutCopyMode == Excel.XlCutCopyMode.xlCut)
+                {
+                    EnsureClipboardPayload();
+                    ExecuteMsoSafe("PasteValues");
+                    return;
+                }
+
+                if (!ClipboardHasContent())
+                {
+                    return;
+                }
+
+                try
+                {
+                    if (Clipboard.ContainsText(TextDataFormat.Rtf))
+                    {
+                        if (!TryExecuteMso("PasteKeepTextOnly"))
+                        {
+                            ExecuteMsoSafe("Paste");
+                        }
+                        return;
+                    }
+
+                    if (Clipboard.ContainsText(TextDataFormat.Html))
+                    {
+                        ExecuteMsoSafe("PasteSpecialDialog");
+                        return;
+                    }
+
+                    ExecuteMsoSafe("Paste");
+                }
+                catch
+                {
+                    ExecuteMsoSafe("Paste");
+                }
+            }
+        }
+
         public void OpenPasteSpecialDialog()
         {
             EnsureClipboardPayload();
@@ -124,15 +167,18 @@ namespace VantagePackageHolder
             }
         }
 
-        private void ExecuteMsoSafe(string controlId)
+        private void ExecuteMsoSafe(string controlId) => TryExecuteMso(controlId);
+
+        private bool TryExecuteMso(string controlId)
         {
             try
             {
                 _app.CommandBars.ExecuteMso(controlId);
+                return true;
             }
             catch
             {
-                // ignore
+                return false;
             }
         }
     }

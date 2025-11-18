@@ -508,14 +508,19 @@ def _deactivate_addin_if_loaded(target_path: Path) -> AddinUnlockInfo:
             existing_instance = False
         excel = Dispatch("Excel.Application")
         normalized_target = str(target_path.resolve()).lower()
-        original_alerts = getattr(excel, "DisplayAlerts", True)
-        excel.DisplayAlerts = False
+        alerts_supported = True
+        try:
+            original_alerts = excel.DisplayAlerts
+            excel.DisplayAlerts = False
+        except Exception:
+            original_alerts = True
+            alerts_supported = False
 
         try:
             for collection_name in ("AddIns2", "AddIns"):
                 try:
                     collection = getattr(excel, collection_name)
-                except AttributeError:
+                except Exception:
                     continue
                 for idx in range(collection.Count, 0, -1):
                     try:
@@ -558,7 +563,11 @@ def _deactivate_addin_if_loaded(target_path: Path) -> AddinUnlockInfo:
                         except Exception:
                             continue
         finally:
-            excel.DisplayAlerts = original_alerts
+            if alerts_supported:
+                try:
+                    excel.DisplayAlerts = original_alerts
+                except Exception:
+                    pass
 
         if not existing_instance:
             try:
@@ -590,14 +599,19 @@ def _reactivate_addins(info: AddinUnlockInfo) -> None:
         except com_error:
             return
 
-        original_alerts = getattr(excel, "DisplayAlerts", True)
-        excel.DisplayAlerts = False
+        alerts_supported = True
+        try:
+            original_alerts = excel.DisplayAlerts
+            excel.DisplayAlerts = False
+        except Exception:
+            alerts_supported = False
+            original_alerts = True
 
         try:
             for collection_name in ("AddIns2", "AddIns"):
                 try:
                     collection = getattr(excel, collection_name)
-                except AttributeError:
+                except Exception:
                     continue
                 for idx in range(collection.Count, 0, -1):
                     try:
@@ -617,7 +631,11 @@ def _reactivate_addins(info: AddinUnlockInfo) -> None:
                         except Exception:
                             continue
         finally:
-            excel.DisplayAlerts = original_alerts
+            if alerts_supported:
+                try:
+                    excel.DisplayAlerts = original_alerts
+                except Exception:
+                    pass
 
         if not info.get("excel_was_running", True):
             try:

@@ -174,120 +174,107 @@ Catch:
 End Function
 
 Function YankFromUpCell(Optional ByVal g As String) As Boolean
+    On Error GoTo CleanFail
+
     Call RepeatRegister("YankFromUpCell")
-    Call KeyStroke(Alt_, H_, F_, I_, D_)
+    Call StopVisualMode
+
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
+
+    engine.FillFromAbove
+
+CleanExit:
+    YankFromUpCell = False
+    Exit Function
+
+CleanFail:
+    Call ErrorHandler("YankFromUpCell")
+    Resume CleanExit
 End Function
 
 Function YankFromDownCell(Optional ByVal g As String) As Boolean
+    On Error GoTo CleanFail
+
     Call RepeatRegister("YankFromDownCell")
-    Call KeyStroke(Alt_, H_, F_, I_, U_)
+    Call StopVisualMode
+
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
+
+    engine.FillFromBelow
+
+CleanExit:
+    YankFromDownCell = False
+    Exit Function
+
+CleanFail:
+    Call ErrorHandler("YankFromDownCell")
+    Resume CleanExit
 End Function
 
 Function YankFromLeftCell(Optional ByVal g As String) As Boolean
+    On Error GoTo CleanFail
+
     Call RepeatRegister("YankFromLeftCell")
-    Call KeyStroke(Alt_, H_, F_, I_, R_)
+    Call StopVisualMode
+
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
+
+    engine.FillFromLeft
+
+CleanExit:
+    YankFromLeftCell = False
+    Exit Function
+
+CleanFail:
+    Call ErrorHandler("YankFromLeftCell")
+    Resume CleanExit
 End Function
 
 Function YankFromRightCell(Optional ByVal g As String) As Boolean
+    On Error GoTo CleanFail
+
     Call RepeatRegister("YankFromRightCell")
-    Call KeyStroke(Alt_, H_, F_, I_, L_)
+    Call StopVisualMode
+
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
+
+    engine.FillFromRight
+
+CleanExit:
+    YankFromRightCell = False
+    Exit Function
+
+CleanFail:
+    Call ErrorHandler("YankFromRightCell")
+    Resume CleanExit
 End Function
 
 Function YankAsPlaintext(Optional ByVal ColumnSpliter As String = vbTab) As Boolean
-    On Error GoTo Catch
-
-    If TypeName(Selection) <> "Range" Then
-        Exit Function
-    End If
-
-    'Error if too many cells selected
-    If Selection.Count > 1048576 * 8 Then
-        Call SetStatusBarTemporarily(gVim.Msg.TooManyCells, 3000)
-        Exit Function
-    End If
+    On Error GoTo CleanFail
 
     Call StopVisualMode
 
-    Dim resultText As String
-    Dim aryTarget As Variant
-    Dim aryX() As String
-    Dim aryY() As String
-    Dim i As Long
-    Dim j As Long
-    Dim startTime As Double
-    Dim currentTime As Double
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
 
-    'Exit if all selected cells are blank
-    If WorksheetFunction.CountBlank(Selection) = Selection.Count Then
-        Exit Function
-    End If
+    engine.CopySelectionAsPlainText ColumnSpliter
 
-    If Selection.Count = 1 Then
-        resultText = Selection.value
-
-    ElseIf Selection.Columns.Count = 1 Then
-        aryTarget = Selection
-        aryTarget = WorksheetFunction.Transpose(aryTarget)
-        resultText = Join(aryTarget, vbCrLf)
-
-    ElseIf Selection.Rows.Count = 1 Then
-        aryTarget = Selection
-
-        'Array dimensionality reduction
-        aryTarget = WorksheetFunction.Transpose(aryTarget)
-        aryTarget = WorksheetFunction.Transpose(aryTarget)
-
-        resultText = Join(aryTarget, ColumnSpliter)
-
-    Else
-fallback:
-        startTime = Timer
-        aryTarget = Selection
-        ReDim aryX(LBound(aryTarget, 1) To UBound(aryTarget, 1))
-        ReDim aryY(LBound(aryTarget, 2) To UBound(aryTarget, 2))
-
-        For i = LBound(aryX) To UBound(aryX)
-            For j = LBound(aryY) To UBound(aryY)
-                aryY(j) = aryTarget(i, j)
-            Next j
-            aryX(i) = Join(aryY, ColumnSpliter)
-
-            'Avoid freeze
-            If (i And &HFFF) = 0 Then
-                'Show progress bar in status bar
-                Call SetStatusBar(gVim.Msg.YankInProgress, _
-                                 currentCount:=i, maximumCount:=UBound(aryX), progressBar:=True)
-
-                currentTime = Timer
-                If currentTime < startTime Or currentTime - startTime > 2 Then
-                    DoEvents
-                    startTime = currentTime
-                End If
-            End If
-        Next i
-        resultText = Join(aryX, vbCrLf)
-        Call SetStatusBar
-    End If
-
-    'Set to clipboard
-    With New DataObject
-        .SetText resultText
-        .PutInClipboard
-    End With
-
-    Call SetStatusBarTemporarily(gVim.Msg.YankDone & "(" & _
-                                 LenB(StrConv(resultText, vbFromUnicode)) & " Bytes)", 3000)
+CleanExit:
+    YankAsPlaintext = False
     Exit Function
 
-Catch:
-    If Err.Number = 6 Then
-        Call SetStatusBarTemporarily(gVim.Msg.TooManyCells, 3000)
-    ElseIf Err.Number = 13 Then
-        'Error from WorksheetFunction.Transpose
-        Resume fallback
-    Else
-        Call ErrorHandler("YankAsPlaintext")
-    End If
+CleanFail:
+    Call ErrorHandler("YankAsPlaintext")
+    Resume CleanExit
 End Function
 
 Function IncrementText(Optional ByVal g As String) As Boolean
@@ -313,25 +300,45 @@ Function DecrementText(Optional ByVal g As String) As Boolean
 End Function
 
 Function IncreaseDecimal(Optional ByVal g As String) As Boolean
+    On Error GoTo CleanFail
+
     Call RepeatRegister("IncreaseDecimal")
     Call StopVisualMode
 
-    Dim i As Integer
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
 
-    For i = 1 To gVim.Count1
-        Call KeyStroke(Alt_, H_, k0_)
-    Next i
+    engine.IncreaseDecimalPlaces gVim.Count1
+
+CleanExit:
+    IncreaseDecimal = False
+    Exit Function
+
+CleanFail:
+    Call ErrorHandler("IncreaseDecimal")
+    Resume CleanExit
 End Function
 
 Function DecreaseDecimal(Optional ByVal g As String) As Boolean
+    On Error GoTo CleanFail
+
     Call RepeatRegister("DecreaseDecimal")
     Call StopVisualMode
 
-    Dim i As Integer
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
 
-    For i = 1 To gVim.Count1
-        Call KeyStroke(Alt_, H_, k9_)
-    Next i
+    engine.DecreaseDecimalPlaces gVim.Count1
+
+CleanExit:
+    DecreaseDecimal = False
+    Exit Function
+
+CleanFail:
+    Call ErrorHandler("DecreaseDecimal")
+    Resume CleanExit
 End Function
 
 

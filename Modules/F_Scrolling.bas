@@ -491,9 +491,20 @@ Function ScrollCurrentMiddle(Optional ByVal g As String) As Boolean
     End If
 
     Set engine = NetAddin()
-    If engine Is Nothing Then GoTo CleanExit
+    If engine Is Nothing Then
+        Call ScrollRowCenterFallback
+        GoTo CleanExit
+    End If
+
+    On Error Resume Next
     engine.ScrollActiveRowToMiddle
+    If Err.Number <> 0 Then
+        Err.Clear
+        Call ScrollRowCenterFallback
+    End If
+    On Error GoTo CleanFail
 CleanExit:
+    ScrollCurrentMiddle = False
     Exit Function
 CleanFail:
     Call ErrorHandler("ScrollCurrentMiddle")
@@ -545,11 +556,50 @@ Function ScrollCurrentCenter(Optional ByVal g As String) As Boolean
     End If
 
     Set engine = NetAddin()
-    If engine Is Nothing Then GoTo CleanExit
+    If engine Is Nothing Then
+        Call ScrollColumnCenterFallback
+        GoTo CleanExit
+    End If
+
+    On Error Resume Next
     engine.ScrollActiveColumnToCenter
+    If Err.Number <> 0 Then
+        Err.Clear
+        Call ScrollColumnCenterFallback
+    End If
+    On Error GoTo CleanFail
 CleanExit:
+    ScrollCurrentCenter = False
     Exit Function
 CleanFail:
     Call ErrorHandler("ScrollCurrentCenter")
     Resume CleanExit
 End Function
+
+Private Sub ScrollRowCenterFallback()
+    On Error Resume Next
+    Dim win As Window
+    Dim visibleRows As Long
+    Dim target As Long
+
+    Set win = ActiveWindow
+    If win Is Nothing Then Exit Sub
+    visibleRows = win.VisibleRange.Rows.Count
+    target = ActiveCell.Row - visibleRows \ 2
+    If target < 1 Then target = 1
+    win.ScrollRow = target
+End Sub
+
+Private Sub ScrollColumnCenterFallback()
+    On Error Resume Next
+    Dim win As Window
+    Dim visibleCols As Long
+    Dim target As Long
+
+    Set win = ActiveWindow
+    If win Is Nothing Then Exit Sub
+    visibleCols = win.VisibleRange.Columns.Count
+    target = ActiveCell.Column - visibleCols \ 2
+    If target < 1 Then target = 1
+    win.ScrollColumn = target
+End Sub

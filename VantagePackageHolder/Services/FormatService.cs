@@ -5,7 +5,9 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Text;
 using System.Windows.Forms;
+using System.Globalization;
 using Excel = Microsoft.Office.Interop.Excel;
 using Office = Microsoft.Office.Core;
 
@@ -233,14 +235,34 @@ namespace VantagePackageHolder
 
                                                 // Borderless: assign formulas/values and format only
                         bool hasFormula = false;
+                        string sourceFormulaR1C1 = null;
+                        object sourceValue = null;
                         try { hasFormula = (bool)sourceCell.HasFormula; } catch { }
-                        try {
-                            if (hasFormula) {
-                                targetRange.Formula = sourceCell.Formula;
-                            } else {
-                                targetRange.Value2 = sourceCell.Value2;
+                        if (hasFormula)
+                        {
+                            try { sourceFormulaR1C1 = Convert.ToString(sourceCell.FormulaR1C1); }
+                            catch { hasFormula = false; sourceFormulaR1C1 = null; }
+                        }
+                        if (!hasFormula)
+                        {
+                            try { sourceValue = sourceCell.Value2; } catch { sourceValue = null; }
+                        }
+
+                        try
+                        {
+                            if (hasFormula && !string.IsNullOrEmpty(sourceFormulaR1C1))
+                            {
+                                targetRange.FormulaR1C1 = sourceFormulaR1C1;
                             }
-                        } catch { }
+                            else
+                            {
+                                targetRange.Value2 = sourceValue;
+                            }
+                        }
+                        catch
+                        {
+                            // ignore assignment failures
+                        }
                         ApplySourceFormatting(sourceCell, targetRange);
                         ApplyTopBottomBorders(sourceCell, targetRange);
 
@@ -528,12 +550,13 @@ namespace VantagePackageHolder
                         }
 
                         bool sourceHasFormula = false;
-                        object sourceFormula = null;
+                        string sourceFormulaR1C1 = null;
                         object sourceValue = null;
                         try { sourceHasFormula = Convert.ToBoolean(sourceCell.HasFormula); } catch { sourceHasFormula = false; }
                         if (sourceHasFormula)
                         {
-                            try { sourceFormula = sourceCell.Formula; } catch { sourceHasFormula = false; }
+                            try { sourceFormulaR1C1 = Convert.ToString(sourceCell.FormulaR1C1); }
+                            catch { sourceHasFormula = false; sourceFormulaR1C1 = null; }
                         }
                         if (!sourceHasFormula)
                         {
@@ -558,9 +581,9 @@ namespace VantagePackageHolder
 
                                 try
                                 {
-                                    if (sourceHasFormula && sourceFormula != null)
+                                    if (sourceHasFormula && !string.IsNullOrEmpty(sourceFormulaR1C1))
                                     {
-                                        cell.Formula = sourceFormula;
+                                        cell.FormulaR1C1 = sourceFormulaR1C1;
                                     }
                                     else
                                     {
@@ -852,8 +875,198 @@ namespace VantagePackageHolder
         }
 
         // ===== Formatting utilities migrated from VBA =====
+        public void FillFromAbove() => ApplyFillOperation(FillDirection.Down);
+        public void FillFromBelow() => ApplyFillOperation(FillDirection.Up);
+        public void FillFromLeft() => ApplyFillOperation(FillDirection.RightToLeft);
+        public void FillFromRight() => ApplyFillOperation(FillDirection.LeftToRight);
+
+        public void CopySelectionAsPlainText(string columnDelimiter)
+        {
+            if (!RangeHelpers.TryGetActiveRange(_app, out var sel))
+            {
+                return;
+            }
+
+            long totalCells = Convert.ToInt64(sel.Cells.CountLarge);
+            if (totalCells > 1048576L * 8L)
+            {
+                RunMacroIfExists("SetStatusBarTemporarily", "Too many cells selected.", 3000);
+                return;
+            }
+
+            columnDelimiter = string.IsNullOrEmpty(columnDelimiter) ? "\t" : columnDelimiter;
+
+            using (new UiGuard(_app))
+            {
+                string text = BuildPlainText(sel, columnDelimiter);
+                if (text == null)
+                {
+                    text = string.Empty;
+                }
+
+                try
+                {
+                    Clipboard.SetText(text);
+                }
+                catch
+                {
+                    return;
+                }
+
+                int bytes = Encoding.UTF8.GetByteCount(text);
+                RunMacroIfExists("SetStatusBarTemporarily", $"Copied plain text ({bytes:N0} bytes)", 2500);
+            }
+        }
+
         public void IncreaseFontSize(int steps) => AdjustFontSize(Math.Max(1, steps));
         public void DecreaseFontSize(int steps) => AdjustFontSize(-Math.Max(1, steps));
+        public void IncreaseDecimalPlaces(int steps) => AdjustDecimalPlaces("IncreaseDecimal", steps);
+        public void DecreaseDecimalPlaces(int steps) => AdjustDecimalPlaces("DecreaseDecimal", steps);
+
+        private enum FillDirection
+        {
+            Down,
+            Up,
+            LeftToRight,
+            RightToLeft
+        }
+
+        private void ApplyFillOperation(FillDirection direction)
+        {
+            if (!RangeHelpers.TryGetActiveRange(_app, out var sel))
+            {
+                return;
+            }
+
+            using (new UiGuard(_app))
+            {
+                try
+                {
+                    switch (direction)
+                    {
+                        case FillDirection.Down:
+                            sel.FillDown();
+                            break;
+                        case FillDirection.Up:
+                            sel.FillUp();
+                            break;
+                        case FillDirection.LeftToRight:
+                            sel.FillRight();
+                            break;
+                        case FillDirection.RightToLeft:
+                            sel.FillLeft();
+                            break;
+                    }
+                }
+                catch
+                {
+                    string command = "FillDown";
+                    switch (direction)
+                    {
+                        case FillDirection.Up:
+                            command = "FillUp";
+                            break;
+                        case FillDirection.LeftToRight:
+                            command = "FillRight";
+                            break;
+                        case FillDirection.RightToLeft:
+                            command = "FillLeft";
+                            break;
+                        default:
+                            command = "FillDown";
+                            break;
+                    }
+
+                    ExecuteMso(command);
+                }
+            }
+        }
+
+        private string BuildPlainText(Excel.Range selection, string columnDelimiter)
+        {
+            if (selection == null)
+            {
+                return string.Empty;
+            }
+
+            int rows = selection.Rows.Count;
+            int cols = selection.Columns.Count;
+            var values = selection.Value2;
+
+            if (!(values is object[,] array))
+            {
+                return ConvertValueToString(values);
+            }
+
+            if (rows == 1 && cols == 1)
+            {
+                return ConvertValueToString(array[1, 1]);
+            }
+
+            var builder = new StringBuilder();
+
+            if (cols == 1)
+            {
+                for (int r = 1; r <= rows; r++)
+                {
+                    if (r > 1)
+                    {
+                        builder.AppendLine();
+                    }
+                    builder.Append(ConvertValueToString(array[r, 1]));
+                }
+            }
+            else if (rows == 1)
+            {
+                for (int c = 1; c <= cols; c++)
+                {
+                    if (c > 1)
+                    {
+                        builder.Append(columnDelimiter);
+                    }
+                    builder.Append(ConvertValueToString(array[1, c]));
+                }
+            }
+            else
+            {
+                for (int r = 1; r <= rows; r++)
+                {
+                    if (r > 1)
+                    {
+                        builder.AppendLine();
+                    }
+
+                    for (int c = 1; c <= cols; c++)
+                    {
+                        if (c > 1)
+                        {
+                            builder.Append(columnDelimiter);
+                        }
+
+                        builder.Append(ConvertValueToString(array[r, c]));
+                    }
+                }
+            }
+
+            return builder.ToString();
+        }
+
+        private string ConvertValueToString(object value)
+        {
+            if (value == null)
+            {
+                return string.Empty;
+            }
+
+            if (value is double)
+            {
+                var decimalSeparator = Convert.ToString(_app.International[Excel.XlApplicationInternational.xlDecimalSeparator]);
+                var culture = decimalSeparator == "," ? CultureInfo.CurrentCulture : CultureInfo.InvariantCulture;
+                return Convert.ToDouble(value).ToString(culture);
+            }
+
+            return Convert.ToString(value) ?? string.Empty;
+        }
 
         private void AdjustFontSize(int delta)
         {
@@ -968,6 +1181,18 @@ namespace VantagePackageHolder
             }
         }
 
+        private void AdjustDecimalPlaces(string commandId, int steps)
+        {
+            steps = Math.Max(1, steps);
+            using (new UiGuard(_app))
+            {
+                for (int i = 0; i < steps; i++)
+                {
+                    ExecuteMso(commandId);
+                }
+            }
+        }
+
         private bool CoerceToBool(object value, bool defaultValue)
         {
             switch (value)
@@ -1051,6 +1276,8 @@ namespace VantagePackageHolder
                 try { sel.Borders[Excel.XlBordersIndex.xlEdgeRight].LineStyle = Excel.XlLineStyle.xlLineStyleNone; } catch { }
                 try { sel.Borders[Excel.XlBordersIndex.xlEdgeTop].LineStyle = Excel.XlLineStyle.xlLineStyleNone; } catch { }
                 try { sel.Borders[Excel.XlBordersIndex.xlEdgeBottom].LineStyle = Excel.XlLineStyle.xlLineStyleNone; } catch { }
+                try { sel.Borders[Excel.XlBordersIndex.xlInsideHorizontal].LineStyle = Excel.XlLineStyle.xlLineStyleNone; } catch { }
+                try { sel.Borders[Excel.XlBordersIndex.xlInsideVertical].LineStyle = Excel.XlLineStyle.xlLineStyleNone; } catch { }
                 try { sel.Interior.Pattern = Excel.XlPattern.xlPatternNone; } catch { }
                 try { sel.NumberFormat = "#,##0_);(#,##0);--_)"; } catch { }
                 try { sel.Font.Bold = false; } catch { }
@@ -2397,6 +2624,12 @@ namespace VantagePackageHolder
 
         private int ComputeLastColFromNearestRow(Excel.Worksheet ws, int baseRow, int startCol, int maxOffset, int skipRowStart, int skipRowEnd)
         {
+            if (ws == null)
+            {
+                return startCol;
+            }
+
+            int totalRows = GetWorksheetRowCount(ws);
             for (int offset = 1; offset <= maxOffset; offset++)
             {
                 int last;
@@ -2411,7 +2644,7 @@ namespace VantagePackageHolder
                 }
 
                 int downRow = baseRow + offset;
-                if (downRow <= ws.Rows.Count && !IsRowSkipped(downRow, skipRowStart, skipRowEnd))
+                if (downRow <= totalRows && !IsRowSkipped(downRow, skipRowStart, skipRowEnd))
                 {
                     last = ContiguousSpanLastCol(ws, downRow, startCol, ignoreBorders: true);
                     if (last > startCol)
@@ -2443,8 +2676,13 @@ namespace VantagePackageHolder
 
         private int ContiguousSpanLastCol(Excel.Worksheet ws, int rowIndex, int startCol, bool ignoreBorders)
         {
+            if (ws == null)
+            {
+                return startCol;
+            }
+
             int last = startCol;
-            int maxCol = ws.Columns.Count;
+            int maxCol = GetWorksheetColumnCount(ws);
 
             for (int col = startCol + 1; col <= maxCol; col++)
             {
@@ -2529,8 +2767,8 @@ namespace VantagePackageHolder
                 return;
             }
 
-            int maxRow = Convert.ToInt32(ws.Rows.Count);
-            int maxCol = Convert.ToInt32(ws.Columns.Count);
+            int maxRow = GetWorksheetRowCount(ws);
+            int maxCol = GetWorksheetColumnCount(ws);
             if (rowIdx > maxRow || colIdx > maxCol)
             {
                 return;
@@ -3663,6 +3901,40 @@ namespace VantagePackageHolder
             catch
             {
                 // ignore if macro missing
+            }
+        }
+
+        private static int GetWorksheetRowCount(Excel.Worksheet ws)
+        {
+            if (ws == null)
+            {
+                return 0;
+            }
+
+            try
+            {
+                return Convert.ToInt32(ws.Rows.Count);
+            }
+            catch
+            {
+                return 1048576;
+            }
+        }
+
+        private static int GetWorksheetColumnCount(Excel.Worksheet ws)
+        {
+            if (ws == null)
+            {
+                return 0;
+            }
+
+            try
+            {
+                return Convert.ToInt32(ws.Columns.Count);
+            }
+            catch
+            {
+                return 16384;
             }
         }
 

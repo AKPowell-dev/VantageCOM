@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
+using System.Reflection;
 using Excel = Microsoft.Office.Interop.Excel;
 
 namespace VantagePackageHolder
@@ -537,7 +538,7 @@ namespace VantagePackageHolder
                 int maxCols = Convert.ToInt32(sheet.Columns.Count);
 
                 int destRow = Math.Max(1, Math.Min(maxRows, activeCell.Row + rowDelta));
-                int destCol = Math.Max(1, Math.Min(maxCols, activeCell.Column + columnDelta));
+                int destCol = ResolveVisibleColumn(sheet, activeCell.Column, columnDelta, maxCols);
 
                 target = sheet.Cells[destRow, destCol] as Excel.Range;
                 RangeHelpers.SafeSelect(target);
@@ -742,6 +743,194 @@ namespace VantagePackageHolder
             }
         }
 
+        public void DeleteActiveCellComment()
+        {
+            if (!TryGetActiveCell(out var cell))
+            {
+                return;
+            }
+
+            using (new UiGuard(_app))
+            {
+                DeleteCommentAt(cell);
+            }
+
+            ReleaseCom(cell);
+        }
+
+        public void DeleteAllComments()
+        {
+            if (!TryGetActiveWorksheet(out var sheet))
+            {
+                return;
+            }
+
+            using (new UiGuard(_app))
+            {
+                DeleteLegacyComments(sheet);
+                DeleteThreadedComments(sheet);
+            }
+        }
+
+        public void ToggleActiveCommentVisibility()
+        {
+            if (!TryGetActiveCell(out var cell))
+            {
+                return;
+            }
+
+            using (new UiGuard(_app))
+            {
+                var legacy = cell.Comment;
+                if (legacy != null)
+                {
+                    try { legacy.Visible = !legacy.Visible; } catch { }
+                    ReleaseCom(legacy);
+                    ReleaseCom(cell);
+                    return;
+                }
+
+                try
+                {
+                    var threaded = GetThreadedComment(cell);
+                    if (threaded != null)
+                    {
+                        ToggleThreadedCommentDisplay(threaded);
+                        ReleaseCom(threaded);
+                    }
+                }
+                catch
+                {
+                    // ignore threaded comment failures
+                }
+            }
+
+            ReleaseCom(cell);
+        }
+
+        public void ShowActiveComment() => SetActiveCommentVisibility(true);
+
+        public void HideActiveComment() => SetActiveCommentVisibility(false);
+
+        private void SetActiveCommentVisibility(bool visible)
+        {
+            if (!TryGetActiveCell(out var cell))
+            {
+                return;
+            }
+
+            using (new UiGuard(_app))
+            {
+                var legacy = cell.Comment;
+                if (legacy != null)
+                {
+                    try { legacy.Visible = visible; } catch { }
+                    ReleaseCom(legacy);
+                }
+            }
+
+            ReleaseCom(cell);
+        }
+
+        public void ToggleAllCommentsVisibility()
+        {
+            using (new UiGuard(_app))
+            {
+                try { _app.CommandBars.ExecuteMso("ReviewShowAllComments"); }
+                catch { }
+            }
+        }
+
+        public void SetCommentIndicatorMode(int mode)
+        {
+            Excel.XlCommentDisplayMode target = Excel.XlCommentDisplayMode.xlCommentIndicatorOnly;
+            switch (mode)
+            {
+                case 0:
+                    target = Excel.XlCommentDisplayMode.xlNoIndicator;
+                    break;
+                case 1:
+                    target = Excel.XlCommentDisplayMode.xlCommentIndicatorOnly;
+                    break;
+                case 2:
+                    target = Excel.XlCommentDisplayMode.xlCommentAndIndicator;
+                    break;
+            }
+
+            try { _app.DisplayCommentIndicator = target; }
+            catch { }
+        }
+
+        public void NavigateComments(bool forward, int steps)
+        {
+            if (steps < 1)
+            {
+                steps = 1;
+            }
+
+            if (!TryGetActiveWorksheet(out var sheet))
+            {
+                return;
+            }
+
+            var anchors = CollectCommentAnchors(sheet);
+            if (anchors.Count == 0)
+            {
+                return;
+            }
+
+            int currentRow = 1;
+            int currentCol = 1;
+            Excel.Range activeCell = null;
+            try
+            {
+                activeCell = _app.ActiveCell as Excel.Range;
+                if (activeCell != null)
+                {
+                    currentRow = activeCell.Row;
+                    currentCol = activeCell.Column;
+                }
+            }
+            catch
+            {
+                currentRow = 1;
+                currentCol = 1;
+            }
+            finally
+            {
+                ReleaseCom(activeCell);
+            }
+
+            int index = FindAnchorIndex(anchors, currentRow, currentCol, forward);
+            if (index < 0)
+            {
+                index = forward ? 0 : anchors.Count - 1;
+            }
+
+            for (int i = 1; i < steps; i++)
+            {
+                index = forward ? (index + 1) % anchors.Count : (index - 1 + anchors.Count) % anchors.Count;
+            }
+
+            using (new UiGuard(_app))
+            {
+                Excel.Range target = null;
+                try
+                {
+                    target = sheet.Cells[anchors[index].Row, anchors[index].Column] as Excel.Range;
+                    if (target != null)
+                    {
+                        RangeHelpers.SafeSelect(target);
+                        ShowCommentIfExists(target);
+                    }
+                }
+                finally
+                {
+                    ReleaseCom(target);
+                }
+            }
+        }
+
         public void PasteEntireRows(Excel.Range source, int copies, bool pasteAfterActive)
         {
             if (!RangeHelpers.IsRangeValid(source))
@@ -768,15 +957,15 @@ namespace VantagePackageHolder
                 return;
             }
 
-            int startRow = activeCell.Row + (pasteAfterActive ? 1 : 0);
-            int maxRow = Convert.ToInt32(sheet.Rows.Count);
-            startRow = Math.Max(1, Math.Min(startRow, maxRow));
-
             int rowBlock = source.Rows.Count;
             if (rowBlock < 1)
             {
                 return;
             }
+
+            int maxRow = Convert.ToInt32(sheet.Rows.Count);
+            int startRow = activeCell.Row + (pasteAfterActive ? 0 : 0);
+            startRow = Math.Max(1, Math.Min(startRow, maxRow));
 
             int available = maxRow - startRow + 1;
             int maxCopies = available / rowBlock;
@@ -843,15 +1032,15 @@ namespace VantagePackageHolder
                 return;
             }
 
-            int startCol = activeCell.Column + (pasteAfterActive ? 1 : 0);
-            int maxCol = Convert.ToInt32(sheet.Columns.Count);
-            startCol = Math.Max(1, Math.Min(startCol, maxCol));
-
             int colBlock = source.Columns.Count;
             if (colBlock < 1)
             {
                 return;
             }
+
+            int maxCol = Convert.ToInt32(sheet.Columns.Count);
+            int startCol = activeCell.Column + (pasteAfterActive ? 0 : 0);
+            startCol = Math.Max(1, Math.Min(startCol, maxCol));
 
             int available = maxCol - startCol + 1;
             int maxCopies = available / colBlock;
@@ -2711,6 +2900,368 @@ namespace VantagePackageHolder
             }
         }
 
+        private bool TryGetActiveCell(out Excel.Range cell)
+        {
+            cell = null;
+            try
+            {
+                cell = _app.ActiveCell as Excel.Range;
+            }
+            catch
+            {
+                cell = null;
+            }
+
+            return cell != null;
+        }
+
+        private sealed class CommentAnchor
+        {
+            public CommentAnchor(int row, int column)
+            {
+                Row = row;
+                Column = column;
+            }
+
+            public int Row { get; }
+            public int Column { get; }
+        }
+
+        private void DeleteCommentAt(Excel.Range cell)
+        {
+            if (cell == null)
+            {
+                return;
+            }
+
+            Excel.Comment legacy = null;
+            try
+            {
+                legacy = cell.Comment;
+                legacy?.Delete();
+            }
+            catch
+            {
+                // ignore
+            }
+            finally
+            {
+                ReleaseCom(legacy);
+            }
+
+            try
+            {
+                var threaded = GetThreadedComment(cell);
+                if (threaded != null)
+                {
+                    InvokeDelete(threaded);
+                    Marshal.FinalReleaseComObject(threaded);
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        private void DeleteLegacyComments(Excel.Worksheet sheet)
+        {
+            Excel.Comments comments = null;
+            try
+            {
+                comments = sheet.Comments;
+                if (comments == null)
+                {
+                    return;
+                }
+
+                foreach (Excel.Comment comment in comments)
+                {
+                    try { comment?.Delete(); }
+                    catch { }
+                    finally { ReleaseCom(comment); }
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+            finally
+            {
+                ReleaseCom(comments);
+            }
+        }
+
+        private void DeleteThreadedComments(Excel.Worksheet sheet)
+        {
+            try
+            {
+                var collection = sheet.GetType().InvokeMember("CommentsThreaded", BindingFlags.GetProperty, null, sheet, null);
+                if (collection == null)
+                {
+                    return;
+                }
+
+                var type = collection.GetType();
+                int count = 0;
+                try { count = (int)type.InvokeMember("Count", BindingFlags.GetProperty, null, collection, null); }
+                catch { }
+
+                for (int i = count; i >= 1; i--)
+                {
+                    object threaded = null;
+                    try
+                    {
+                        threaded = type.InvokeMember("Item", BindingFlags.GetProperty, null, collection, new object[] { i });
+                        InvokeDelete(threaded);
+                    }
+                    catch
+                    {
+                        // ignore
+                    }
+                    finally
+                    {
+                        if (threaded != null)
+                        {
+                            Marshal.FinalReleaseComObject(threaded);
+                        }
+                    }
+                }
+
+                Marshal.FinalReleaseComObject(collection);
+            }
+            catch
+            {
+                // property not available
+            }
+        }
+
+        private object GetThreadedComment(Excel.Range cell)
+        {
+            if (cell == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                return cell.GetType().InvokeMember("CommentThreaded", BindingFlags.GetProperty, null, cell, null);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private Excel.Range GetParentRange(object comment)
+        {
+            if (comment == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                return comment.GetType().InvokeMember("Parent", BindingFlags.GetProperty, null, comment, null) as Excel.Range;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private void ToggleThreadedCommentDisplay(object threaded)
+        {
+            if (threaded == null)
+            {
+                return;
+            }
+
+            try
+            {
+                var type = threaded.GetType();
+                object current = type.InvokeMember("ShowAlways", BindingFlags.GetProperty, null, threaded, null);
+                bool state = current is bool b && b;
+                type.InvokeMember("ShowAlways", BindingFlags.SetProperty, null, threaded, new object[] { !state });
+            }
+            catch
+            {
+                // ignore if property not present
+            }
+        }
+
+        private void InvokeDelete(object target)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            try
+            {
+                target.GetType().InvokeMember("Delete", BindingFlags.InvokeMethod, null, target, null);
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        private List<CommentAnchor> CollectCommentAnchors(Excel.Worksheet sheet)
+        {
+            var anchors = new List<CommentAnchor>();
+            if (sheet == null)
+            {
+                return anchors;
+            }
+
+            Excel.Comments comments = null;
+            try
+            {
+                comments = sheet.Comments;
+                if (comments != null)
+                {
+                    foreach (Excel.Comment legacy in comments)
+                    {
+                        Excel.Range parent = null;
+                        try
+                        {
+                            parent = legacy?.Parent as Excel.Range;
+                            if (RangeHelpers.IsRangeValid(parent))
+                            {
+                                anchors.Add(new CommentAnchor(parent.Row, parent.Column));
+                            }
+                        }
+                        catch
+                        {
+                            // ignore
+                        }
+                        finally
+                        {
+                            ReleaseCom(parent);
+                            ReleaseCom(legacy);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+            finally
+            {
+                ReleaseCom(comments);
+            }
+
+            try
+            {
+                var threadedCollection = sheet.GetType().InvokeMember("CommentsThreaded", BindingFlags.GetProperty, null, sheet, null);
+                if (threadedCollection != null)
+                {
+                    var type = threadedCollection.GetType();
+                    int count = 0;
+                    try { count = (int)type.InvokeMember("Count", BindingFlags.GetProperty, null, threadedCollection, null); }
+                    catch { }
+
+                    for (int i = 1; i <= count; i++)
+                    {
+                        object threaded = null;
+                        Excel.Range parent = null;
+                        try
+                        {
+                            threaded = type.InvokeMember("Item", BindingFlags.GetProperty, null, threadedCollection, new object[] { i });
+                            parent = GetParentRange(threaded);
+                            if (RangeHelpers.IsRangeValid(parent))
+                            {
+                                anchors.Add(new CommentAnchor(parent.Row, parent.Column));
+                            }
+                        }
+                        catch
+                        {
+                            // ignore
+                        }
+                        finally
+                        {
+                            ReleaseCom(parent);
+                            if (threaded != null)
+                            {
+                                Marshal.FinalReleaseComObject(threaded);
+                            }
+                        }
+                    }
+
+                    Marshal.FinalReleaseComObject(threadedCollection);
+                }
+            }
+            catch
+            {
+                // threaded comments not supported
+            }
+
+            anchors.Sort((a, b) =>
+            {
+                int row = a.Row.CompareTo(b.Row);
+                return row != 0 ? row : a.Column.CompareTo(b.Column);
+            });
+
+            return anchors;
+        }
+
+        private int FindAnchorIndex(IReadOnlyList<CommentAnchor> anchors, int row, int column, bool forward)
+        {
+            if (anchors == null || anchors.Count == 0)
+            {
+                return -1;
+            }
+
+            for (int i = 0; i < anchors.Count; i++)
+            {
+                var anchor = anchors[i];
+                if (forward)
+                {
+                    if (anchor.Row > row || (anchor.Row == row && anchor.Column > column))
+                    {
+                        return i;
+                    }
+                }
+                else
+                {
+                    if (anchor.Row < row || (anchor.Row == row && anchor.Column < column))
+                    {
+                        return i;
+                    }
+                }
+            }
+
+            return -1;
+        }
+
+        private void ShowCommentIfExists(Excel.Range cell)
+        {
+            if (cell == null)
+            {
+                return;
+            }
+
+            Excel.Comment legacy = null;
+            try
+            {
+                legacy = cell.Comment;
+                if (legacy != null)
+                {
+                    legacy.Visible = true;
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+            finally
+            {
+                ReleaseCom(legacy);
+            }
+        }
+
         private bool TryGetRowTarget(out Excel.Range targetRows, out double currentHeight)
         {
             targetRows = null;
@@ -2802,6 +3353,121 @@ namespace VantagePackageHolder
             catch
             {
                 return 0;
+            }
+        }
+
+        private int ResolveVisibleColumn(Excel.Worksheet sheet, int startColumn, int columnDelta, int maxColumns)
+        {
+            if (sheet == null)
+            {
+                return Math.Max(1, Math.Min(maxColumns, startColumn + columnDelta));
+            }
+
+            if (columnDelta == 0)
+            {
+                int stationary = Math.Max(1, Math.Min(maxColumns, startColumn));
+                if (IsColumnVisible(sheet, stationary))
+                {
+                    return stationary;
+                }
+
+                int fallback = FindNextVisibleColumn(sheet, stationary, 1, maxColumns);
+                if (fallback == -1)
+                {
+                    fallback = FindNextVisibleColumn(sheet, stationary, -1, maxColumns);
+                }
+
+                return fallback == -1 ? stationary : fallback;
+            }
+
+            int direction = columnDelta > 0 ? 1 : -1;
+            int remaining = Math.Abs(columnDelta);
+            int column = startColumn;
+
+            while (remaining > 0)
+            {
+                column += direction;
+                if (column < 1 || column > maxColumns)
+                {
+                    column = Math.Max(1, Math.Min(maxColumns, column));
+                    break;
+                }
+
+                if (IsColumnVisible(sheet, column))
+                {
+                    remaining--;
+                }
+            }
+
+            if (!IsColumnVisible(sheet, column))
+            {
+                int fallback = FindNextVisibleColumn(sheet, column, direction, maxColumns);
+                if (fallback == -1)
+                {
+                    fallback = FindNextVisibleColumn(sheet, column, -direction, maxColumns);
+                }
+
+                if (fallback != -1)
+                {
+                    column = fallback;
+                }
+                else
+                {
+                    column = startColumn;
+                }
+            }
+
+            return Math.Max(1, Math.Min(maxColumns, column));
+        }
+
+        private int FindNextVisibleColumn(Excel.Worksheet sheet, int startColumn, int direction, int maxColumns)
+        {
+            if (sheet == null || direction == 0)
+            {
+                return -1;
+            }
+
+            int column = startColumn;
+            while (true)
+            {
+                column += direction;
+                if (column < 1 || column > maxColumns)
+                {
+                    return -1;
+                }
+
+                if (IsColumnVisible(sheet, column))
+                {
+                    return column;
+                }
+            }
+        }
+
+        private bool IsColumnVisible(Excel.Worksheet sheet, int columnIndex)
+        {
+            Excel.Range column = null;
+            try
+            {
+                if (sheet == null)
+                {
+                    return false;
+                }
+
+                column = sheet.Columns[columnIndex] as Excel.Range;
+                if (column == null)
+                {
+                    return false;
+                }
+
+                return !Convert.ToBoolean(column.Hidden);
+            }
+            catch
+            {
+                return false;
+            }
+            finally
+            {
+                ReleaseCom(column);
             }
         }
 

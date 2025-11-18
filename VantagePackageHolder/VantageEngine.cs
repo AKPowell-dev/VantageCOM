@@ -75,6 +75,11 @@ namespace VantagePackageHolder
         public void OutlineSelectionHighlight() => Format.OutlineSelectionHighlight();
         public void SmartFillDown() => Format.SmartFillDown();
         public void WrapFormulaWithCircCheck() => Format.WrapFormulaWithCircCheck();
+        public void FillFromAbove() => Format.FillFromAbove();
+        public void FillFromBelow() => Format.FillFromBelow();
+        public void FillFromLeft() => Format.FillFromLeft();
+        public void FillFromRight() => Format.FillFromRight();
+        public void CopySelectionAsPlainText(string delimiter) => Format.CopySelectionAsPlainText(delimiter);
         public bool CopySelectionAsPicturePrintSafe() => Format.CopySelectionAsPicturePrintSafe();
         public void CopySelectionToPowerPoint() => Format.CopyPasteSelectionToPowerPoint();
         public void FormatChartFg() => Format.FormatChartFg();
@@ -92,6 +97,8 @@ namespace VantagePackageHolder
         public void ToggleStrikethrough() => Format.ToggleStrikethrough();
         public void ShowFontDialog() => Format.ShowFontDialog();
         public void ShowFormatNumberDialog() => Format.ShowFormatNumberDialog();
+        public void IncreaseDecimalPlaces(int steps) => Format.IncreaseDecimalPlaces(steps);
+        public void DecreaseDecimalPlaces(int steps) => Format.DecreaseDecimalPlaces(steps);
         public void ApplyInteriorColor(bool isNull, bool isTheme, int themeColor, double tint, int rgb) => Format.ApplyInteriorColor(isNull, isTheme, themeColor, tint, rgb);
         public bool ApplyFontColor(bool isNull, bool isTheme, int themeColor, int objectThemeColor, double tint, int rgb) => Format.ApplyFontColor(isNull, isTheme, themeColor, objectThemeColor, tint, rgb);
         public void ApplyShapeFillColor(bool isNull, bool isTheme, int themeColor, double tint, int rgb) => Format.ApplyShapeFillColor(isNull, isTheme, themeColor, tint, rgb);
@@ -156,6 +163,14 @@ namespace VantagePackageHolder
         public void ScrollActiveColumnToLeft() => Editing.ScrollActiveColumnToLeft();
         public void ScrollActiveColumnToRight() => Editing.ScrollActiveColumnToRight();
         public void ScrollActiveColumnToCenter() => Editing.ScrollActiveColumnToCenter();
+        public void DeleteActiveCellComment() => Editing.DeleteActiveCellComment();
+        public void DeleteAllComments() => Editing.DeleteAllComments();
+        public void ToggleActiveCommentVisibility() => Editing.ToggleActiveCommentVisibility();
+        public void ShowActiveComment() => Editing.ShowActiveComment();
+        public void HideActiveComment() => Editing.HideActiveComment();
+        public void ToggleAllCommentsVisibility() => Editing.ToggleAllCommentsVisibility();
+        public void SetCommentIndicatorMode(int mode) => Editing.SetCommentIndicatorMode(mode);
+        public void NavigateComments(bool forward, int steps) => Editing.NavigateComments(forward, steps);
         #endregion
 
         #region Workbook maintenance

@@ -8,6 +8,9 @@ Private gHelpKeySuppressed As Boolean
 
 Private gStartupScheduled As Boolean
 Private gStartupTime As Date
+Private gCustomConfigScheduled As Boolean
+Private gCustomConfigTime As Date
+Private gCustomConfigLoaded As Boolean
 Public gClipboardHookReady As Boolean   ' Defer clipboard hooks until post-init
 
 Public Sub SuppressExcelHelpKey()
@@ -52,6 +55,22 @@ Sub CancelScheduledVimStartup()
     End If
 End Sub
 
+Private Sub ScheduleCustomConfigLoad()
+    On Error Resume Next
+    If gCustomConfigLoaded Or gCustomConfigScheduled Then Exit Sub
+    gCustomConfigTime = Now + TimeSerial(0, 0, 1)
+    Application.OnTime EarliestTime:=gCustomConfigTime, Procedure:="'C_Core.LoadCustomConfigAsync'", Schedule:=True
+    gCustomConfigScheduled = True
+End Sub
+
+Private Sub CancelCustomConfigLoad()
+    On Error Resume Next
+    If gCustomConfigScheduled Then
+        Application.OnTime EarliestTime:=gCustomConfigTime, Procedure:="'C_Core.LoadCustomConfigAsync'", Schedule:=False
+        gCustomConfigScheduled = False
+    End If
+End Sub
+
 Function StartVim(Optional ByVal g As String) As Boolean
     Dim prevEvents As Boolean
     Dim prevScreen As Boolean
@@ -71,11 +90,13 @@ Function StartVim(Optional ByVal g As String) As Boolean
         ' Create vim instance
         Set gVim = New cls_Vim
 
-        ' Load default setting
+        ' Load default setting immediately
         Call DefaultConfig
 
-        ' Load custom config
-        Call gVim.Config.LoadCustomConfig
+        gCustomConfigLoaded = False
+        Call ScheduleCustomConfigLoad
+    ElseIf Not gCustomConfigLoaded Then
+        Call ScheduleCustomConfigLoad
     End If
 
     ' Defer clipboard hooking until post-init
@@ -106,6 +127,22 @@ Sub StartVimPostInit()
     On Error GoTo 0
 End Sub
 
+Sub LoadCustomConfigAsync()
+    On Error GoTo CleanFail
+    gCustomConfigScheduled = False
+    If gVim Is Nothing Then Exit Sub
+
+    Call gVim.Config.LoadCustomConfig
+    gCustomConfigLoaded = True
+
+    ' Rebind keys after loading custom config
+    gVim.KeyMap.BindAll
+    Exit Sub
+
+CleanFail:
+    gCustomConfigLoaded = True ' Avoid repeated scheduling loops
+End Sub
+
 Function StopVim(Optional ByVal g As String) As Boolean
     If Not gVim Is Nothing Then
         gVim.Enabled = False
@@ -114,10 +151,12 @@ End Function
 
 Function ExitVim(Optional ByVal g As String) As Boolean
     Call CancelScheduledVimStartup
+    Call CancelCustomConfigLoad
     If Not gVim Is Nothing Then
         Call gVim.Quit
         Set gVim = Nothing
     End If
+    gCustomConfigLoaded = False
     Call RestoreExcelHelpKey
 End Function
 

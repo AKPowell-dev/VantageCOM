@@ -12,164 +12,188 @@ Function EditCellComment(Optional ByVal g As String) As Boolean
 End Function
 
 Function DeleteCellComment(Optional ByVal g As String) As Boolean
+    On Error GoTo CleanFail
+
     Call RepeatRegister("DeleteCellComment")
     Call StopVisualMode
 
-    If Not ActiveCell.Comment Is Nothing Then
-        Call KeyStroke(Alt_, R_, D_)
-    End If
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
+
+    engine.DeleteActiveCellComment
+
+CleanExit:
+    DeleteCellComment = False
+    Exit Function
+
+CleanFail:
+    Call ErrorHandler("DeleteCellComment")
+    Resume CleanExit
 End Function
 
 Function DeleteCellCommentAll(Optional ByVal g As String) As Boolean
-    On Error GoTo Catch
+    On Error GoTo CleanFail
 
-    Dim cmt As Comment
+    If ActiveSheet.Comments.Count = 0 Then GoTo CleanExit
 
-    'アクティブシートにコメントがないなら何もしない
-    If ActiveSheet.Comments.Count = 0 Then
-        Exit Function
-    End If
-
-    '確認メッセージ
     If MsgBox(gVim.Msg.ConfirmToDeleteAllComments, vbExclamation + vbYesNo + vbDefaultButton2) = vbNo Then
-        Exit Function
+        GoTo CleanExit
     End If
 
-    '1つ1つ削除
-    For Each cmt In ActiveSheet.Comments
-        cmt.Delete
-    Next cmt
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
+
+    engine.DeleteAllComments
+
+CleanExit:
+    DeleteCellCommentAll = False
     Exit Function
 
-Catch:
+CleanFail:
     Call ErrorHandler("DeleteCellCommentAll")
+    Resume CleanExit
 End Function
 
 Function ToggleCellComment(Optional ByVal g As String) As Boolean
-    On Error GoTo Catch
+    On Error GoTo CleanFail
 
     Call RepeatRegister("ToggleCellComment")
     Call StopVisualMode
 
-    If Not ActiveCell.Comment Is Nothing Then
-        Application.CommandBars.ExecuteMso "ReviewShowOrHideComment"
-    End If
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
+
+    engine.ToggleActiveCommentVisibility
+
+CleanExit:
+    ToggleCellComment = False
     Exit Function
 
-Catch:
+CleanFail:
     Call ErrorHandler("ToggleCellComment")
+    Resume CleanExit
 End Function
 
 Function HideCellComment(Optional ByVal g As String) As Boolean
-    On Error GoTo Catch
+    On Error GoTo CleanFail
 
     Call RepeatRegister("HideCellComment")
     Call StopVisualMode
 
-    If Not ActiveCell.Comment Is Nothing Then
-        ActiveCell.Comment.Visible = False
-    End If
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
+
+    engine.HideActiveComment
+
+CleanExit:
+    HideCellComment = False
     Exit Function
 
-Catch:
+CleanFail:
     Call ErrorHandler("HideCellComment")
+    Resume CleanExit
 End Function
 
 Function ShowCellComment(Optional ByVal g As String) As Boolean
-    On Error GoTo Catch
+    On Error GoTo CleanFail
 
     Call RepeatRegister("ShowCellComment")
     Call StopVisualMode
 
-    If Not ActiveCell.Comment Is Nothing Then
-        ActiveCell.Comment.Visible = True
-    End If
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
+
+    engine.ShowActiveComment
+
+CleanExit:
+    ShowCellComment = False
     Exit Function
 
-Catch:
+CleanFail:
     Call ErrorHandler("ShowCellComment")
+    Resume CleanExit
 End Function
 
 Function ToggleCellCommentAll(Optional ByVal g As String) As Boolean
-    On Error GoTo Catch
+    On Error GoTo CleanFail
 
-    Application.CommandBars.ExecuteMso "ReviewShowAllComments"
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
+
+    engine.ToggleAllCommentsVisibility
+
+CleanExit:
+    ToggleCellCommentAll = False
     Exit Function
 
-Catch:
+CleanFail:
     Call ErrorHandler("ToggleCellCommentAll")
+    Resume CleanExit
 End Function
 
 Function HideCellCommentAll(Optional ByVal g As String) As Boolean
-    Application.DisplayCommentIndicator = xlCommentIndicatorOnly
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.SetCommentIndicatorMode 1
 End Function
 
 Function ShowCellCommentAll(Optional ByVal g As String) As Boolean
-    Application.DisplayCommentIndicator = xlCommentAndIndicator
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.SetCommentIndicatorMode 2
 End Function
 
 Function HideCellCommentIndicator(Optional ByVal g As String) As Boolean
-    Application.DisplayCommentIndicator = xlNoIndicator
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.SetCommentIndicatorMode 0
 End Function
 
 Function NextComment(Optional ByVal g As String) As Boolean
-    On Error GoTo Catch
-
-    Dim buf As Boolean
-
-    'アクティブシートにコメントが無いなら何もしない
-    If ActiveSheet.Comments.Count = 0 Then
-        Exit Function
-    End If
+    On Error GoTo CleanFail
 
     Call StopVisualMode
 
-    'もともとの値を取得
-    buf = Application.DisplayAlerts
-    Application.DisplayAlerts = False
-    Application.ScreenUpdating = False
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
 
-    Dim i As Long
-    For i = 1 To gVim.Count1 - 1
-        Application.CommandBars.ExecuteMso "ReviewNextComment"
-    Next i
+    engine.NavigateComments True, gVim.Count1
 
-    Application.ScreenUpdating = True
-    Application.CommandBars.ExecuteMso "ReviewNextComment"
-    Application.DisplayAlerts = buf
+CleanExit:
+    NextComment = False
     Exit Function
 
-Catch:
+CleanFail:
     Call ErrorHandler("NextComment")
+    Resume CleanExit
 End Function
 
 Function PrevComment(Optional ByVal g As String) As Boolean
-    On Error GoTo Catch
-
-    Dim buf As Boolean
-
-    'アクティブシートにコメントが無いなら何もしない
-    If ActiveSheet.Comments.Count = 0 Then
-        Exit Function
-    End If
+    On Error GoTo CleanFail
 
     Call StopVisualMode
 
-    'もともとの値を取得
-    buf = Application.DisplayAlerts
-    Application.DisplayAlerts = False
-    Application.ScreenUpdating = False
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
 
-    Dim i As Long
-    For i = 1 To gVim.Count1
-        Application.CommandBars.ExecuteMso "ReviewPreviousComment"
-    Next i
+    engine.NavigateComments False, gVim.Count1
 
-    Application.ScreenUpdating = True
-    Application.CommandBars.ExecuteMso "ReviewPreviousComment"
-    Application.DisplayAlerts = buf
+CleanExit:
+    PrevComment = False
     Exit Function
 
-Catch:
+CleanFail:
     Call ErrorHandler("PrevComment")
+    Resume CleanExit
 End Function

@@ -3,8 +3,9 @@ Option Explicit
 Option Private Module
 Private currentSeriesIndex As Long
 Public gScrollLockMode As Boolean
-Private Const DATA_LABEL_STEP As Double = 2#
-Private Const CHART_MOVE_STEP As Double = DATA_LABEL_STEP * 10#
+Private Const DATA_LABEL_STEP As Double = 1#
+Private Const CHART_MOVE_STEP As Double = 50#
+
 ' Shared wrapper for temporarily disabling events / screen updates.
 
 Private Function SuppressExcelUi(Optional ByVal hideStatusBar As Boolean = False) As ExcelUiGuard
@@ -73,9 +74,20 @@ Function TogglePlainKeyMappings(Optional ByVal g As String) As Boolean
 End Function
 
 Function OverrideShortcuts(Optional ByVal g As String) As Boolean
+    Dim uiGuard As ExcelUiGuard
+    Dim statusMessage As String
     On Error GoTo CleanFail
 
+    Set uiGuard = SuppressExcelUi(True)
     Call StartVim
+
+    If Not gVim Is Nothing Then
+        Call gVim.KeyMap.BindAll
+        Call ClipboardRefresh
+        statusMessage = "Vantage shortcuts now overriding other add-ins."
+        Call SetStatusBarTemporarily(statusMessage, 2500)
+    End If
+
 CleanExit:
     OverrideShortcuts = False
     Exit Function
@@ -1645,63 +1657,229 @@ End Function
 
 Sub MoveLeftSmart()
     Dim steps As Long: steps = gVim.Count1: If steps < 1 Then steps = 1
-    Dim engine As Object
-    If gScrollLockMode Then ScrollLockScroll 0, -steps: gVim.Count1 = 1: Exit Sub
-    Set engine = NetAddin()
-    If engine Is Nothing Then GoTo FallBackLeft
-    If Not engine.MoveSelectedLabels(-DATA_LABEL_STEP * steps, 0#) Then
-        If Not engine.MoveSelectedChart(-CHART_MOVE_STEP * steps, 0#) Then GoTo FallBackLeft
+
+    If gScrollLockMode Then
+        ScrollLockScroll 0, -steps
+        gVim.Count1 = 1
+        Exit Sub
     End If
-    gVim.Count1 = 1
-    Exit Sub
-FallBackLeft:
+
+    If TryMoveSelectedLabel(-DATA_LABEL_STEP * steps, 0#) Then
+        gVim.Count1 = 1
+        Exit Sub
+    End If
+
+    If TryMoveSelectedChart(-CHART_MOVE_STEP * steps, 0#) Then
+        gVim.Count1 = 1
+        Exit Sub
+    End If
+
     Call MoveLeft
     gVim.Count1 = 1
 End Sub
 
 Sub MoveRightSmart()
     Dim steps As Long: steps = gVim.Count1: If steps < 1 Then steps = 1
-    Dim engine As Object
-    If gScrollLockMode Then ScrollLockScroll 0, steps: gVim.Count1 = 1: Exit Sub
-    Set engine = NetAddin()
-    If engine Is Nothing Then GoTo FallBackRight
-    If Not engine.MoveSelectedLabels(DATA_LABEL_STEP * steps, 0#) Then
-        If Not engine.MoveSelectedChart(CHART_MOVE_STEP * steps, 0#) Then GoTo FallBackRight
+
+    If gScrollLockMode Then
+        ScrollLockScroll 0, steps
+        gVim.Count1 = 1
+        Exit Sub
     End If
-    gVim.Count1 = 1
-    Exit Sub
-FallBackRight:
+
+    If TryMoveSelectedLabel(DATA_LABEL_STEP * steps, 0#) Then
+        gVim.Count1 = 1
+        Exit Sub
+    End If
+
+    If TryMoveSelectedChart(CHART_MOVE_STEP * steps, 0#) Then
+        gVim.Count1 = 1
+        Exit Sub
+    End If
+
     Call MoveRight
     gVim.Count1 = 1
 End Sub
 
 Sub MoveUpSmart()
     Dim steps As Long: steps = gVim.Count1: If steps < 1 Then steps = 1
-    Dim engine As Object
-    If gScrollLockMode Then ScrollLockScroll -steps, 0: gVim.Count1 = 1: Exit Sub
-    Set engine = NetAddin()
-    If Not engine Is Nothing Then
-        If engine.MoveSelectedLabels(0#, -DATA_LABEL_STEP * steps) Then gVim.Count1 = 1: Exit Sub
-        If engine.MoveSelectedChart(0#, -CHART_MOVE_STEP * steps) Then gVim.Count1 = 1: Exit Sub
+
+    If gScrollLockMode Then
+        ScrollLockScroll -steps, 0
+        gVim.Count1 = 1
+        Exit Sub
     End If
-    Dim i As Long: For i = 1 To steps: KeyStroke Up_: Next i
+
+    If TryMoveSelectedLabel(0#, -DATA_LABEL_STEP * steps) Then
+        gVim.Count1 = 1
+        Exit Sub
+    End If
+
+    If TryMoveSelectedChart(0#, -CHART_MOVE_STEP * steps) Then
+        gVim.Count1 = 1
+        Exit Sub
+    End If
+
+    Call MoveUp
     gVim.Count1 = 1
 End Sub
 
 Sub MoveDownSmart()
     Dim steps As Long: steps = gVim.Count1: If steps < 1 Then steps = 1
-    Dim engine As Object
-    If gScrollLockMode Then ScrollLockScroll steps, 0: gVim.Count1 = 1: Exit Sub
-    Set engine = NetAddin()
-    If Not engine Is Nothing Then
-        If engine.MoveSelectedLabels(0#, DATA_LABEL_STEP * steps) Then gVim.Count1 = 1: Exit Sub
-        If engine.MoveSelectedChart(0#, CHART_MOVE_STEP * steps) Then gVim.Count1 = 1: Exit Sub
+
+    If gScrollLockMode Then
+        ScrollLockScroll steps, 0
+        gVim.Count1 = 1
+        Exit Sub
     End If
-    Dim i As Long: For i = 1 To steps: KeyStroke Down_: Next i
+
+    If TryMoveSelectedLabel(0#, DATA_LABEL_STEP * steps) Then
+        gVim.Count1 = 1
+        Exit Sub
+    End If
+
+    If TryMoveSelectedChart(0#, CHART_MOVE_STEP * steps) Then
+        gVim.Count1 = 1
+        Exit Sub
+    End If
+
+    Call MoveDown
     gVim.Count1 = 1
 End Sub
 
+Private Function TryMoveSelectedLabel(ByVal dx As Double, ByVal dy As Double) As Boolean
+    Dim lbl As Excel.DataLabel
+    Dim pt As Excel.Point
+    Dim seriesObj As Excel.Series
+    Dim t As String
 
+    If gScrollLockMode Then Exit Function
+
+    On Error Resume Next
+    t = TypeName(Selection)
+    On Error GoTo 0
+
+    Select Case t
+        Case "DataLabel"
+            On Error Resume Next
+            Set lbl = Selection
+            lbl.Position = xlLabelPositionCustom
+            lbl.Left = lbl.Left + dx
+            lbl.Top = lbl.Top + dy
+            On Error GoTo 0
+            TryMoveSelectedLabel = True
+        Case "DataLabels"
+            On Error Resume Next
+            For Each lbl In Selection
+                lbl.Position = xlLabelPositionCustom
+                lbl.Left = lbl.Left + dx
+                lbl.Top = lbl.Top + dy
+            Next lbl
+            On Error GoTo 0
+            TryMoveSelectedLabel = True
+        Case "Point", "DataPoint"
+            On Error Resume Next
+            Set pt = Selection
+            If pt.HasDataLabel Then
+                Set lbl = pt.DataLabel
+                lbl.Position = xlLabelPositionCustom
+                lbl.Left = lbl.Left + dx
+                lbl.Top = lbl.Top + dy
+                TryMoveSelectedLabel = True
+            End If
+            On Error GoTo 0
+        Case "Series"
+            On Error Resume Next
+            Set seriesObj = Selection
+            If Not seriesObj Is Nothing Then
+                For Each pt In seriesObj.Points
+                    If pt.HasDataLabel Then
+                        Set lbl = pt.DataLabel
+                        lbl.Position = xlLabelPositionCustom
+                        lbl.Left = lbl.Left + dx
+                        lbl.Top = lbl.Top + dy
+                    End If
+                Next pt
+                TryMoveSelectedLabel = True
+            End If
+            On Error GoTo 0
+        Case Else
+            TryMoveSelectedLabel = False
+    End Select
+End Function
+
+Private Function TryMoveSelectedChart(ByVal dx As Double, ByVal dy As Double) As Boolean
+    If gScrollLockMode Then Exit Function
+
+    Dim target As Object
+    Set target = ResolveChartContainer(Selection)
+
+    If target Is Nothing Then
+        Dim parentObj As Object
+        On Error Resume Next
+        Set parentObj = Selection.Parent
+        On Error GoTo 0
+        Set target = ResolveChartContainer(parentObj)
+    End If
+
+    If target Is Nothing Then Exit Function
+
+    On Error Resume Next
+    target.Left = target.Left + dx
+    target.Top = target.Top + dy
+    If Err.Number = 0 Then
+        TryMoveSelectedChart = True
+    End If
+    On Error GoTo 0
+End Function
+
+Private Function ResolveChartContainer(ByVal candidate As Object) As Object
+    Dim current As Object
+    Dim depth As Long
+
+    On Error Resume Next
+    Set current = candidate
+    On Error GoTo 0
+
+    For depth = 1 To 8
+        If current Is Nothing Then Exit For
+
+        Dim typeNameStr As String
+        On Error Resume Next
+        typeNameStr = TypeName(current)
+        On Error GoTo 0
+
+        Select Case typeNameStr
+            Case "ChartObject", "ChartArea", "PlotArea", "Legend", "ChartTitle"
+                Set ResolveChartContainer = current
+                Exit Function
+            Case "Chart"
+                On Error Resume Next
+                Set ResolveChartContainer = current.Parent
+                On Error GoTo 0
+                Exit Function
+            Case "Shape"
+                On Error Resume Next
+                If current.HasChart Then
+                    Set ResolveChartContainer = current
+                    Exit Function
+                End If
+                On Error GoTo 0
+            Case "ShapeRange"
+                On Error Resume Next
+                If current.Count = 1 Then
+                    Set current = current.Item(1)
+                    GoTo ContinueLoop
+                End If
+                On Error GoTo 0
+        End Select
+
+        On Error Resume Next
+        Set current = current.Parent
+        On Error GoTo 0
+ContinueLoop:
+    Next depth
+End Function
 
 Function SelectNearestChart(Optional ByVal g As String) As Boolean
     Dim engine As Object
@@ -1788,39 +1966,6 @@ End Sub
 
 
 
-
-Private Function ResolveCopyTarget(ByVal sel As Variant) As Object
-    Dim obj As Object
-    On Error Resume Next
-    If VarType(sel) = vbObject Then
-        Set obj = sel
-    End If
-    On Error GoTo 0
-
-    If obj Is Nothing Then Exit Function
-
-    Dim attempt As Object
-    Set attempt = obj
-    Do While Not attempt Is Nothing
-        Select Case TypeName(attempt)
-            Case "Range", "ChartObject", "Chart", "Picture", "Shape"
-                If TypeName(attempt) = "Shape" Then
-                    If attempt.hasChart Then
-                        Set ResolveCopyTarget = attempt.Chart
-                        Exit Function
-                    End If
-                End If
-                Set ResolveCopyTarget = attempt
-                Exit Function
-            Case Else
-                On Error Resume Next
-                Set attempt = attempt.Parent
-                On Error GoTo 0
-        End Select
-    Loop
-
-    Set ResolveCopyTarget = obj
-End Function
 
 Private Function ResolveFallbackCopyTarget(ByVal sel As Variant) As Object
     Dim probe As Object

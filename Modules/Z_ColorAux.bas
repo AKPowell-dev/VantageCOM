@@ -54,30 +54,68 @@ Private Function IsExternalReference(ByVal f As String) As Boolean
 End Function
 
 Private Function IsOtherSheetReference(ByVal f As String, ByVal cell As Range) As Boolean
-    On Error Resume Next
-    If Left$(f, 1) = "=" Then f = Mid$(f, 2)
-    If InStr(1, f, "!") = 0 Then Exit Function
+    On Error GoTo CleanExit
+    If cell Is Nothing Then Exit Function
 
-    Dim Wb As Workbook
+    Dim formulaText As String
+    formulaText = f
+    If Left$(formulaText, 1) = "=" Then formulaText = Mid$(formulaText, 2)
+    If InStr(1, formulaText, "!") = 0 Then Exit Function
+
+    Dim reg As Object
+    Set reg = CreateObject("VBScript.RegExp")
+    reg.Pattern = "('([^']+)'|[A-Za-z0-9_]+)!"
+    reg.Global = True
+    reg.IgnoreCase = True
+
+    Dim matches As Object
+    Set matches = reg.Execute(formulaText)
+    If matches.Count = 0 Then Exit Function
+
+    Dim wb As Workbook
     Dim ws As Worksheet
-    Dim parts() As String, candidate As String
-    Set Wb = cell.Parent.Parent
+    Set wb = cell.Parent.Parent
 
-    parts = Split(f, "!")
-    candidate = Replace$(parts(0), "'", "")
-    candidate = Trim$(candidate)
-    If InStr(1, candidate, "[") > 0 Then Exit Function
+    Dim matchItem As Object
+    Dim candidate As String
+    For Each matchItem In matches
+        candidate = NormalizeSheetToken(CStr(matchItem.value))
+        If Len(candidate) = 0 Then GoTo ContinueLoop
+        If InStr(1, candidate, "[") > 0 Or InStr(1, candidate, "]") > 0 Then GoTo ContinueLoop
 
-    If Len(candidate) = 0 Then Exit Function
+        On Error Resume Next
+        Set ws = wb.Worksheets(candidate)
+        On Error GoTo 0
 
-    On Error Resume Next
-    Set ws = Wb.Worksheets(candidate)
-    On Error GoTo 0
+        If Not ws Is Nothing Then
+            If StrComp(ws.Name, cell.Parent.Name, vbTextCompare) <> 0 Then
+                IsOtherSheetReference = True
+                Exit Function
+            End If
+        End If
 
-    If ws Is Nothing Then Exit Function
+ContinueLoop:
+        Set ws = Nothing
+    Next matchItem
 
-    If StrComp(ws.Name, cell.Parent.Name, vbTextCompare) <> 0 Then
-        IsOtherSheetReference = True
+CleanExit:
+End Function
+
+Private Function NormalizeSheetToken(ByVal token As String) As String
+    token = Trim$(token)
+    If Len(token) = 0 Then Exit Function
+
+    If Right$(token, 1) = "!" Then
+        token = Left$(token, Len(token) - 1)
     End If
+    token = Trim$(token)
+    If Len(token) = 0 Then Exit Function
+
+    If Left$(token, 1) = "'" And Right$(token, 1) = "'" Then
+        token = Mid$(token, 2, Len(token) - 2)
+        token = Replace$(token, "''", "'")
+    End If
+
+    NormalizeSheetToken = token
 End Function
 

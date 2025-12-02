@@ -427,8 +427,8 @@ Sub CycleBorder(side As String)
     End If
     lastAddress = currentAddress
     lastSelectionStamp = gSelectionStamp
-    ' Border styles to cycle: none, dotted, double
-    borderStyles = Array(xlDot, xlDouble, xlNone)
+    ' Border styles to cycle: dashed (first), double, none
+    borderStyles = Array(xlDash, xlDouble, xlNone)
     ' Apply to the specified side
     Select Case sideKey
         Case "h": Set b = rng.Borders(xlEdgeLeft)

@@ -21,7 +21,6 @@ Public Const KEY_REMAP As String = "<key>"  ' Must lower case
 ' Modes
 Public Const MODE_DUMMY As String = "_"
 Public Const MODE_NORMAL As String = "n"
-Public Const MODE_VISUAL As String = "v"
 Public Const MODE_CMDLINE As String = "c"
 Public Const MODE_SHAPEINSERT As String = "i"
 
@@ -43,8 +42,8 @@ Public Enum eKey
     IME_On_ = 25
     IME_Off_
     Escape_
-    Henkan_         ' JIS only  ïœä∑
-    Muhenkan_       ' JIS only  ñ≥ïœä∑
+    Henkan_         ' JIS only  ????
+    Muhenkan_       ' JIS only  ??????
     Space_ = 32
     PageUp_
     PageDown_
@@ -162,12 +161,13 @@ Public Enum eKey
     Underscore_ = 226           ' US  None              JIS  \ (Shift _ )  [downside \ ]
 
     'JIS keyboard only
-    Eisu_ = 240                 ' âpêî
-    Katakana_ = 242             ' ÉJÉ^ÉJÉi Ç–ÇÁÇ™Ç»
-    HankakuZenkaku_             ' îºäp/ëSäp
+    Eisu_ = 240                 ' ?p??
+    Katakana_ = 242             ' ?J?^?J?i ????????
+    HankakuZenkaku_             ' ???p/?S?p
 
     'Customize
     Ctrl_ = 512
     Shift_ = 1024
     Alt_ = 2048
 End Enum
+

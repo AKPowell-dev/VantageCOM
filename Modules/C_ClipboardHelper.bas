@@ -68,17 +68,18 @@ Public Sub ClipboardHandlePaste()
 End Sub
 
 Private Sub ClipboardHandlePasteSpecial(ByVal controlId As String)
-    Dim engine As Object
     On Error Resume Next
-    Set engine = NetAddin()
-    If engine Is Nothing Then Exit Sub
     Select Case controlId
         Case "PasteValues"
-            engine.ClipboardHandlePasteValues
+            Application.CommandBars.ExecuteMso "PasteValues"
         Case "PasteFormulas"
-            engine.ClipboardHandlePasteFormulas
+            Application.CommandBars.ExecuteMso "PasteFormulas"
         Case Else
-            engine.ClipboardOpenPasteSpecial
+            Application.CommandBars.ExecuteMso "PasteSpecialDialog"
+            If Err.Number <> 0 Then
+                Err.Clear
+                Application.Dialogs(xlDialogPasteSpecial).Show
+            End If
     End Select
 End Sub
 

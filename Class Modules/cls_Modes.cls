@@ -18,7 +18,6 @@ Private cKeyMapBits As Object
 ' Event hooks for each modes
 Private cModeNormal As cls_ModeNormal
 Attribute cModeNormal.VB_VarHelpID = -1
-Private cModeVisual As cls_ModeVisual
 Private cModeShapeInsert As cls_ModeShapeInsert
 
 '/*
@@ -29,7 +28,6 @@ Private Sub Class_Initialize()
     With cKeyMapFallback
         .Add MODE_DUMMY, ""
         .Add MODE_NORMAL, MODE_DUMMY
-        .Add MODE_VISUAL, MODE_NORMAL
         .Add MODE_CMDLINE, ""
         .Add MODE_SHAPEINSERT, ""
     End With
@@ -96,7 +94,6 @@ End Function
 ' */
 Private Sub ClearAppInstances()
     Set cModeNormal = Nothing
-    Set cModeVisual = Nothing
     Set cModeShapeInsert = Nothing
 End Sub
 
@@ -129,8 +126,6 @@ Public Sub Change(ByVal newMode As String)
         Case MODE_NORMAL
             Set cModeNormal = New cls_ModeNormal
             Call DisableIME
-        Case MODE_VISUAL
-            Set cModeVisual = New cls_ModeVisual
         Case MODE_SHAPEINSERT
             Set cModeShapeInsert = New cls_ModeShapeInsert
     End Select
@@ -174,10 +169,6 @@ End Function
 
 Public Property Get Normal() As cls_ModeNormal
     Set Normal = cModeNormal
-End Property
-
-Public Property Get Visual() As cls_ModeVisual
-    Set Visual = cModeVisual
 End Property
 
 Public Property Get ShapeInsert() As cls_ModeShapeInsert

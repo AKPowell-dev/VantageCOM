@@ -109,13 +109,13 @@ Private Function ShouldSkipAutoColor(ByVal rng As Range) As Boolean
     End If
 
     ' Skip heavy colorizing on large changes to keep Excel snappy
-    If rng.CountLarge > 1024 Then
+    If rng.CountLarge > 100 Then
         ShouldSkipAutoColor = True
         Exit Function
     End If
 
     ' Multi-area ranges can be especially slow to iterate
-    If rng.Areas.Count > 1 And rng.CountLarge > 256 Then
+    If rng.Areas.Count > 1 And rng.CountLarge > 100 Then
         ShouldSkipAutoColor = True
         Exit Function
     End If

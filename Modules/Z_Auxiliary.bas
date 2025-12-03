@@ -17,6 +17,23 @@ Private Function SuppressExcelUi(Optional ByVal hideStatusBar As Boolean = False
     Set SuppressExcelUi = guard
 End Function
 
+Function ColorSelectionYellow(Optional ByVal g As String) As Boolean
+    Dim uiGuard As ExcelUiGuard
+    Set uiGuard = SuppressExcelUi(True)
+    On Error GoTo CleanFail
+
+    If TypeName(Selection) = "Range" Then
+        Selection.Interior.Color = vbYellow
+    End If
+
+CleanExit:
+    ColorSelectionYellow = False
+    Exit Function
+CleanFail:
+    Call ErrorHandler("ColorSelectionYellow")
+    Resume CleanExit
+End Function
+
 Public Function SubstituteType(Optional ByVal g As String) As Boolean
     Dim uiGuard As ExcelUiGuard
     Set uiGuard = SuppressExcelUi(True)

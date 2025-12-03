@@ -56,6 +56,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Addin.cs" />
+    <Compile Include="QuickCommandForm.cs" />
+    <Compile Include="PowerPointAddin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\ClipboardService.cs" />
     <Compile Include="Services\FormatService.cs" />

@@ -124,6 +124,7 @@ Sub DefaultConfig()
         .Map "nmap ft ChangeFormat"
         .Map "nmap ff ShowFontDialog"
         .Map "nmap Fc SmartFontColor"
+        .Map "nmap v ColorSelectionYellow"
 
         ' === Numbers ===
         .Map "nmap <C-,> IncreaseDecimalPlaces"

@@ -18,6 +18,7 @@ namespace VantagePackageHolder
         private IntPtr _subclassHandle = IntPtr.Zero;
         private IntPtr _originalWndProc = IntPtr.Zero;
         private WndProcDelegate _wndProcDelegate;
+        private QuickCommandForm _activeCmdForm;
 
         // Hotkey constants
         private const int WM_HOTKEY = 0x0312;
@@ -26,8 +27,10 @@ namespace VantagePackageHolder
         private const int VK_T = 0x54;
         private const int VK_OEM_1 = 0xBA; // ;/: key
         private const int VK_B = 0x42;
+        private const int VK_SHIFT_KEY = 0x10;
+        private const int VK_CONTROL_KEY = 0x11;
+        private const int VK_MENU_KEY = 0x12;
         private const int HOTKEY_ID = 0xBEEF;
-        private const int HOTKEY_CMD_ID = 0xBEEE;
         private const int HOTKEY_SHAPE_ID = 0xBEED;
 
         public void OnConnection(object application, ext_ConnectMode connectMode, object addInInst, ref Array custom)
@@ -63,6 +66,7 @@ namespace VantagePackageHolder
             }
 
             UninstallHotkey();
+            TearDownCmdForm();
             _ppt = null;
         }
 
@@ -202,8 +206,6 @@ namespace VantagePackageHolder
 
             // Register hotkey Ctrl+Shift+T on the PowerPoint main window
             RegisterHotKey(_subclassHandle, HOTKEY_ID, MOD_CONTROL | MOD_SHIFT, VK_T);
-            // Register hotkey Shift+; (:) to open command line placeholder
-            RegisterHotKey(_subclassHandle, HOTKEY_CMD_ID, MOD_SHIFT, VK_OEM_1);
             // Register hotkey Ctrl+Shift+B to insert styled shape
             RegisterHotKey(_subclassHandle, HOTKEY_SHAPE_ID, MOD_CONTROL | MOD_SHIFT, VK_B);
         }
@@ -215,7 +217,6 @@ namespace VantagePackageHolder
             try
             {
                 UnregisterHotKey(_subclassHandle, HOTKEY_ID);
-                UnregisterHotKey(_subclassHandle, HOTKEY_CMD_ID);
                 UnregisterHotKey(_subclassHandle, HOTKEY_SHAPE_ID);
             }
             catch
@@ -247,28 +248,84 @@ namespace VantagePackageHolder
                 InsertStyledTextbox();
                 return IntPtr.Zero;
             }
-            if (msg == WM_HOTKEY && wParam.ToInt32() == HOTKEY_CMD_ID)
-            {
-                ShowCommandLineDialog();
-                return IntPtr.Zero;
-            }
             if (msg == WM_HOTKEY && wParam.ToInt32() == HOTKEY_SHAPE_ID)
             {
                 InsertCenteredShape();
                 return IntPtr.Zero;
             }
 
+            // Listen for Shift+; (:) keydown on the PPT window (without global hotkey)
+            const int WM_KEYDOWN = 0x0100;
+            if (msg == WM_KEYDOWN && wParam.ToInt32() == VK_OEM_1)
+            {
+                bool shift = (GetKeyState(VK_SHIFT_KEY) & 0x8000) != 0;
+                bool ctrl = (GetKeyState(VK_CONTROL_KEY) & 0x8000) != 0;
+                bool alt = (GetKeyState(VK_MENU_KEY) & 0x8000) != 0;
+
+                if (shift && !ctrl && !alt)
+                {
+                    ShowCommandLineDialog();
+                    // Do not consume the key so ':' still types if needed
+                }
+            }
+
             return CallWindowProc(_originalWndProc, hWnd, msg, wParam, lParam);
         }
 
-        private void ShowCommandLineDialog()
+        private bool ShowCommandLineDialog()
         {
-            var slide = ResolveActiveSlide();
-            if (slide == null) return;
+            if (ShouldSuppressCmdLine()) return false;
 
-            using (var form = new QuickCommandForm(slide))
+            var slide = ResolveActiveSlide();
+            if (slide == null) return false;
+
+            TearDownCmdForm();
+
+            _activeCmdForm = new QuickCommandForm(slide);
+            _activeCmdForm.FormClosed += (_, __) => { TearDownCmdForm(); };
+            _activeCmdForm.Show();
+            return true;
+        }
+
+        private bool ShouldSuppressCmdLine()
+        {
+            try
             {
-                form.ShowDialog();
+                var win = _ppt?.ActiveWindow;
+                var sel = win?.Selection;
+                if (sel == null) return false;
+                if (sel.Type == PowerPoint.PpSelectionType.ppSelectionText)
+                {
+                    return true;
+                }
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void TearDownCmdForm()
+        {
+            try
+            {
+                if (_activeCmdForm != null)
+                {
+                    if (!_activeCmdForm.IsDisposed)
+                    {
+                        _activeCmdForm.Close();
+                        _activeCmdForm.Dispose();
+                    }
+                }
+            }
+            catch
+            {
+                // ignore teardown failures
+            }
+            finally
+            {
+                _activeCmdForm = null;
             }
         }
 
@@ -357,5 +414,8 @@ namespace VantagePackageHolder
 
         [DllImport("user32.dll")]
         private static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern short GetKeyState(int nVirtKey);
     }
 }

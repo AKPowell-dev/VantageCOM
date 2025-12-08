@@ -127,7 +127,8 @@ namespace VantagePackageHolder
                     return;
                 }
 
-                bool singleNumeric = baseRange.Count == 1 && double.TryParse(Convert.ToString(baseRange.Value2), out _);
+                double singleNumericValue;
+                bool singleNumeric = baseRange.Count == 1 && double.TryParse(Convert.ToString(baseRange.Value2), out singleNumericValue);
                 if (singleNumeric)
                 {
                     baseRange.AutoFill(selection, Excel.XlAutoFillType.xlFillSeries);

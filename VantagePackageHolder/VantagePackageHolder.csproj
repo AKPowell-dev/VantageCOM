@@ -45,13 +45,13 @@
     <Reference Include="System.Xml" />
     <Reference Include="Extensibility" />
     <Reference Include="Microsoft.Office.Interop.Excel">
-      <EmbedInteropTypes>false</EmbedInteropTypes>
+      <EmbedInteropTypes>true</EmbedInteropTypes>
     </Reference>
     <Reference Include="Microsoft.Office.Interop.PowerPoint">
-      <EmbedInteropTypes>false</EmbedInteropTypes>
+      <EmbedInteropTypes>true</EmbedInteropTypes>
     </Reference>
     <Reference Include="Office">
-      <EmbedInteropTypes>false</EmbedInteropTypes>
+      <EmbedInteropTypes>true</EmbedInteropTypes>
     </Reference>
   </ItemGroup>
   <ItemGroup>

@@ -10,6 +10,18 @@ namespace VantagePackageHolder
     [ClassInterface(ClassInterfaceType.AutoDual)]
     public sealed class VantageEngine : IDisposable
     {
+        static VantageEngine()
+        {
+            try
+            {
+                // Early binding check; if dependencies are missing, surface it.
+            }
+            catch (Exception ex)
+            {
+                System.Windows.Forms.MessageBox.Show(ex.ToString(), "VantageEngine static ctor");
+            }
+        }
+
         private readonly Excel.Application _excel;
         private readonly Lazy<ClipboardService> _clipboard;
         private readonly Lazy<PowerPointExporter> _ppt;

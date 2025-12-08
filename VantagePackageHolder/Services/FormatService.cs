@@ -1158,27 +1158,81 @@ namespace VantagePackageHolder
                 return;
             }
 
-            if (!RangeHelpers.TryGetRangeOrActiveCell(_app, out var sel))
-            {
-                return;
-            }
+            var fontObj = ResolveSelectionFont();
+            if (fontObj == null) return;
 
-            using (new UiGuard(_app))
+            if (fontObj is Excel.Font font)
             {
-                bool current = defaultState;
-                try
+                using (new UiGuard(_app))
                 {
-                    var raw = getter(sel.Font);
-                    current = CoerceToBool(raw, defaultState);
-                }
-                catch
-                {
-                    current = defaultState;
-                }
+                    bool current = defaultState;
+                    try
+                    {
+                        var raw = getter(font);
+                        current = CoerceToBool(raw, defaultState);
+                    }
+                    catch
+                    {
+                        current = defaultState;
+                    }
 
-                try { setter(sel.Font, !current); }
-                catch { }
+                    try { setter(font, !current); }
+                    catch { }
+                }
             }
+            else if (fontObj is Office.Font2 font2)
+            {
+                using (new UiGuard(_app))
+                {
+                    bool current = defaultState;
+                    try
+                    {
+                        current = font2.Bold == Office.MsoTriState.msoTrue;
+                    }
+                    catch
+                    {
+                        current = defaultState;
+                    }
+
+                    try { font2.Bold = current ? Office.MsoTriState.msoFalse : Office.MsoTriState.msoTrue; }
+                    catch { }
+                }
+            }
+        }
+
+        private object ResolveSelectionFont()
+        {
+            object sel = null;
+            try { sel = _app.Selection; } catch { }
+            if (sel == null) return null;
+
+            try
+            {
+                if (sel is Excel.Range rng)
+                {
+                    return rng.Font;
+                }
+            }
+            catch { }
+
+            try
+            {
+                // Many Excel objects expose .Font; dynamic lets us grab it without exhaustive typing.
+                return ((dynamic)sel).Font;
+            }
+            catch { }
+
+            try
+            {
+                // Charts/data labels/etc.: fall back to chart area text formatting
+                if (sel is Excel.ChartObject co && co.Chart != null)
+                {
+                    return co.Chart.ChartArea.Format.TextFrame2.TextRange.Font;
+                }
+            }
+            catch { }
+
+            return null;
         }
 
         private void AdjustDecimalPlaces(string commandId, int steps)
@@ -1631,7 +1685,8 @@ namespace VantagePackageHolder
                         if (Convert.ToBoolean(cell.HasFormula))
                         {
                             var v = cell.Value2;
-                            if (v != null && double.TryParse(Convert.ToString(v), out _))
+                            double tmp;
+                            if (v != null && double.TryParse(Convert.ToString(v), out tmp))
                             {
                                 string f = Convert.ToString(cell.Formula);
                                 if (f.StartsWith("=-(") && f.EndsWith(")")) cell.Formula = "=" + f.Substring(3, f.Length - 4);
@@ -1641,7 +1696,8 @@ namespace VantagePackageHolder
                         else
                         {
                             var v = cell.Value2;
-                            if (v != null && double.TryParse(Convert.ToString(v), out double num)) cell.Value2 = -num;
+                            double num = 0;
+                            if (v != null && double.TryParse(Convert.ToString(v), out num)) cell.Value2 = -num;
                         }
                     }
                     catch { }

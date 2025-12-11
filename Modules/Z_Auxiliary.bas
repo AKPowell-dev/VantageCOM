@@ -354,10 +354,40 @@ Public Sub DeleteLikeExcel()
     Dim uiGuard As ExcelUiGuard
     Set uiGuard = SuppressExcelUi(True)
     On Error GoTo CleanFail
-    If TypeName(Selection) = "Range" Then
-        Selection.ClearContents
-    ElseIf VarType(Selection) = vbObject Then
-        Selection.Delete
+    Dim sel As Object
+    Set sel = Selection
+
+    If sel Is Nothing Then GoTo CleanExit
+
+    ' If a chart is active, delete the chart object (covers chart elements too).
+    Dim activeCh As Object
+    On Error Resume Next
+    Set activeCh = ActiveChart
+    On Error GoTo CleanFail
+    If Not activeCh Is Nothing Then
+        activeCh.Parent.Delete
+        GoTo CleanExit
+    End If
+
+    If TypeName(sel) = "Range" Then
+        sel.ClearContents
+    ElseIf TypeName(sel) = "ChartObject" Then
+        sel.Delete
+    ElseIf TypeName(sel) = "Shape" Or TypeName(sel) = "ShapeRange" Then
+        sel.Delete
+    ElseIf VarType(sel) = vbObject Then
+        On Error Resume Next
+        sel.Delete
+        If Err.Number <> 0 Then
+            Err.Clear
+            Dim parentObj As Object
+            Set parentObj = Nothing
+            Set parentObj = sel.Parent
+            If Not parentObj Is Nothing Then
+                parentObj.Delete
+            End If
+        End If
+        On Error GoTo CleanFail
     End If
 CleanExit:
     On Error GoTo 0
@@ -481,7 +511,24 @@ Sub InsertHyperlinkDialog()
     Set uiGuard = SuppressExcelUi(True)
     On Error GoTo Catch
 
+    Dim linkColor As Long
+    linkColor = RGB(0, 102, 255)
+
+    ' Align workbook hyperlink styles to the desired link color.
+    On Error Resume Next
+    ActiveWorkbook.Styles("Hyperlink").Font.Color = linkColor
+    ActiveWorkbook.Styles("Followed Hyperlink").Font.Color = linkColor
+    On Error GoTo Catch
+
     Application.Dialogs(xlDialogInsertHyperlink).Show
+
+    ' Re-apply color to any hyperlinks that were inserted on the current range.
+    If TypeName(Selection) = "Range" Then
+        Dim hl As Hyperlink
+        For Each hl In Selection.Hyperlinks
+            hl.Range.Font.Color = linkColor
+        Next hl
+    End If
     Exit Sub
 
 Catch:

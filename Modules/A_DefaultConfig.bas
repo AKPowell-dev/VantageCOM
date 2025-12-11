@@ -404,7 +404,6 @@ Sub DefaultConfig()
         .Map "nmap <C-u> ScrollUpHalf"
         .Map "nmap <C-d> ScrollDownHalf"
         .Map "nmap <C-b> ScrollUp"
-        .Map "nmap <C-f> ScrollDown"
         .Map "nmap <C-y> ScrollUp1Row"
         .Map "nmap <C-e> ScrollDown1Row"
         .Map "nmap , ScrollLeftHalf"

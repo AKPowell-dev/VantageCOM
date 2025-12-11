@@ -18,11 +18,11 @@ Option Explicit
 Private Const KEY_LIST1 As String = "wbertyuiop"    ' Theme color selection key (section 1)
 Private Const KEY_LIST2 As String = "asdfghjkl;"    ' Default color selection key (section 2)
 Private Const KEY_LIST3 As String = "zxcvm"        ' Custom color selection key (section 3)
-Private Const KEY_LIST4 As String = "12345"        ' Expanded custom block keys (section 4)
-Private Const KEY_LIST4_COUNT As Long = 5           ' Number of keys/columns in the new block
+Private Const KEY_LIST4 As String = "12345678"        ' Expanded custom block keys (section 4)
+Private Const KEY_LIST4_COUNT As Long = 8           ' Number of keys/columns in the new block
 Private Const KEY_DETAIL As String = "1234567890"   ' Detail keys (10 entries)
 Private Const KEY_NULL As String = "n"              ' Auto/Null selection key
-Private Const BORDER_COLOR As Long = &HE4E4E4       ' Color box border color
+Private Const BORDER_COLOR As Long = vbBlack        ' Color box border color
 Private Const DISABLED_COLOR As Long = &HDDDDDD     ' Disabled text/background color
 
 Private Const IDX_LIST1 As Long = 2                 ' Theme color row number (base row)
@@ -95,7 +95,7 @@ End Function
 
 ' Create a colour tile
 Private Function PutColor(ByVal x As Long, ByVal y As Long, ByRef associatedColor As cls_FontColor, _
-                          Optional ByVal BorderColor As Long = xlNone, _
+                          Optional ByVal BorderColor As Long = vbBlack, _
                           Optional ByVal xSize As Long = 1, _
                           Optional ByVal ySize As Long = 1) As MSForms.Label
     Set PutColor = PutLabel(x, y, xSize, ySize)
@@ -151,18 +151,24 @@ Private Sub UserForm_Initialize()
     Dim customBlockDetailColors As Variant
 
     customBlockTopColors = Array( _
-        RGB(175, 200, 230), _
-        RGB(190, 215, 183), _
+        RGB(0, 32, 96), _
+        RGB(21, 96, 130), _
+        RGB(78, 167, 46), _
         RGB(210, 250, 212), _
-        RGB(243, 195, 180), _
-        RGB(252, 226, 192))
+        RGB(153, 70, 60), _
+        RGB(192, 0, 0), _
+        RGB(68, 84, 106), _
+        RGB(222, 175, 99))
 
     customBlockDetailColors = Array( _
-        Array(RGB(175, 200, 230), RGB(140, 174, 208), RGB(118, 154, 190), RGB(101, 137, 171), RGB(89, 123, 157), RGB(77, 109, 143), RGB(65, 95, 129), RGB(53, 81, 115), RGB(41, 67, 101), RGB(29, 53, 87)), _
-        Array(RGB(190, 215, 183), RGB(152, 188, 147), RGB(122, 163, 120), RGB(99, 140, 98), RGB(85, 121, 84), RGB(71, 102, 70), RGB(57, 83, 56), RGB(43, 64, 42), RGB(29, 45, 28), RGB(15, 26, 15)), _
+        Array(RGB(223, 241, 255), RGB(176, 222, 255), RGB(128, 201, 255), RGB(79, 180, 255), RGB(32, 160, 255), RGB(0, 137, 238), RGB(0, 99, 172), RGB(0, 82, 142), RGB(0, 66, 115), RGB(0, 49, 85)), _
+        Array(RGB(225, 243, 251), RGB(179, 221, 242), RGB(133, 204, 235), RGB(85, 185, 227), RGB(39, 166, 220), RGB(29, 132, 175), RGB(19, 86, 115), RGB(16, 72, 97), RGB(13, 57, 77), RGB(10, 43, 56)), _
+        Array(RGB(236, 249, 232), RGB(208, 239, 197), RGB(181, 230, 162), RGB(152, 220, 126), RGB(124, 205, 91), RGB(97, 200, 57), RGB(71, 150, 41), RGB(60, 125, 34), RGB(48, 100, 28), RGB(35, 75, 20)), _
         Array(RGB(210, 250, 212), RGB(188, 229, 192), RGB(166, 208, 171), RGB(145, 186, 151), RGB(123, 165, 130), RGB(101, 144, 110), RGB(79, 123, 89), RGB(58, 101, 69), RGB(36, 80, 48), RGB(14, 59, 28)), _
-        Array(RGB(243, 195, 180), RGB(223, 160, 145), RGB(203, 133, 121), RGB(185, 112, 102), RGB(167, 99, 90), RGB(149, 86, 78), RGB(131, 73, 66), RGB(113, 60, 54), RGB(95, 47, 42), RGB(77, 34, 30)), _
-        Array(RGB(252, 226, 192), RGB(243, 208, 160), RGB(230, 190, 130), RGB(216, 176, 100), RGB(202, 162, 88), RGB(188, 148, 76), RGB(174, 134, 64), RGB(160, 120, 52), RGB(146, 106, 40), RGB(132, 92, 28)))
+        Array(RGB(247, 232, 234), RGB(234, 205, 202), RGB(221, 175, 170), RGB(209, 145, 137), RGB(197, 115, 105), RGB(184, 84, 73), RGB(137, 63, 54), RGB(115, 52, 45), RGB(91, 41, 36), RGB(69, 31, 27)), _
+        Array(RGB(247, 231, 231), RGB(239, 207, 207), RGB(227, 169, 169), RGB(214, 131, 131), RGB(200, 94, 94), RGB(178, 61, 61), RGB(137, 47, 47), RGB(99, 33, 33), RGB(63, 21, 21), RGB(38, 12, 12)), _
+        Array(RGB(236, 241, 242), RGB(205, 213, 222), RGB(173, 186, 203), RGB(142, 159, 183), RGB(112, 133, 163), RGB(87, 110, 136), RGB(61, 84, 95), RGB(51, 63, 79), RGB(40, 51, 64), RGB(30, 37, 47)), _
+        Array(RGB(252, 248, 241), RGB(247, 236, 217), RGB(242, 224, 193), RGB(237, 211, 169), RGB(232, 200, 147), RGB(226, 187, 122), RGB(216, 162, 71), RGB(198, 139, 43), RGB(158, 112, 33), RGB(118, 83, 24)))
     ' --------------------------------------------------------------------------------------
 
     Dim lncBlack As Variant
@@ -191,6 +197,12 @@ Private Sub UserForm_Initialize()
 
         Dim baseColor As Long
         baseColor = Color.Color
+        ' Override problematic "r" column to a smoother blue gradient
+        If Mid$(KEY_LIST1, i + 1, 1) = "r" Then
+            baseColor = RGB(0, 112, 192)
+            Color.Setup colorCode:=baseColor
+            themeColorLuminance = Color.luminance
+        End If
 
         For j = 1 To Len(KEY_DETAIL)
             Set Color = New cls_FontColor
@@ -258,8 +270,8 @@ Private Sub UserForm_Initialize()
     Color.Setup colorCode:=0
     Color.IsNull = True
 
-    PutText 6, IDX_LIST3 - 2, KEY_NULL, xSize:=5
-    With PutColor(6, IDX_LIST3, Color, xSize:=5)
+    PutText 6, IDX_LIST3 - 2, KEY_NULL, xSize:=KEY_LIST4_COUNT
+    With PutColor(6, IDX_LIST3, Color, xSize:=KEY_LIST4_COUNT)
         .Caption = "Auto, Null"
         .BackStyle = fmBackStyleTransparent
         .BorderStyle = fmBorderStyleSingle

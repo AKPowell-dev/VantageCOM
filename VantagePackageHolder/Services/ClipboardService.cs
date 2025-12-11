@@ -111,7 +111,11 @@ namespace VantagePackageHolder
 
         private void EnsureClipboardPayload()
         {
-            // Skip only if Excel is already in copy mode AND the system clipboard has usable content.
+            // If the clipboard already has something usable (e.g., a screenshot bitmap), do not overwrite it.
+            if (HasClipboardContent())
+                return;
+
+            // Skip if Excel is already in copy mode and clipboard has usable content.
             if (_app.CutCopyMode == Excel.XlCutCopyMode.xlCopy && HasClipboardContent())
                 return;
 
@@ -157,6 +161,7 @@ namespace VantagePackageHolder
                 // Check a few common formats Excel can paste
                 return Clipboard.ContainsData(DataFormats.UnicodeText)
                     || Clipboard.ContainsData(DataFormats.Text)
+                    || Clipboard.ContainsImage()
                     || Clipboard.ContainsData(DataFormats.Bitmap)
                     || Clipboard.ContainsData(DataFormats.Html)
                     || Clipboard.ContainsData(DataFormats.CommaSeparatedValue);

@@ -308,6 +308,321 @@ CleanFail:
     Resume CleanExit
 End Function
 
+Public Sub ResizeSelectionToWidthInches(Optional ByVal targetInches As Double = 4.7)
+    Dim uiGuard As ExcelUiGuard
+    Set uiGuard = SuppressExcelUi(True)
+    On Error GoTo CleanFail
+
+    If TypeName(Selection) <> "Range" Then GoTo CleanExit
+    If targetInches <= 0 Then GoTo CleanExit
+
+    Dim rng As Range
+    Set rng = Selection
+
+    ' Target in points (1 point = 1/72 inch); slight uplift for copy-as-picture alignment
+    Dim targetWidthPts As Double
+    targetWidthPts = targetInches * 73#
+
+    Dim attempt As Long
+    Dim currentWidthPts As Double
+    Const MAX_ATTEMPTS As Long = 12
+    Const TOL_PTS As Double = 0.05 ' tighter snap
+
+    For attempt = 1 To MAX_ATTEMPTS
+        currentWidthPts = MeasureCopyPictureWidthPts(rng)
+        If currentWidthPts <= 0 Then currentWidthPts = rng.Width
+        If currentWidthPts <= 0 Then GoTo CleanExit
+
+        If Abs(currentWidthPts - targetWidthPts) <= TOL_PTS Then Exit For
+
+        Dim adjustableCount As Long
+        Dim deltaPerColPts As Double
+        Dim c As Range
+
+        ' Count adjustable columns (exclude very narrow columns)
+        adjustableCount = 0
+        For Each c In rng.Columns
+            If c.ColumnWidth > 0.5 Then adjustableCount = adjustableCount + 1
+        Next c
+        If adjustableCount = 0 Then GoTo CleanExit
+
+        deltaPerColPts = (targetWidthPts - currentWidthPts) / adjustableCount
+
+        ' Apply uniform point delta per adjustable column, converting back to ColumnWidth units
+        For Each c In rng.Columns
+            If c.ColumnWidth > 0.5 Then
+                Dim wPts As Double
+                Dim wCol As Double
+                Dim targetColWidth As Double
+                wPts = c.Width
+                wCol = c.ColumnWidth
+                If wPts > 0 Then
+                    targetColWidth = wCol * (wPts + deltaPerColPts) / wPts
+                    If targetColWidth < 0.1 Then targetColWidth = 0.1
+                    c.EntireColumn.ColumnWidth = targetColWidth
+                End If
+            End If
+        Next c
+    Next attempt
+
+    ' Final snap using precise redistribution across adjustable columns
+    currentWidthPts = MeasureCopyPictureWidthPts(rng)
+    If currentWidthPts <= 0 Then currentWidthPts = rng.Width
+    If currentWidthPts > 0 And Abs(currentWidthPts - targetWidthPts) > TOL_PTS Then
+        SnapWidthsToTarget rng, targetWidthPts
+    End If
+
+CleanExit:
+    Exit Sub
+CleanFail:
+    Call ErrorHandler("ResizeSelectionToWidthInches")
+    Resume CleanExit
+End Sub
+
+Private Sub SnapWidthsToTarget(ByVal rng As Range, ByVal targetWidthPts As Double)
+    Dim nonAdjustPts As Double
+    Dim adjustablePts As Double
+    Dim c As Range
+    Dim desiredAdj As Double
+    Dim scaleFactor As Double
+    Dim targetColWidth As Double
+
+    On Error GoTo CleanFail
+
+    ' Calculate adjustable vs non-adjustable widths
+    For Each c In rng.Columns
+        If c.ColumnWidth > 0.5 Then
+            adjustablePts = adjustablePts + c.Width
+        Else
+            nonAdjustPts = nonAdjustPts + c.Width
+        End If
+    Next c
+    If adjustablePts <= 0 Then GoTo CleanExit
+
+    desiredAdj = targetWidthPts - nonAdjustPts
+    If desiredAdj <= 0 Then GoTo CleanExit
+
+    scaleFactor = desiredAdj / adjustablePts
+    If scaleFactor <= 0 Then GoTo CleanExit
+
+    ' Apply uniform scaling to adjustable columns
+    For Each c In rng.Columns
+        If c.ColumnWidth > 0.5 Then
+            targetColWidth = c.ColumnWidth * scaleFactor
+            If targetColWidth < 0.1 Then targetColWidth = 0.1
+            c.EntireColumn.ColumnWidth = targetColWidth
+        End If
+    Next c
+
+CleanExit:
+    Exit Sub
+CleanFail:
+    Resume CleanExit
+End Sub
+
+Private Function MeasureCopyPictureWidthPts(ByVal rng As Range) As Double
+    On Error GoTo CleanFail
+    Dim ws As Worksheet
+    Dim tmpPic As Shape
+    Dim prevSheet As Worksheet
+    Dim hadSelection As Boolean
+    Dim prevSel As Object
+
+    Set ws = rng.Worksheet
+    On Error Resume Next
+    Set prevSheet = ActiveSheet
+    hadSelection = Not (Selection Is Nothing)
+    If hadSelection Then Set prevSel = Selection
+    On Error GoTo CleanFail
+
+    Application.ScreenUpdating = False
+
+    rng.CopyPicture Appearance:=xlScreen, Format:=xlPicture
+    ws.Paste
+    Set tmpPic = ws.Shapes(ws.Shapes.Count)
+
+    MeasureCopyPictureWidthPts = tmpPic.Width
+
+CleanExit:
+    On Error Resume Next
+    If Not tmpPic Is Nothing Then tmpPic.Delete
+    If Not prevSheet Is Nothing Then prevSheet.Activate
+    If hadSelection Then prevSel.Select
+    Application.ScreenUpdating = True
+    Exit Function
+CleanFail:
+    MeasureCopyPictureWidthPts = 0
+    Resume CleanExit
+End Function
+
+Public Sub ResizeSelectionToWidth47()
+    ResizeSelectionToWidthInches 4.7
+End Sub
+
+Public Sub ResizeSelectionToWidth95()
+    ResizeSelectionToWidthInches 9.5
+End Sub
+
+Public Sub FormatOverviewGraph()
+    Dim uiGuard As ExcelUiGuard
+    Set uiGuard = SuppressExcelUi(True)
+    On Error GoTo CleanFail
+
+    Dim chtObj As ChartObject
+    Dim ser As Series
+
+    ' Detect chart selection
+    If TypeName(Selection) = "ChartArea" Or TypeName(Selection) = "PlotArea" Then
+        Set chtObj = ActiveChart.Parent
+    ElseIf TypeName(Selection) = "ChartObject" Then
+        Set chtObj = Selection
+    Else
+        MsgBox "Please select a chart before running this macro.", vbExclamation
+        GoTo CleanExit
+    End If
+
+    With chtObj
+        On Error Resume Next
+        If .Chart.HasTitle Then .Chart.HasTitle = False
+        .Chart.Axes(xlValue).HasMajorGridlines = False
+        .Chart.Axes(xlValue).Delete
+        .Chart.HasLegend = False
+
+        .Chart.ChartType = xlColumnStacked100
+        .Chart.PlotBy = IIf(.Chart.PlotBy = xlRows, xlColumns, xlRows)
+        If .Chart.ChartGroups.Count > 0 Then .Chart.ChartGroups(1).GapWidth = 5
+
+        For Each ser In .Chart.SeriesCollection
+            With ser.Format.Line
+                .Visible = msoTrue
+                .ForeColor.RGB = RGB(0, 0, 0)
+                .Weight = 0.75
+            End With
+            ser.ApplyDataLabels ShowSeriesName:=True, ShowValue:=True
+            With ser.DataLabels
+                .Font.Name = "Garamond"
+                .Font.Size = 11
+                .Font.Color = RGB(0, 0, 0)
+                .Font.Bold = True
+                .Separator = ", "
+            End With
+        Next ser
+
+        .Height = 149.76
+        .Width = 357.84
+        .IncrementLeft 9.75
+        .IncrementTop -4.5
+
+        With .Chart.PlotArea
+            .Top = 15
+            .Left = 9
+            .Width = 335
+            .Height = 130
+        End With
+
+        With .Chart.Axes(xlCategory)
+            .MajorTickMark = xlOutside
+            With .Format.Line
+                .Visible = msoTrue
+                .ForeColor.RGB = RGB(0, 0, 0)
+                .Weight = 1
+            End With
+        End With
+
+        .Chart.ChartArea.Font.Name = "Garamond"
+        .Chart.ChartArea.Font.Color = RGB(0, 0, 0)
+
+        With .ShapeRange.Line
+            .Visible = msoFalse
+        End With
+
+        With .Chart.Axes(xlCategory).TickLabels
+            .Font.Name = "Garamond"
+            .Font.Size = 11
+            .Font.Bold = True
+            .Font.Color = RGB(0, 0, 0)
+        End With
+        On Error GoTo 0
+    End With
+
+CleanExit:
+    Exit Sub
+CleanFail:
+    Call ErrorHandler("FormatOverviewGraph")
+    Resume CleanExit
+End Sub
+
+Sub CycleChartType()
+    Dim uiGuard As ExcelUiGuard
+    Set uiGuard = SuppressExcelUi(True)
+
+    Dim chartObj As Chart
+    On Error Resume Next
+    Set chartObj = ActiveChart
+    If chartObj Is Nothing Then
+        If TypeName(Selection) = "ChartObject" Then
+            Set chartObj = Selection.Chart
+        ElseIf TypeName(Selection) = "ChartArea" Or TypeName(Selection) = "PlotArea" Then
+            Set chartObj = ActiveChart
+        End If
+    End If
+    On Error GoTo 0
+    If chartObj Is Nothing Then Exit Sub
+
+    Static idx As Long
+    Static lastStamp As Long
+    If gSelectionStamp <> lastStamp Then idx = 0
+    lastStamp = gSelectionStamp
+
+    Dim types As Variant
+    types = Array(xlColumnClustered, xlLine, xlColumnStacked100, xlXYScatter)
+
+    On Error Resume Next
+    chartObj.ChartType = types(idx)
+    ' Force each series into the target type for reliable switching
+    Dim i As Long
+    For i = 1 To chartObj.FullSeriesCollection.Count
+        chartObj.FullSeriesCollection(i).ChartType = types(idx)
+    Next i
+    ' Stacking fallback: ensure 100% stacked with proper overlap/plot orientation
+    If types(idx) = xlColumnStacked100 Then
+        chartObj.ChartType = xlColumnStacked100
+        For i = 1 To chartObj.FullSeriesCollection.Count
+            chartObj.FullSeriesCollection(i).ChartType = xlColumnStacked100
+        Next i
+        chartObj.PlotBy = IIf(chartObj.PlotBy = xlRows, xlColumns, xlRows)
+        If chartObj.ChartGroups.Count > 0 Then
+            chartObj.ChartGroups(1).GapWidth = 30
+            chartObj.ChartGroups(1).Overlap = 100
+        End If
+        ' If still not stacked, try columns plot
+        If chartObj.ChartType <> xlColumnStacked100 Then
+            chartObj.PlotBy = xlColumns
+            chartObj.ChartType = xlColumnStacked100
+            For i = 1 To chartObj.FullSeriesCollection.Count
+                chartObj.FullSeriesCollection(i).ChartType = xlColumnStacked100
+            Next i
+            If chartObj.ChartGroups.Count > 0 Then
+                chartObj.ChartGroups(1).GapWidth = 30
+                chartObj.ChartGroups(1).Overlap = 100
+            End If
+        End If
+    Else
+        ' Reset spacing/overlap that might linger from stacked columns for all other chart types
+        On Error Resume Next
+        chartObj.PlotBy = xlColumns
+        If chartObj.ChartGroups.Count > 0 Then
+            chartObj.ChartGroups(1).GapWidth = 150
+            chartObj.ChartGroups(1).Overlap = 0
+        End If
+        On Error GoTo 0
+    End If
+    On Error GoTo 0
+
+    idx = idx + 1
+    If idx > UBound(types) Then idx = 0
+End Sub
+
 Function NumberNarrativeCycle(Optional ByVal g As String) As Boolean
     Dim engine As Object
     On Error GoTo CleanFail

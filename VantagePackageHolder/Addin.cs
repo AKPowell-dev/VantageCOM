@@ -11,29 +11,50 @@ namespace VantagePackageHolder
     [ProgId("VantagePackageHolder.Addin")]
     public sealed class Addin : IDTExtensibility2
     {
+        static Addin()
+        {
+            try
+            {
+                // Trigger any binding errors early and surface them.
+            }
+            catch (Exception ex)
+            {
+                System.Windows.Forms.MessageBox.Show(ex.ToString(), "VantagePackageHolder.Addin static ctor");
+            }
+        }
+
         private Application _excel;
         private VantageEngine _engine;
         private AppEvents_Event _appEvents;
 
         public void OnConnection(object application, ext_ConnectMode connectMode, object addInInst, ref Array custom)
         {
-            _excel = (Application)application;
-            _engine = new VantageEngine(_excel);
-
-            if (addInInst is Office.COMAddIn comAddIn)
-            {
-                comAddIn.Object = _engine;
-            }
-
             try
             {
-                _appEvents = (AppEvents_Event)_excel;
-                _appEvents.SheetSelectionChange += OnSheetSelectionChange;
-                _appEvents.WindowActivate += OnWindowActivate;
+                _excel = (Application)application;
+                _engine = new VantageEngine(_excel);
+
+                if (addInInst is Office.COMAddIn comAddIn)
+                {
+                    comAddIn.Object = _engine;
+                }
+
+                try
+                {
+                    _appEvents = (AppEvents_Event)_excel;
+                    _appEvents.SheetSelectionChange += OnSheetSelectionChange;
+                    _appEvents.WindowActivate += OnWindowActivate;
+                }
+                catch
+                {
+                    // ignore event hookup issues
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                // ignore
+                System.Windows.Forms.MessageBox.Show(ex.ToString(), "VantagePackageHolder.OnConnection");
+                // Optionally rethrow to preserve failure state
+                // throw;
             }
         }
 

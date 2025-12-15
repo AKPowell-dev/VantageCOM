@@ -38,3 +38,11 @@ C:\Users\andrep54\OneDrive - kochind.com\Documents\PARA\3. RESOURCES\Excel Add-I
 C:\Users\andrep54\OneDrive - kochind.com\Documents\PARA\3. RESOURCES\Excel Add-Ins\Vim Package Holder V22\VantagePackageHolder\bin\Debug\Office.xml
 C:\Users\andrep54\OneDrive - kochind.com\Documents\PARA\3. RESOURCES\Excel Add-Ins\Vim Package Holder V22\VantagePackageHolder\obj\Debug\VantageP.C2003F0A.Up2Date
 C:\Users\andrep54\OneDrive - kochind.com\Documents\PARA\3. RESOURCES\Excel Add-Ins\Vim Package Holder V22\VantagePackageHolder\bin\Debug\VantagePackageHolder.pdb
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\bin\Debug\VantagePackageHolder.dll
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\bin\Debug\VantagePackageHolder.pdb
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\bin\Debug\Extensibility.dll
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\obj\Debug\VantagePackageHolder.csproj.AssemblyReference.cache
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\obj\Debug\VantagePackageHolder.csproj.CoreCompileInputs.cache
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\obj\Debug\VantageP.C2003F0A.Up2Date
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\obj\Debug\VantagePackageHolder.dll
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\obj\Debug\VantagePackageHolder.pdb

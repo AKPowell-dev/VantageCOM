@@ -540,15 +540,6 @@ namespace VantagePackageHolder
                         columnSpan = ws.Range[ws.Cells[startRow, currentCol], ws.Cells[lastRow, currentCol]];
                         targetRange = ws.Range[ws.Cells[startRow + 1, currentCol], ws.Cells[lastRow, currentCol]];
 
-                        BorderState[] leftBorders = null;
-                        BorderState[] rightBorders = null;
-                        BorderState insideVertical = default;
-                        BorderState insideHorizontal = default;
-                        if (targetRange != null)
-                        {
-                            SnapshotBorders(targetRange, out leftBorders, out rightBorders, out _, out _, out insideVertical, out insideHorizontal);
-                        }
-
                         bool sourceHasFormula = false;
                         string sourceFormulaR1C1 = null;
                         object sourceValue = null;
@@ -610,11 +601,6 @@ namespace VantagePackageHolder
                         }
 
                         ApplyDownFillFormatting(changedTargets, sourceCell, sourceHasFill, sourceFillColor);
-                        if (targetRange != null)
-                        {
-                            RestoreLeftRightAndInside(targetRange, leftBorders, rightBorders, insideVertical, insideHorizontal);
-                        }
-                        ApplyTopBottomBorders(sourceCell, changedTargets);
 
                         filledUnion = MergeIntoUnion(filledUnion, columnSpan);
                         columnSpan = null;
@@ -1158,27 +1144,121 @@ namespace VantagePackageHolder
                 return;
             }
 
-            if (!RangeHelpers.TryGetRangeOrActiveCell(_app, out var sel))
-            {
-                return;
-            }
+            var fontObj = ResolveSelectionFont();
+            if (fontObj == null) return;
 
-            using (new UiGuard(_app))
+            if (fontObj is Excel.Font font)
             {
-                bool current = defaultState;
-                try
+                using (new UiGuard(_app))
                 {
-                    var raw = getter(sel.Font);
-                    current = CoerceToBool(raw, defaultState);
-                }
-                catch
-                {
-                    current = defaultState;
-                }
+                    bool current = defaultState;
+                    try
+                    {
+                        var raw = getter(font);
+                        current = CoerceToBool(raw, defaultState);
+                    }
+                    catch
+                    {
+                        current = defaultState;
+                    }
 
-                try { setter(sel.Font, !current); }
-                catch { }
+                    try { setter(font, !current); }
+                    catch { }
+                }
             }
+            else if (fontObj is Office.Font2 font2)
+            {
+                using (new UiGuard(_app))
+                {
+                    bool current = defaultState;
+                    try
+                    {
+                        current = font2.Bold == Office.MsoTriState.msoTrue;
+                    }
+                    catch
+                    {
+                        current = defaultState;
+                    }
+
+                    try { font2.Bold = current ? Office.MsoTriState.msoFalse : Office.MsoTriState.msoTrue; }
+                    catch { }
+                }
+            }
+        }
+
+        private object ResolveSelectionFont()
+        {
+            object sel = null;
+            try { sel = _app.Selection; } catch { }
+            if (sel == null) return null;
+
+            try
+            {
+                if (sel is Excel.Range rng)
+                {
+                    return rng.Font;
+                }
+            }
+            catch { }
+
+            try
+            {
+                // Many Excel objects expose .Font; dynamic lets us grab it without exhaustive typing.
+                return ((dynamic)sel).Font;
+            }
+            catch { }
+
+            try
+            {
+                if (sel is Excel.ChartObject co && co.Chart != null)
+                {
+                    return co.Chart.ChartArea?.Format?.TextFrame2?.TextRange?.Font;
+                }
+                if (sel is Excel.Chart chartSel)
+                {
+                    return chartSel.ChartArea?.Format?.TextFrame2?.TextRange?.Font;
+                }
+                if (sel is Excel.Axis axis)
+                {
+                    var font = axis.TickLabels?.Font;
+                    if (font != null) return font;
+                    var f2 = axis.TickLabels?.Format?.TextFrame2?.TextRange?.Font;
+                    if (f2 != null) return f2;
+                }
+                if (sel is Excel.DataLabel dl)
+                {
+                    var font = dl.Format?.TextFrame2?.TextRange?.Font;
+                    if (font != null) return font;
+                    return dl.Font;
+                }
+                if (sel is Excel.DataLabels dls)
+                {
+                    var font = dls.Format?.TextFrame2?.TextRange?.Font;
+                    if (font != null) return font;
+                    try { return dls.Font; } catch { }
+                }
+                if (sel is Excel.Legend legend)
+                {
+                    var font = legend.Format?.TextFrame2?.TextRange?.Font;
+                    if (font != null) return font;
+                    return legend.Font;
+                }
+                if (sel is Excel.LegendEntry legendEntry)
+                {
+                    var font = legendEntry.Format?.TextFrame2?.TextRange?.Font;
+                    if (font != null) return font;
+                    return legendEntry.Font;
+                }
+                if (sel is Excel.ChartTitle title)
+                {
+                    var font = title.Format?.TextFrame2?.TextRange?.Font;
+                    if (font != null) return font;
+                    return title.Font;
+                }
+            }
+            catch { }
+
+            return null;
         }
 
         private void AdjustDecimalPlaces(string commandId, int steps)
@@ -1631,7 +1711,8 @@ namespace VantagePackageHolder
                         if (Convert.ToBoolean(cell.HasFormula))
                         {
                             var v = cell.Value2;
-                            if (v != null && double.TryParse(Convert.ToString(v), out _))
+                            double tmp;
+                            if (v != null && double.TryParse(Convert.ToString(v), out tmp))
                             {
                                 string f = Convert.ToString(cell.Formula);
                                 if (f.StartsWith("=-(") && f.EndsWith(")")) cell.Formula = "=" + f.Substring(3, f.Length - 4);
@@ -1641,7 +1722,8 @@ namespace VantagePackageHolder
                         else
                         {
                             var v = cell.Value2;
-                            if (v != null && double.TryParse(Convert.ToString(v), out double num)) cell.Value2 = -num;
+                            double num = 0;
+                            if (v != null && double.TryParse(Convert.ToString(v), out num)) cell.Value2 = -num;
                         }
                     }
                     catch { }
@@ -3324,6 +3406,42 @@ namespace VantagePackageHolder
                     applied = ApplyFillFormat(chart.ChartArea?.Format?.Fill, spec);
                     ReleaseIfNeeded(chart);
                     break;
+                case Excel.Series series:
+                    applied = ApplyFillFormat(series.Format?.Fill, spec);
+                    ReleaseIfNeeded(series);
+                    break;
+                case Excel.Point point:
+                    applied = ApplyFillFormat(point.Format?.Fill, spec);
+                    ReleaseIfNeeded(point);
+                    break;
+                case Excel.Axis axis:
+                    applied = ApplyFillFormat(axis.Format?.Fill, spec);
+                    if (!applied)
+                    {
+                        applied = ApplyFillFormat(axis.TickLabels?.Format?.Fill, spec);
+                    }
+                    ReleaseIfNeeded(axis);
+                    break;
+                case Excel.DataLabel dataLabel:
+                    applied = ApplyFillFormat(dataLabel.Format?.Fill, spec);
+                    ReleaseIfNeeded(dataLabel);
+                    break;
+                case Excel.DataLabels dataLabels:
+                    try
+                    {
+                        applied = ApplyFillFormat(dataLabels.Format?.Fill, spec);
+                    }
+                    catch { applied = false; }
+                    ReleaseIfNeeded(dataLabels);
+                    break;
+                case Excel.Legend legend:
+                    applied = ApplyFillFormat(legend.Format?.Fill, spec);
+                    ReleaseIfNeeded(legend);
+                    break;
+                case Excel.LegendEntry legendEntry:
+                    applied = ApplyFillFormat(legendEntry.Format?.Fill, spec);
+                    ReleaseIfNeeded(legendEntry);
+                    break;
                 default:
                     break;
             }
@@ -3734,22 +3852,8 @@ namespace VantagePackageHolder
                 {
                     fill.Visible = Office.MsoTriState.msoTrue;
                     fill.Solid();
-                    if (spec.IsThemeColor)
-                    {
-                        try
-                        {
-                            fill.ForeColor.ObjectThemeColor = (Office.MsoThemeColorIndex)spec.ObjectThemeColor;
-                            fill.ForeColor.TintAndShade = (float)spec.TintAndShade;
-                        }
-                        catch
-                        {
-                            fill.ForeColor.RGB = spec.Rgb;
-                        }
-                    }
-                    else
-                    {
-                        fill.ForeColor.RGB = spec.Rgb;
-                    }
+                    // Force RGB to avoid theme inversion on charts/shapes
+                    fill.ForeColor.RGB = spec.Rgb;
                     fill.Transparency = 0f;
                 }
 

@@ -130,29 +130,17 @@ Private Sub RefreshBindings()
 End Sub
 
 Private Function IsPlainKey(ByVal key As String) As Boolean
-    If Len(key) = 0 Then
-        IsPlainKey = True
-        Exit Function
-    End If
-
-    If Left$(key, 1) = "+" Then
-        If IsShiftLetterKey(key) Then
-            IsPlainKey = True
-        Else
-            IsPlainKey = False
-        End If
-        Exit Function
-    End If
+    If Len(key) = 0 Then Exit Function
 
     Dim firstChar As String
     firstChar = Left$(key, 1)
 
-    Select Case firstChar
-        Case "^", "+", "%"
-            IsPlainKey = False
-        Case Else
-            IsPlainKey = True
-    End Select
+    ' Treat only top-row digits as plain; everything else remains mapped.
+    If firstChar >= "0" And firstChar <= "9" Then
+        IsPlainKey = True
+    Else
+        IsPlainKey = False
+    End If
 End Function
 
 Private Function IsShiftLetterKey(ByVal key As String) As Boolean
@@ -894,7 +882,7 @@ End Sub
 Private Sub Class_Initialize()
     Set cKeyMap = CreateObject("Scripting.Dictionary")
     Set cOnKeyMap = CreateObject("Scripting.Dictionary")
-    mSuppressPlainKeys = False
+    mSuppressPlainKeys = True
 End Sub
 
 Private Sub Class_Terminate()

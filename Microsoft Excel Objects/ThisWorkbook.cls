@@ -15,10 +15,12 @@ Private Sub Workbook_Open()
     EnsureAppHook
     Application.EnableCancelKey = xlDisabled
     C_Core.ScheduleVimStartup
+    InstallFormulaNavigatorHook
 End Sub
 
 Private Sub Workbook_Activate()
     EnsureAppHook
+    InstallFormulaNavigatorHook
 End Sub
 
 Private Sub Workbook_AddinInstall()
@@ -27,7 +29,13 @@ End Sub
 
 Private Sub Workbook_AddinUninstall()
     On Error Resume Next
+    UninstallFormulaNavigatorHook
     C_Core.ExitVim
+End Sub
+
+Private Sub Workbook_BeforeClose(Cancel As Boolean)
+    On Error Resume Next
+    UninstallFormulaNavigatorHook
 End Sub
 
 Private Sub App_SheetChange(ByVal Sh As Object, ByVal target As Range)

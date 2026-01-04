@@ -132,14 +132,38 @@ End Sub
 Private Function IsPlainKey(ByVal key As String) As Boolean
     If Len(key) = 0 Then Exit Function
 
-    Dim firstChar As String
-    firstChar = Left$(key, 1)
+    Dim k As String
+    k = key
 
-    ' Treat only top-row digits as plain; everything else remains mapped.
-    If firstChar >= "0" And firstChar <= "9" Then
-        IsPlainKey = True
-    Else
-        IsPlainKey = False
+    ' Allow Shift, but keep Ctrl/Alt-modded keys mapped.
+    If Left$(k, 1) = "+" Then
+        k = Mid$(k, 2)
+        If Len(k) = 0 Then Exit Function
+    End If
+    If Left$(k, 1) = "^" Or Left$(k, 1) = "%" Then Exit Function
+
+    If Len(k) = 1 Then
+        If k >= "0" And k <= "9" Then
+            IsPlainKey = True
+            Exit Function
+        End If
+    End If
+
+    If Left$(k, 1) = "{" And Right$(k, 1) = "}" Then
+        Dim inner As String
+        inner = Mid$(k, 2, Len(k) - 2)
+        If Len(inner) = 1 Then
+            IsPlainKey = True
+        End If
+    End If
+End Function
+
+Private Function IsNumberRowKey(ByVal key As String) As Boolean
+    If Len(key) = 1 Then
+        If key >= "0" And key <= "9" Then
+            IsNumberRowKey = True
+            Exit Function
+        End If
     End If
 End Function
 
@@ -882,7 +906,7 @@ End Sub
 Private Sub Class_Initialize()
     Set cKeyMap = CreateObject("Scripting.Dictionary")
     Set cOnKeyMap = CreateObject("Scripting.Dictionary")
-    mSuppressPlainKeys = True
+    mSuppressPlainKeys = False
 End Sub
 
 Private Sub Class_Terminate()
@@ -1516,6 +1540,11 @@ Public Sub BindAll()
 
     Dim key As Variant
     For Each key In cOnKeyMap.Keys()
+        If IsNumberRowKey(CStr(key)) Then
+            Application.OnKey key
+            GoTo ContinueKey
+        End If
+
         If mSuppressPlainKeys And IsPlainKey(CStr(key)) Then
             Application.OnKey key
         ElseIf Parent.Mode.CheckBits(cOnKeyMap(key), currentModeBit) Then
@@ -1534,6 +1563,7 @@ Public Sub BindAll()
         Else
             Application.OnKey key
         End If
+ContinueKey:
     Next key
 
 

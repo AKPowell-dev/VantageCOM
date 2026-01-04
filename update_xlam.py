@@ -45,6 +45,18 @@ def _read_text_with_fallback(path: Path) -> str:
     return data.decode("latin-1", errors="replace")
 
 
+def _normalize_form_file(path: Path) -> None:
+    """Ensure .frm files use CRLF line endings for Excel's importer."""
+    data = path.read_bytes()
+    text = data.decode("latin-1")
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    normalized = normalized.replace("\n", "\r\n")
+    if not normalized.endswith("\r\n"):
+        normalized += "\r\n"
+    if normalized != text:
+        path.write_bytes(normalized.encode("latin-1"))
+
+
 def _strip_document_metadata(code: str) -> str:
     """Remove export metadata that breaks document-module compilation."""
     lines = []
@@ -127,10 +139,14 @@ def resolve_repo_dir(custom_root: Optional[str]) -> Path:
             raise RuntimeError(f"Specified repo root does not exist: {candidate}")
         return candidate
 
+    script_root = Path(__file__).resolve().parent
+    if (script_root / "Modules").exists() or (script_root / "Forms").exists():
+        return script_root
+
     if DEFAULT_REPO_ROOT.exists():
         return DEFAULT_REPO_ROOT
 
-    return Path(__file__).resolve().parent
+    return script_root
 
 
 def _resolve_csproj_path(repo_dir: Path, csproj_hint: Optional[str]) -> Optional[Path]:
@@ -478,7 +494,7 @@ def _remove_component_if_exists(vbproject, name: str) -> None:
         return
     if component.Type == vbext_ct_document:
         return
-        vbproject.VBComponents.Remove(component)
+    vbproject.VBComponents.Remove(component)
 
 
 def _sync_code_module(component, source_path: Path) -> None:
@@ -723,7 +739,12 @@ def build_xlam(
             module_name = _read_vb_name(path)
             if module_name:
                 _remove_component_if_exists(vbproject, module_name)
-            vbproject.VBComponents.Import(str(path))
+            _normalize_form_file(path)
+            component = vbproject.VBComponents.Import(str(path))
+            if component.Type != 3:  # vbext_ct_MSForm
+                raise RuntimeError(
+                    f"Form import failed for {path}: imported type {component.Type}"
+                )
 
         workbook.SaveAs(str(output_path), FileFormat=XLAM_FILE_FORMAT)
         workbook.Close(SaveChanges=False)

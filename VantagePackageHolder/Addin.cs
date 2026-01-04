@@ -26,6 +26,18 @@ namespace VantagePackageHolder
         private Application _excel;
         private VantageEngine _engine;
         private AppEvents_Event _appEvents;
+        private IntPtr _subclassHandle = IntPtr.Zero;
+        private IntPtr _originalWndProc = IntPtr.Zero;
+        private WndProcDelegate _wndProcDelegate;
+
+        private const int WM_HOTKEY = 0x0312;
+        private const int WM_KEYDOWN = 0x0100;
+        private const int MOD_CONTROL = 0x0002;
+        private const int VK_OEM_4 = 0xDB; // [ key on US keyboards
+        private const int VK_SHIFT_KEY = 0x10;
+        private const int VK_CONTROL_KEY = 0x11;
+        private const int VK_MENU_KEY = 0x12;
+        private const int HOTKEY_FORMULA_NAV_ID = 0xBEE1;
 
         public void OnConnection(object application, ext_ConnectMode connectMode, object addInInst, ref Array custom)
         {
@@ -49,6 +61,8 @@ namespace VantagePackageHolder
                 {
                     // ignore event hookup issues
                 }
+
+                InstallHotkey();
             }
             catch (Exception ex)
             {
@@ -84,6 +98,7 @@ namespace VantagePackageHolder
                 // ignore
             }
 
+            UninstallHotkey();
             _engine?.Dispose();
             _engine = null;
             _excel = null;
@@ -100,6 +115,105 @@ namespace VantagePackageHolder
         public void OnBeginShutdown(ref Array custom)
         {
         }
+
+        private void InstallHotkey()
+        {
+            if (_excel == null) return;
+            if (_subclassHandle != IntPtr.Zero) return;
+
+            _subclassHandle = new IntPtr(_excel.Hwnd);
+            _wndProcDelegate = WindowProc;
+            _originalWndProc = SetWindowLongPtr(_subclassHandle, GWLP_WNDPROC, _wndProcDelegate);
+
+            try
+            {
+                RegisterHotKey(_subclassHandle, HOTKEY_FORMULA_NAV_ID, MOD_CONTROL, VK_OEM_4);
+            }
+            catch
+            {
+                // ignore hotkey registration failures
+            }
+        }
+
+        private void UninstallHotkey()
+        {
+            if (_subclassHandle == IntPtr.Zero) return;
+
+            try
+            {
+                UnregisterHotKey(_subclassHandle, HOTKEY_FORMULA_NAV_ID);
+                if (_originalWndProc != IntPtr.Zero)
+                {
+                    SetWindowLongPtr(_subclassHandle, GWLP_WNDPROC, _originalWndProc);
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+
+            _originalWndProc = IntPtr.Zero;
+            _subclassHandle = IntPtr.Zero;
+            _wndProcDelegate = null;
+        }
+
+        private IntPtr WindowProc(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam)
+        {
+            if (msg == WM_HOTKEY && wParam.ToInt32() == HOTKEY_FORMULA_NAV_ID)
+            {
+                TryRunFormulaNavigator();
+                return IntPtr.Zero;
+            }
+
+            if (msg == WM_KEYDOWN && wParam.ToInt32() == VK_OEM_4)
+            {
+                bool shift = (GetKeyState(VK_SHIFT_KEY) & 0x8000) != 0;
+                bool ctrl = (GetKeyState(VK_CONTROL_KEY) & 0x8000) != 0;
+                bool alt = (GetKeyState(VK_MENU_KEY) & 0x8000) != 0;
+
+                if (ctrl && !shift && !alt)
+                {
+                    TryRunFormulaNavigator();
+                    return IntPtr.Zero;
+                }
+            }
+
+            return CallWindowProc(_originalWndProc, hWnd, msg, wParam, lParam);
+        }
+
+        private void TryRunFormulaNavigator()
+        {
+            try
+            {
+                _excel?.Run("FormulaNavigatorNext");
+            }
+            catch
+            {
+                // ignore hotkey failures
+            }
+        }
+
+        private delegate IntPtr WndProcDelegate(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        private const int GWLP_WNDPROC = -4;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, WndProcDelegate dwNewLong);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vk);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+        [DllImport("user32.dll")]
+        private static extern short GetKeyState(int nVirtKey);
     }
 }
 

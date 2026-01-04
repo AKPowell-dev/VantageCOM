@@ -226,6 +226,7 @@ Sub DefaultConfig()
         ' === Navigation & References ===
         .Map "nmap <Space> SubstituteFollowLangMode"
         .Map "nmap <C-F2> LockCellReference"
+        .Map "nmap <C-[> FormulaNavigatorNext"
         .Map "nmap : EnterCmdlineMode"
         .Map "nmap a AppendFollowLangMode"
         .Map "nmap A AppendNotFollowLangMode"
@@ -237,7 +238,7 @@ Sub DefaultConfig()
         .Map "nmap ? ShowFindNotFollowLang"
 
         ' === Modes & Toggles ===
-        .Map "nmap <C-S-.> TogglePlainKeyMappings"
+        .Map "nmap <C-S-A-.> TogglePlainKeyMappings"
         .Map "nmap sl ToggleScrollLockMode"
         .Map "nmap <C-F11> ToggleScrollLockMode"
         .Map "nmap <cmd>plainkeys TogglePlainKeyMappings"
@@ -359,10 +360,10 @@ Sub DefaultConfig()
         .Map "nmap U PasteValue"
         .Map "nmap <C-S-q> PasteExact"
         .Map "nmap <cmd>cons PasteCondensed"
+        .Map "nmap <cmd>num CmdInsertNumbers"
         .Map "nmap <cmd>econs Econs_Output_PPT_V2"
         .Map "nmap <cmd>bo FormatOverviewGraph"
-        .Map "nmap <cmd>size1 ResizeSelectionToWidth47"
-        .Map "nmap <cmd>size2 ResizeSelectionToWidth95"
+        .Map "nmap <cmd>size ResizeSelectionToWidthPrompt"
         .Map "nmap fh AlignLeft"
         .Map "nmap fj AlignBottom"
         .Map "nmap fk AlignTop"

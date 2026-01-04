@@ -1545,7 +1545,12 @@ namespace VantagePackageHolder
                     return true;
                 }
 
-                return TryApplyShapeFont(spec);
+                if (TryApplyShapeFont(spec))
+                {
+                    return true;
+                }
+
+                return TryApplyOutline(spec);
             }
         }
 
@@ -1554,12 +1559,13 @@ namespace VantagePackageHolder
             using (new UiGuard(_app))
             {
                 var spec = new ColorSpec(isNull, isThemeColor, themeColor, themeColor, tintAndShade, rgb);
+                var applied = false;
                 if (RangeHelpers.TryGetActiveRange(_app, out var sel))
                 {
                     try
                     {
                         ApplyInterior(sel.Interior, spec);
-                        return;
+                        applied = true;
                     }
                     catch
                     {
@@ -1567,7 +1573,15 @@ namespace VantagePackageHolder
                     }
                 }
 
-                TryApplyShapeFill(spec);
+                if (!applied)
+                {
+                    applied = TryApplyShapeFill(spec);
+                }
+
+                if (!applied)
+                {
+                    TryApplyOutline(spec);
+                }
             }
         }
 
@@ -3515,6 +3529,90 @@ namespace VantagePackageHolder
             return applied;
         }
 
+        private bool TryApplyOutline(ColorSpec spec)
+        {
+            object selection;
+            try { selection = _app.Selection; }
+            catch { return false; }
+
+            if (selection == null)
+            {
+                return false;
+            }
+
+            bool applied = false;
+            switch (selection)
+            {
+                case Excel.ShapeRange range:
+                    foreach (Excel.Shape shape in range)
+                    {
+                        try { applied |= ApplyBorderToShape(shape, spec); }
+                        finally { ReleaseIfNeeded(shape); }
+                    }
+                    ReleaseIfNeeded(range);
+                    break;
+                case Excel.Shape shape:
+                    applied = ApplyBorderToShape(shape, spec);
+                    ReleaseIfNeeded(shape);
+                    break;
+                case Excel.ChartObject chartObject:
+                    applied = ApplyLineFormat(chartObject.Chart?.ChartArea?.Format?.Line, spec);
+                    if (!applied)
+                    {
+                        applied = ApplyLineFormat(chartObject.Chart?.PlotArea?.Format?.Line, spec);
+                    }
+                    ReleaseIfNeeded(chartObject);
+                    break;
+                case Excel.Chart chart:
+                    applied = ApplyLineFormat(chart.ChartArea?.Format?.Line, spec);
+                    if (!applied)
+                    {
+                        applied = ApplyLineFormat(chart.PlotArea?.Format?.Line, spec);
+                    }
+                    ReleaseIfNeeded(chart);
+                    break;
+                case Excel.Series series:
+                    applied = ApplyLineFormat(series.Format?.Line, spec);
+                    ReleaseIfNeeded(series);
+                    break;
+                case Excel.Point point:
+                    applied = ApplyLineFormat(point.Format?.Line, spec);
+                    ReleaseIfNeeded(point);
+                    break;
+                case Excel.Axis axis:
+                    applied = ApplyLineFormat(axis.Format?.Line, spec);
+                    ReleaseIfNeeded(axis);
+                    break;
+                case Excel.DataLabel dataLabel:
+                    applied = ApplyLineFormat(dataLabel.Format?.Line, spec);
+                    ReleaseIfNeeded(dataLabel);
+                    break;
+                case Excel.DataLabels dataLabels:
+                    try
+                    {
+                        applied = ApplyLineFormat(dataLabels.Format?.Line, spec);
+                    }
+                    catch
+                    {
+                        applied = false;
+                    }
+                    ReleaseIfNeeded(dataLabels);
+                    break;
+                case Excel.Legend legend:
+                    applied = ApplyLineFormat(legend.Format?.Line, spec);
+                    ReleaseIfNeeded(legend);
+                    break;
+                case Excel.LegendEntry legendEntry:
+                    applied = ApplyLineFormat(legendEntry.Format?.Line, spec);
+                    ReleaseIfNeeded(legendEntry);
+                    break;
+                default:
+                    break;
+            }
+
+            return applied;
+        }
+
         private void ApplyInterior(Excel.Interior interior, ColorSpec spec)
         {
             if (interior == null)
@@ -3855,6 +3953,49 @@ namespace VantagePackageHolder
                     // Force RGB to avoid theme inversion on charts/shapes
                     fill.ForeColor.RGB = spec.Rgb;
                     fill.Transparency = 0f;
+                }
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool ApplyLineFormat(object lineObject, ColorSpec spec)
+        {
+            if (lineObject == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                dynamic line = lineObject;
+                if (spec.IsNull)
+                {
+                    line.Visible = Office.MsoTriState.msoFalse;
+                }
+                else
+                {
+                    line.Visible = Office.MsoTriState.msoTrue;
+                    if (spec.IsThemeColor)
+                    {
+                        try
+                        {
+                            line.ForeColor.ObjectThemeColor = (Office.MsoThemeColorIndex)spec.ObjectThemeColor;
+                            line.ForeColor.TintAndShade = (float)spec.TintAndShade;
+                        }
+                        catch
+                        {
+                            line.ForeColor.RGB = spec.Rgb;
+                        }
+                    }
+                    else
+                    {
+                        line.ForeColor.RGB = spec.Rgb;
+                    }
                 }
 
                 return true;

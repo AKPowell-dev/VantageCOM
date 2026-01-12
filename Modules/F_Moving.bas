@@ -2,8 +2,16 @@ Attribute VB_Name = "F_Moving"
 Option Explicit
 Option Private Module
 
+Private gFastRepeatActive As Boolean
+Private gFastRepeatKey As Long
+
 Function MoveUp()
     Dim r As Long
+    Dim prevSuppress As Boolean
+    prevSuppress = gSuppressSelectionEvents
+    gSuppressSelectionEvents = True
+    On Error GoTo CleanExit
+
     If gVim.Count1 = 1 Then
         keybd_event vbKeyUp, 0, EXTENDED_KEY Or 0, 0
         keybd_event vbKeyUp, 0, EXTENDED_KEY Or KEYUP, 0
@@ -14,10 +22,21 @@ Function MoveUp()
         End If
         ActiveSheet.Cells(r, ActiveCell.Column).Select
     End If
+
+    gSelectionStamp = gSelectionStamp + 1
+
+CleanExit:
+    gSuppressSelectionEvents = prevSuppress
+    On Error GoTo 0
 End Function
 
 Function MoveDown()
     Dim r As Long
+    Dim prevSuppress As Boolean
+    prevSuppress = gSuppressSelectionEvents
+    gSuppressSelectionEvents = True
+    On Error GoTo CleanExit
+
     If gVim.Count1 = 1 Then
         keybd_event vbKeyDown, 0, EXTENDED_KEY Or 0, 0
         keybd_event vbKeyDown, 0, EXTENDED_KEY Or KEYUP, 0
@@ -28,10 +47,21 @@ Function MoveDown()
         End If
         ActiveSheet.Cells(r, ActiveCell.Column).Select
     End If
+
+    gSelectionStamp = gSelectionStamp + 1
+
+CleanExit:
+    gSuppressSelectionEvents = prevSuppress
+    On Error GoTo 0
 End Function
 
 Function MoveLeft()
     Dim c As Long
+    Dim prevSuppress As Boolean
+    prevSuppress = gSuppressSelectionEvents
+    gSuppressSelectionEvents = True
+    On Error GoTo CleanExit
+
     If gVim.Count1 = 1 Then
         keybd_event vbKeyLeft, 0, EXTENDED_KEY Or 0, 0
         keybd_event vbKeyLeft, 0, EXTENDED_KEY Or KEYUP, 0
@@ -42,10 +72,21 @@ Function MoveLeft()
         End If
         ActiveSheet.Cells(ActiveCell.Row, c).Select
     End If
+
+    gSelectionStamp = gSelectionStamp + 1
+
+CleanExit:
+    gSuppressSelectionEvents = prevSuppress
+    On Error GoTo 0
 End Function
 
 Function MoveRight()
     Dim c As Long
+    Dim prevSuppress As Boolean
+    prevSuppress = gSuppressSelectionEvents
+    gSuppressSelectionEvents = True
+    On Error GoTo CleanExit
+
     If gVim.Count1 = 1 Then
         keybd_event vbKeyRight, 0, EXTENDED_KEY Or 0, 0
         keybd_event vbKeyRight, 0, EXTENDED_KEY Or KEYUP, 0
@@ -56,6 +97,116 @@ Function MoveRight()
         End If
         ActiveSheet.Cells(ActiveCell.Row, c).Select
     End If
+
+    gSelectionStamp = gSelectionStamp + 1
+
+CleanExit:
+    gSuppressSelectionEvents = prevSuppress
+    On Error GoTo 0
+End Function
+
+Private Sub ExtendSelectionKey(ByVal keyCode As Long, Optional ByVal steps As Long = 1)
+    Dim i As Long
+    Dim prevSuppress As Boolean
+    Dim shiftAlreadyDown As Boolean
+
+    If steps < 1 Then steps = 1
+
+    prevSuppress = gSuppressSelectionEvents
+    gSuppressSelectionEvents = True
+    On Error GoTo CleanExit
+
+    shiftAlreadyDown = IsShiftPhysicallyDown()
+    If Not shiftAlreadyDown Then
+        keybd_event vbKeyShift, 0, 0, 0
+    End If
+    For i = 1 To steps
+        keybd_event keyCode, 0, EXTENDED_KEY Or 0, 0
+        keybd_event keyCode, 0, EXTENDED_KEY Or KEYUP, 0
+    Next i
+    If Not shiftAlreadyDown Then
+        keybd_event vbKeyShift, 0, KEYUP, 0
+    End If
+
+    gSelectionStamp = gSelectionStamp + 1
+
+CleanExit:
+    gSuppressSelectionEvents = prevSuppress
+    On Error GoTo 0
+End Sub
+
+Public Sub FastRepeatMove(ByVal arrowKey As Long, ByVal repeatKey As Long)
+    Const INITIAL_DELAY_MS As Long = 160
+    Const REPEAT_DELAY_MS As Long = 8
+    Const YIELD_INTERVAL As Long = 4
+
+    Dim prevSuppress As Boolean
+    Dim prevEvents As Boolean
+    Dim startTime As Double
+    Dim iterations As Long
+
+    If gFastRepeatActive Then
+        If gFastRepeatKey = repeatKey And IsVirtualKeyDown(repeatKey) Then
+            Exit Sub
+        End If
+    End If
+    gFastRepeatActive = True
+    gFastRepeatKey = repeatKey
+
+    prevSuppress = gSuppressSelectionEvents
+    prevEvents = Application.EnableEvents
+    gSuppressSelectionEvents = True
+    Application.EnableEvents = False
+    On Error GoTo CleanExit
+
+    ' First move happens immediately.
+    keybd_event arrowKey, 0, EXTENDED_KEY Or 0, 0
+    keybd_event arrowKey, 0, EXTENDED_KEY Or KEYUP, 0
+
+    If Not IsVirtualKeyDown(repeatKey) Then GoTo CleanExit
+
+    startTime = Timer
+    Do While IsVirtualKeyDown(repeatKey)
+        If ElapsedMillis(startTime) >= INITIAL_DELAY_MS Then Exit Do
+        DoEvents
+    Loop
+
+    Do While IsVirtualKeyDown(repeatKey)
+        keybd_event arrowKey, 0, EXTENDED_KEY Or 0, 0
+        keybd_event arrowKey, 0, EXTENDED_KEY Or KEYUP, 0
+        iterations = iterations + 1
+        If REPEAT_DELAY_MS > 0 Then Sleep REPEAT_DELAY_MS
+        If (iterations Mod YIELD_INTERVAL) = 0 Then DoEvents
+    Loop
+
+CleanExit:
+    gSelectionStamp = gSelectionStamp + 1
+    Application.EnableEvents = prevEvents
+    gSuppressSelectionEvents = prevSuppress
+    gFastRepeatActive = False
+    gFastRepeatKey = 0
+    On Error GoTo 0
+End Sub
+
+Private Function IsVirtualKeyDown(ByVal keyCode As Long) As Boolean
+    On Error Resume Next
+    IsVirtualKeyDown = ((GetAsyncKeyState(keyCode) And &H8000) <> 0)
+    On Error GoTo 0
+End Function
+
+Private Function ElapsedMillis(ByVal startTime As Double) As Long
+    Dim t As Double
+    t = Timer
+    If t < startTime Then t = t + 86400#
+    ElapsedMillis = CLng((t - startTime) * 1000#)
+End Function
+
+Private Function IsShiftPhysicallyDown() As Boolean
+    On Error Resume Next
+    IsShiftPhysicallyDown = ((GetKeyState(ShiftLeft_) And &H8000) <> 0) _
+        Or ((GetKeyState(ShiftRight_) And &H8000) <> 0) _
+        Or ((GetKeyState(vbKeyShift) And &H8000) <> 0)
+    On Error GoTo 0
 End Function
 
 Private Function ResizeInner(Optional Up As Long = 0, _
@@ -194,75 +345,31 @@ Catch:
 End Function
 
 Function MoveUpWithShift()
-    Dim r As Long
-    If gVim.Count1 = 1 Then
-        keybd_event vbKeyUp, 0, EXTENDED_KEY Or 0, 0
-        keybd_event vbKeyUp, 0, EXTENDED_KEY Or KEYUP, 0
-    Else
-        If TypeName(Selection) <> "Range" Then
-            Exit Function
-        End If
-
-        If Selection.item(1).Row = ActiveCell.Row Then
-            Call ResizeInner(Down:=-gVim.Count1)
-        Else
-            Call ResizeInner(Up:=gVim.Count1)
-        End If
-    End If
+    Dim steps As Long
+    steps = gVim.Count1
+    If steps < 1 Then steps = 1
+    Call ExtendSelectionKey(vbKeyUp, steps)
 End Function
 
 Function MoveDownWithShift()
-    Dim r As Long
-    If gVim.Count1 = 1 Then
-        keybd_event vbKeyDown, 0, EXTENDED_KEY Or 0, 0
-        keybd_event vbKeyDown, 0, EXTENDED_KEY Or KEYUP, 0
-    Else
-        If TypeName(Selection) <> "Range" Then
-            Exit Function
-        End If
-
-        If Selection.item(Selection.Count).Row = ActiveCell.Row Then
-            Call ResizeInner(Up:=-gVim.Count1)
-        Else
-            Call ResizeInner(Down:=gVim.Count1)
-        End If
-    End If
+    Dim steps As Long
+    steps = gVim.Count1
+    If steps < 1 Then steps = 1
+    Call ExtendSelectionKey(vbKeyDown, steps)
 End Function
 
 Function MoveLeftWithShift()
-    Dim c As Long
-    If gVim.Count1 = 1 Then
-        keybd_event vbKeyLeft, 0, EXTENDED_KEY Or 0, 0
-        keybd_event vbKeyLeft, 0, EXTENDED_KEY Or KEYUP, 0
-    Else
-        If TypeName(Selection) <> "Range" Then
-            Exit Function
-        End If
-
-        If Selection.item(1).Column = ActiveCell.Column Then
-            Call ResizeInner(Right:=-gVim.Count1)
-        Else
-            Call ResizeInner(Left:=gVim.Count1)
-        End If
-    End If
+    Dim steps As Long
+    steps = gVim.Count1
+    If steps < 1 Then steps = 1
+    Call ExtendSelectionKey(vbKeyLeft, steps)
 End Function
 
 Function MoveRightWithShift()
-    Dim c As Long
-    If gVim.Count1 = 1 Then
-        keybd_event vbKeyRight, 0, EXTENDED_KEY Or 0, 0
-        keybd_event vbKeyRight, 0, EXTENDED_KEY Or KEYUP, 0
-    Else
-        If TypeName(Selection) <> "Range" Then
-            Exit Function
-        End If
-
-        If Selection.item(Selection.Count).Column = ActiveCell.Column Then
-            Call ResizeInner(Left:=-gVim.Count1)
-        Else
-            Call ResizeInner(Right:=gVim.Count1)
-        End If
-    End If
+    Dim steps As Long
+    steps = gVim.Count1
+    If steps < 1 Then steps = 1
+    Call ExtendSelectionKey(vbKeyRight, steps)
 End Function
 
 Function MoveToFirstRow(Optional ByVal g As String) As Boolean

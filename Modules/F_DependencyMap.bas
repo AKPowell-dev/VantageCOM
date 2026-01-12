@@ -17,6 +17,8 @@ Private mNavStartSheetName As String
 Private mNavStartWorkbookName As String
 Private mNavLastSelectionStamp As Long
 Private mFormulaNavigatorForm As UF_FormulaNavigator
+Private mEscPassthrough As Boolean
+Private mCtrlBracketPassthrough As Boolean
 Private Const NAV_STATUS_MAX As Long = 220
 Private Const NAV_DEBUG As Boolean = True
 
@@ -140,6 +142,45 @@ Public Function FormulaNavigatorEscape(Optional ByVal g As String) As Boolean
 
 CleanFail:
     Call ErrorHandler("FormulaNavigatorEscape")
+End Function
+
+Public Function FormulaNavigatorHotkeyFallback(Optional ByVal g As String) As Boolean
+    On Error GoTo CleanFail
+
+    If gVim Is Nothing Or Not gVim.Enabled Then
+        Call PassThroughCtrlBracketKey
+        Exit Function
+    End If
+
+    FormulaNavigatorHotkeyFallback = FormulaNavigatorNext
+    Exit Function
+
+CleanFail:
+    Call ErrorHandler("FormulaNavigatorHotkeyFallback")
+End Function
+
+Public Function HandleEscapeKey(Optional ByVal g As String) As Boolean
+    On Error GoTo CleanFail
+
+    If IsCtrlBracketKeyPressed() Then
+        HandleEscapeKey = FormulaNavigatorNext
+        Exit Function
+    End If
+
+    If mNavActive Then
+        Call FormulaNavigatorCancel
+        Exit Function
+    End If
+
+    On Error Resume Next
+    If Application.CutCopyMode <> 0 Then
+        Application.CutCopyMode = False
+    End If
+    On Error GoTo 0
+    Exit Function
+
+CleanFail:
+    Call ErrorHandler("HandleEscapeKey")
 End Function
 
 Private Function InitFormulaNavigator(ByVal cell As Range, ByVal formulaText As String) As Boolean
@@ -423,6 +464,30 @@ Private Sub NavTrace(ByVal msg As String)
     If Not NAV_DEBUG Then Exit Sub
     Debug.Print "[" & Now & "] [NAV] " & msg
     Call SetStatusBarTemporarily("[NAV] " & msg, 1200, True)
+End Sub
+
+Private Sub PassThroughEscapeKey()
+    If mEscPassthrough Then Exit Sub
+    mEscPassthrough = True
+    On Error Resume Next
+    Application.OnKey "{ESC}"
+    KeyStroke Escape_
+    If Not gVim Is Nothing Then
+        If gVim.Enabled Then
+            Application.OnKey "{ESC}", "'LazyLoad ""{ESC}""'"
+        End If
+    End If
+    mEscPassthrough = False
+End Sub
+
+Private Sub PassThroughCtrlBracketKey()
+    If mCtrlBracketPassthrough Then Exit Sub
+    mCtrlBracketPassthrough = True
+    On Error Resume Next
+    Application.OnKey "^{[}"
+    KeyStroke Ctrl_ + OpeningSquareBracket_
+    Application.OnKey "^{[}", "FormulaNavigatorHotkeyFallback"
+    mCtrlBracketPassthrough = False
 End Sub
 
 Private Function CollectFormulaReferences(ByVal formulaText As String, ByRef refs() As FormulaNavRef) As Long

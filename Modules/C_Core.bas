@@ -4,6 +4,7 @@ Option Private Module
 
 Public gVim As cls_Vim              ' Core vim instance
 Public gSelectionStamp As Long      ' Incremented on every selection change
+Public gSuppressSelectionEvents As Boolean  ' Skip selection handlers during synthetic moves
 Private gHelpKeySuppressed As Boolean
 
 Private gStartupScheduled As Boolean

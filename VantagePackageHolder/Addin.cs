@@ -29,6 +29,7 @@ namespace VantagePackageHolder
         private IntPtr _subclassHandle = IntPtr.Zero;
         private IntPtr _originalWndProc = IntPtr.Zero;
         private WndProcDelegate _wndProcDelegate;
+        private const bool EnableHotkeyHook = false;
 
         private const int WM_HOTKEY = 0x0312;
         private const int WM_KEYDOWN = 0x0100;
@@ -54,7 +55,6 @@ namespace VantagePackageHolder
                 try
                 {
                     _appEvents = (AppEvents_Event)_excel;
-                    _appEvents.SheetSelectionChange += OnSheetSelectionChange;
                     _appEvents.WindowActivate += OnWindowActivate;
                 }
                 catch
@@ -62,7 +62,10 @@ namespace VantagePackageHolder
                     // ignore event hookup issues
                 }
 
-                InstallHotkey();
+                if (EnableHotkeyHook)
+                {
+                    InstallHotkey();
+                }
             }
             catch (Exception ex)
             {
@@ -70,11 +73,6 @@ namespace VantagePackageHolder
                 // Optionally rethrow to preserve failure state
                 // throw;
             }
-        }
-
-        private void OnSheetSelectionChange(object sh, Range target)
-        {
-            try { _engine?.ResetCycleState(); } catch { }
         }
 
         private void OnWindowActivate(Workbook wb, Window wn)
@@ -88,7 +86,6 @@ namespace VantagePackageHolder
             {
                 if (_appEvents != null)
                 {
-                    _appEvents.SheetSelectionChange -= OnSheetSelectionChange;
                     _appEvents.WindowActivate -= OnWindowActivate;
                     _appEvents = null;
                 }
@@ -98,7 +95,10 @@ namespace VantagePackageHolder
                 // ignore
             }
 
-            UninstallHotkey();
+            if (EnableHotkeyHook)
+            {
+                UninstallHotkey();
+            }
             _engine?.Dispose();
             _engine = null;
             _excel = null;

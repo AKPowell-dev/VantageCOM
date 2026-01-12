@@ -9,20 +9,26 @@ Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 Option Explicit
 
+Private Const SELECTION_LOCK_ENABLED As Boolean = False
+
 Private WithEvents App As Application
 Attribute App.VB_VarHelpID = -1
 Private WithEvents AppForLock As Application
 Attribute AppForLock.VB_VarHelpID = -1
 
 Private Sub App_SheetChange(ByVal Sh As Object, ByVal target As Range)
-    If gVim.Enabled Then
-        Call DisableIME
-        Call RecordToJumpList(target)
+    If gVim Is Nothing Then Exit Sub
+    If Not gVim.Enabled Then Exit Sub
+    If target Is Nothing Then Exit Sub
+    If Not IsActiveWorkbookSheet(target.Worksheet) Then Exit Sub
+    If target.CountLarge > 500 Then Exit Sub
 
-        If gVim.Vars.FromInsertCmd Then
-            ' Note: Undo command will no longer be available
-            Call RepeatRegister("ChangeSelectedCells", target.Item(1).Formula)
-        End If
+    Call DisableIME
+    Call RecordToJumpList(target)
+
+    If gVim.Vars.FromInsertCmd Then
+        ' Note: Undo command will no longer be available
+        Call RepeatRegister("ChangeSelectedCells", target.Item(1).Formula)
     End If
 End Sub
 
@@ -40,6 +46,11 @@ Private Sub App_WorkbookActivate(ByVal Wb As Workbook)
 End Sub
 
 Public Sub ApplySelectionLock()
+    If Not SELECTION_LOCK_ENABLED Then
+        Call ClearSelectionLock
+        Exit Sub
+    End If
+
     If AppForLock Is Nothing Then
         Set AppForLock = Application
         Set gVim.Vars.LockedSheet = ActiveSheet
@@ -58,6 +69,8 @@ End Sub
 
 Private Sub AppForLock_SheetSelectionChange(ByVal Sh As Object, ByVal target As Range)
     On Error GoTo Catch
+
+    If Not SELECTION_LOCK_ENABLED Then Exit Sub
 
     If Not gVim.Vars.LockedSheet Is Sh Then
         Call ClearSelectionLock
@@ -126,12 +139,14 @@ Catch:
 End Sub
 
 Private Sub AppForLock_SheetActivate(ByVal Sh As Object)
+    If Not SELECTION_LOCK_ENABLED Then Exit Sub
     If Not gVim.Vars.LockedSheet Is Sh Then
         Call ClearSelectionLock
     End If
 End Sub
 
 Private Sub AppForLock_WorkbookDeactivate(ByVal Wb As Workbook)
+    If Not SELECTION_LOCK_ENABLED Then Exit Sub
     If gVim.Vars.LockedSheet.Parent Is Wb Then
         Call ClearSelectionLock
     End If
@@ -139,6 +154,13 @@ End Sub
 
 Private Sub App_SheetSelectionChange(ByVal Sh As Object, ByVal target As Range)
     On Error GoTo Catch
+
+    If gSuppressSelectionEvents Then Exit Sub
+    If gVim Is Nothing Then Exit Sub
+    If Not gVim.Enabled Then Exit Sub
+    If Not target Is Nothing Then
+        If target.CountLarge > 5000 Then Exit Sub
+    End If
 
     gSelectionStamp = gSelectionStamp + 1
     Exit Sub

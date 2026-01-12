@@ -306,78 +306,15 @@ CleanFail:
 End Function
 
 Public Sub ResizeSelectionToWidthInches(Optional ByVal targetInches As Double = 4.7, Optional ByVal requirePpt As Boolean = False)
-    Dim uiGuard As ExcelUiGuard
-    Set uiGuard = SuppressExcelUi(True)
+    Dim engine As Object
     On Error GoTo CleanFail
 
-    If TypeName(Selection) <> "Range" Then GoTo CleanExit
-    If targetInches <= 0 Then GoTo CleanExit
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
 
-    Dim rng As Range
-    Set rng = Selection
-
-    ' Target in points (1 point = 1/72 inch).
-    Dim targetWidthPts As Double
-    targetWidthPts = targetInches * 72#
-
-    Dim attempt As Long
-    Dim currentWidthPts As Double
-    Dim scaleFactor As Double
-    Dim fixedPts As Double
-    Dim adjustablePts As Double
-    Dim totalExcelPts As Double
-    Dim desiredExcelPts As Double
-    Dim k As Double
-    Const MAX_ATTEMPTS As Long = 3
-    Const TOL_PTS As Double = 0.05
-    Const MIN_ADJUST_COLWIDTH As Double = 0.6
-    Const PP_LAYOUT_BLANK As Long = 12
-
-    Dim pptApp As Object
-    Dim pptWindow As Object
-    Dim pptPres As Object
-    Dim originalSlide As Object
-    Dim tempSlide As Object
-    Dim originalIndex As Long
-
-    If requirePpt Then
-        If Not TryGetPowerPointContext(pptApp, pptWindow, pptPres, originalSlide) Then GoTo CleanExit
-        originalIndex = originalSlide.SlideIndex
-        Set tempSlide = pptPres.Slides.Add(pptPres.Slides.Count + 1, PP_LAYOUT_BLANK)
-        tempSlide.Select
-    End If
-
-    For attempt = 1 To MAX_ATTEMPTS
-        If requirePpt Then
-            currentWidthPts = MeasureCopyPictureWidthPts(rng, tempSlide)
-        Else
-            currentWidthPts = rng.Width * GetPrintScaleFactor(rng.Worksheet)
-        End If
-        If currentWidthPts <= 0 Then GoTo CleanExit
-
-        If Abs(currentWidthPts - targetWidthPts) <= TOL_PTS Then Exit For
-
-        Call GetColumnWidthBuckets(rng, MIN_ADJUST_COLWIDTH, fixedPts, adjustablePts)
-        totalExcelPts = fixedPts + adjustablePts
-        If totalExcelPts <= 0 Then GoTo CleanExit
-
-        k = currentWidthPts / totalExcelPts
-        If k <= 0 Then GoTo CleanExit
-        desiredExcelPts = targetWidthPts / k
-
-        If adjustablePts <= 0 Or desiredExcelPts <= fixedPts Then
-            scaleFactor = targetWidthPts / currentWidthPts
-            Call ScaleSelectionColumns(rng, scaleFactor, -1)
-        Else
-            scaleFactor = (desiredExcelPts - fixedPts) / adjustablePts
-            Call ScaleSelectionColumns(rng, scaleFactor, MIN_ADJUST_COLWIDTH)
-        End If
-    Next attempt
+    engine.ResizeSelectionToWidthInches targetInches, requirePpt
 
 CleanExit:
-    On Error Resume Next
-    If Not tempSlide Is Nothing Then tempSlide.Delete
-    If Not pptPres Is Nothing And originalIndex > 0 Then pptPres.Slides(originalIndex).Select
     Exit Sub
 CleanFail:
     Call ErrorHandler("ResizeSelectionToWidthInches")
@@ -406,8 +343,12 @@ Public Function ResizeSelectionToWidthPrompt(Optional ByVal g As String) As Bool
         GoTo CleanExit
     End If
 
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
+
     Call StopVisualMode
-    ResizeSelectionToWidthInches targetInches, True
+    engine.ResizeSelectionToWidthInches targetInches, True
 
 CleanExit:
     ResizeSelectionToWidthPrompt = False
@@ -1167,11 +1108,86 @@ Private Sub CopyCellPresentation(ByVal srcCell As Range, ByVal destCell As Range
     On Error GoTo 0
 End Sub
 
+
+Private Function ResolveChartSelection(ByVal sel As Object, ByRef chartObj As Object, ByRef chart As Object) As Boolean
+    Dim cur As Object
+    Dim depth As Long
+    Dim t As String
+
+    On Error Resume Next
+    If sel Is Nothing Then Exit Function
+
+    Select Case TypeName(sel)
+        Case "ChartObject"
+            Set chartObj = sel
+            Set chart = sel.Chart
+            ResolveChartSelection = Not chart Is Nothing
+            Exit Function
+        Case "Chart"
+            Set chart = sel
+            ResolveChartSelection = True
+            Exit Function
+        Case "Shape"
+            If CBool(sel.HasChart) Then
+                Set chart = sel.Chart
+                ResolveChartSelection = Not chart Is Nothing
+                Exit Function
+            End If
+    End Select
+
+    Set cur = sel
+    For depth = 1 To 6
+        If cur Is Nothing Then Exit For
+        t = TypeName(cur)
+        If t = "ChartObject" Then
+            Set chartObj = cur
+            Set chart = cur.Chart
+            ResolveChartSelection = Not chart Is Nothing
+            Exit Function
+        ElseIf t = "Chart" Then
+            Set chart = cur
+            ResolveChartSelection = True
+            Exit Function
+        End If
+        Set cur = cur.Parent
+    Next depth
+End Function
+
 Private Function CopySelectionAsPicturePrintSafe(sel As Object) As Boolean
     Dim t As String
+    Dim resolvedChart As Object
+    Dim resolvedChartObj As Object
     t = TypeName(sel)
 
     On Error Resume Next
+
+    If ResolveChartSelection(sel, resolvedChartObj, resolvedChart) Then
+        If Not resolvedChartObj Is Nothing Then
+            resolvedChartObj.Parent.Activate
+            resolvedChartObj.Activate
+        ElseIf TypeName(resolvedChart.Parent) = "ChartObject" Then
+            resolvedChart.Parent.Parent.Activate
+            resolvedChart.Parent.Activate
+        Else
+            resolvedChart.Parent.Activate
+        End If
+
+        Err.Clear
+        resolvedChart.CopyPicture format:=xlPicture, appearance:=xlScreen
+        If Err.Number <> 0 Then
+            Err.Clear: resolvedChart.CopyPicture format:=xlBitmap, appearance:=xlScreen
+            If Err.Number <> 0 Then
+                Err.Clear: resolvedChart.CopyPicture format:=xlPicture, appearance:=xlPrinter
+                If Err.Number <> 0 Then
+                    Err.Clear: resolvedChart.CopyPicture format:=xlBitmap, appearance:=xlPrinter
+                    If Err.Number <> 0 Then
+                        Err.Clear: resolvedChart.Copy
+                    End If
+                End If
+            End If
+        End If
+        GoTo DoneCopy
+    End If
 
     Select Case t
         Case "Range"
@@ -1271,6 +1287,7 @@ Private Function CopySelectionAsPicturePrintSafe(sel As Object) As Boolean
             End If
     End Select
 
+DoneCopy:
     Call WaitForClipboardReady(600)
     CopySelectionAsPicturePrintSafe = HasClipboardContent()
     On Error GoTo 0
@@ -2218,6 +2235,17 @@ Sub MoveLeftSmart()
         Exit Sub
     End If
 
+
+    Dim selType As String
+    On Error Resume Next
+    selType = TypeName(Selection)
+    On Error GoTo 0
+    If selType = "Range" Then
+        Call MoveLeft
+        gVim.Count1 = 1
+        Exit Sub
+    End If
+
     If TryMoveSelectedLabel(-DATA_LABEL_STEP * steps, 0#) Then
         gVim.Count1 = 1
         Exit Sub
@@ -2237,6 +2265,17 @@ Sub MoveRightSmart()
 
     If gScrollLockMode Then
         ScrollLockScroll 0, steps
+        gVim.Count1 = 1
+        Exit Sub
+    End If
+
+
+    Dim selType As String
+    On Error Resume Next
+    selType = TypeName(Selection)
+    On Error GoTo 0
+    If selType = "Range" Then
+        Call MoveRight
         gVim.Count1 = 1
         Exit Sub
     End If
@@ -2264,6 +2303,17 @@ Sub MoveUpSmart()
         Exit Sub
     End If
 
+
+    Dim selType As String
+    On Error Resume Next
+    selType = TypeName(Selection)
+    On Error GoTo 0
+    If selType = "Range" Then
+        Call MoveUp
+        gVim.Count1 = 1
+        Exit Sub
+    End If
+
     If TryMoveSelectedLabel(0#, -DATA_LABEL_STEP * steps) Then
         gVim.Count1 = 1
         Exit Sub
@@ -2283,6 +2333,17 @@ Sub MoveDownSmart()
 
     If gScrollLockMode Then
         ScrollLockScroll steps, 0
+        gVim.Count1 = 1
+        Exit Sub
+    End If
+
+
+    Dim selType As String
+    On Error Resume Next
+    selType = TypeName(Selection)
+    On Error GoTo 0
+    If selType = "Range" Then
+        Call MoveDown
         gVim.Count1 = 1
         Exit Sub
     End If

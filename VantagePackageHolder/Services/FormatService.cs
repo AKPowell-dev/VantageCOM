@@ -20,9 +20,7 @@ namespace VantagePackageHolder
         private readonly PowerPointExporter _ppt;
         private readonly Dictionary<string, NumberFormatCycleState> _numberFormatStates = new Dictionary<string, NumberFormatCycleState>(StringComparer.Ordinal);
         private readonly Dictionary<string, bool> _borderCycleStates = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
-        private long _selectionStamp = 1;
-        private long _cycleFmtSelectionStampSeen;
-        private long _borderCycleStampSeen;
+        private string _borderCycleSelectionKey = string.Empty;
 
         public FormatService(Excel.Application app, ClipboardService clipboard, PowerPointExporter ppt)
         {
@@ -119,15 +117,6 @@ namespace VantagePackageHolder
                 {
                     dest.Formula = src.Formula;
                     dest.NumberFormat = src.NumberFormat;
-                    src.Copy();
-                    dest.PasteSpecial(Excel.XlPasteType.xlPasteFormats, Excel.XlPasteSpecialOperation.xlPasteSpecialOperationNone, false, false);
-
-                    if (_app.CutCopyMode == Excel.XlCutCopyMode.xlCopy)
-                    {
-                        src.Copy();
-                    }
-
-                    RunMacroIfExists("ClipboardRefresh");
                 }
                 catch
                 {
@@ -791,20 +780,10 @@ namespace VantagePackageHolder
 
         public void ResetCycleState()
         {
-            unchecked
-            {
-                _selectionStamp++;
-                if (_selectionStamp <= 0)
-                {
-                    _selectionStamp = 1;
-                }
-            }
-
             _cycleFmtLastKey = string.Empty;
             _cycleFmtNextStyle = 1;
-            _cycleFmtSelectionStampSeen = 0;
             _borderCycleStates.Clear();
-            _borderCycleStampSeen = 0;
+            _borderCycleSelectionKey = string.Empty;
             _numberFormatStates.Clear();
         }
 
@@ -1373,13 +1352,12 @@ namespace VantagePackageHolder
             using (new UiGuard(_app))
             {
                 string key = RangeHelpers.BuildRangeKey(sel);
-                bool selectionMoved = _cycleFmtSelectionStampSeen != _selectionStamp;
-                if (selectionMoved || !string.Equals(key, _cycleFmtLastKey, StringComparison.Ordinal))
+                bool selectionMoved = !string.Equals(key, _cycleFmtLastKey, StringComparison.Ordinal);
+                if (selectionMoved)
                 {
                     _cycleFmtNextStyle = 1;
                 }
                 _cycleFmtLastKey = key;
-                _cycleFmtSelectionStampSeen = _selectionStamp;
 
                 Excel.Range firstCell = null;
                 try
@@ -2598,13 +2576,28 @@ namespace VantagePackageHolder
 
         private void EnsureBorderCycleFresh()
         {
-            if (_borderCycleStampSeen == _selectionStamp)
+            if (!RangeHelpers.TryGetRangeOrActiveCell(_app, out var selection))
             {
+                _borderCycleStates.Clear();
+                _borderCycleSelectionKey = string.Empty;
                 return;
             }
 
-            _borderCycleStampSeen = _selectionStamp;
-            _borderCycleStates.Clear();
+            try
+            {
+                string key = RangeHelpers.BuildRangeKey(selection);
+                if (string.Equals(key, _borderCycleSelectionKey, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                _borderCycleSelectionKey = key;
+                _borderCycleStates.Clear();
+            }
+            finally
+            {
+                ReleaseIfNeeded(selection);
+            }
         }
 
         private void ApplyBorders(

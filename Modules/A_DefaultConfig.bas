@@ -216,7 +216,6 @@ Sub DefaultConfig()
         .Map "nmap g0 MoveToA1"
         .Map "nmap { MoveToTopOfCurrentRegion"
         .Map "nmap } MoveToBottomOfCurrentRegion"
-        .Map "nmap W MoveToSpecifiedCell"
         .Map "nmap ga SelectUsedRange"
         .Map "nmap gA SelectAllCells"
         .Map "nmap wh MoveSheetBack"
@@ -226,7 +225,8 @@ Sub DefaultConfig()
         ' === Navigation & References ===
         .Map "nmap <Space> SubstituteFollowLangMode"
         .Map "nmap <C-F2> LockCellReference"
-        .Map "nmap <C-[> FormulaNavigatorNext"
+        .Map "nmap <C-[> FormulaNavigatorHotkeyFallback"
+        .Map "nmap <Esc> HandleEscapeKey"
         .Map "nmap : EnterCmdlineMode"
         .Map "nmap a AppendFollowLangMode"
         .Map "nmap A AppendNotFollowLangMode"

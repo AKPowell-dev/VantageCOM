@@ -19,6 +19,7 @@ Option Private Module
 Private Const GWL_WNDPROC As Long = -4
 Private Const WM_KEYDOWN As Long = &H100
 Private Const VK_CONTROL As Long = &H11
+Private Const NAV_HOOK_ENABLED As Boolean = False
 
 Private gPrevWndProc As LongPtr
 Private gHookHwnd As LongPtr
@@ -27,6 +28,10 @@ Private gFormulaNavigatorQueued As Boolean
 
 Public Sub InstallFormulaNavigatorHook()
     On Error GoTo CleanFail
+    If Not NAV_HOOK_ENABLED Then
+        Call UninstallFormulaNavigatorHook
+        Exit Sub
+    End If
     If gHookInstalled Then
         If gHookHwnd = Application.Hwnd And gHookHwnd <> 0 Then Exit Sub
         Call UninstallFormulaNavigatorHook

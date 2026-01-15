@@ -161,6 +161,8 @@ namespace VantagePackageHolder
                 // Check a few common formats Excel can paste
                 return Clipboard.ContainsData(DataFormats.UnicodeText)
                     || Clipboard.ContainsData(DataFormats.Text)
+                    || Clipboard.ContainsData(DataFormats.EnhancedMetafile)
+                    || Clipboard.ContainsData(DataFormats.MetafilePict)
                     || Clipboard.ContainsImage()
                     || Clipboard.ContainsData(DataFormats.Bitmap)
                     || Clipboard.ContainsData(DataFormats.Html)

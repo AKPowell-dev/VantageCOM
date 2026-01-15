@@ -1,6 +1,5 @@
 Option Explicit
 Public WithEvents App As Application
-Private selectionPageBreakCache As Object
 
 Public Sub EnsureAppHook()
     On Error Resume Next
@@ -15,10 +14,12 @@ Private Sub Workbook_Open()
     EnsureAppHook
     Application.EnableCancelKey = xlDisabled
     C_Core.ScheduleVimStartup
+    InstallFormulaNavigatorHook
 End Sub
 
 Private Sub Workbook_Activate()
     EnsureAppHook
+    InstallFormulaNavigatorHook
 End Sub
 
 Private Sub Workbook_AddinInstall()
@@ -27,28 +28,30 @@ End Sub
 
 Private Sub Workbook_AddinUninstall()
     On Error Resume Next
+    UninstallFormulaNavigatorHook
     C_Core.ExitVim
+End Sub
+
+Private Sub Workbook_BeforeClose(Cancel As Boolean)
+    On Error Resume Next
+    UninstallFormulaNavigatorHook
 End Sub
 
 Private Sub App_SheetChange(ByVal Sh As Object, ByVal target As Range)
     On Error GoTo Done
-    Dim c As Range
     If target Is Nothing Then Exit Sub
+    If gVim Is Nothing Then Exit Sub
+    If Not gVim.Enabled Then Exit Sub
+    If gMacroSafeMode Then Exit Sub
+    If Not IsActiveWorkbookSheet(target.Worksheet) Then Exit Sub
     If ShouldSkipAutoColor(target) Then Exit Sub
 
-    ' ===== Optimization (batch color without status bar flicker) =====
-    Application.EnableEvents = False
-    Application.ScreenUpdating = False
-    ' ================================================================
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Sub
 
-    For Each c In target.Cells
-        Z_ColorAux.ColorCell c
-    Next c
-
+    engine.AutoColorRange target, 50
 Done:
-    ' ===== Restore states safely =====
-    Application.EnableEvents = True
-    Application.ScreenUpdating = True
 End Sub
 
 Private Sub App_WindowActivate(ByVal Wb As Workbook, ByVal Wn As Window)
@@ -58,35 +61,12 @@ End Sub
 Private Sub App_SheetSelectionChange(ByVal Sh As Object, ByVal Target As Range)
     On Error GoTo CleanExit
     If Target Is Nothing Then Exit Sub
+    If gSuppressSelectionEvents Then Exit Sub
+    If gVim Is Nothing Then Exit Sub
+    If Not gVim.Enabled Then Exit Sub
 
+    If Target.CountLarge > 5000 Then Exit Sub
     gSelectionStamp = gSelectionStamp + 1
-
-    If Target.CountLarge <= 10000 Then Exit Sub
-    If TypeName(Sh) <> "Worksheet" Then Exit Sub
-
-    If selectionPageBreakCache Is Nothing Then
-        Set selectionPageBreakCache = CreateObject("Scripting.Dictionary")
-    End If
-
-    Dim ws As Worksheet
-    Set ws = Sh
-    Dim cacheKey As String
-    cacheKey = ws.CodeName
-
-    If selectionPageBreakCache.Exists(cacheKey) Then Exit Sub
-
-    If Not ws.DisplayPageBreaks Then
-        selectionPageBreakCache.Add cacheKey, True
-        Exit Sub
-    End If
-
-    Dim prevEvents As Boolean
-    prevEvents = Application.EnableEvents
-    Application.EnableEvents = False
-    ws.DisplayPageBreaks = False
-    Application.EnableEvents = prevEvents
-
-    selectionPageBreakCache.Add cacheKey, True
 
 CleanExit:
 End Sub
@@ -94,6 +74,10 @@ End Sub
 Private Function ShouldSkipAutoColor(ByVal rng As Range) As Boolean
     On Error GoTo CleanExit
     If rng Is Nothing Then Exit Function
+    If gMacroSafeMode Then
+        ShouldSkipAutoColor = True
+        Exit Function
+    End If
 
     Dim ws As Worksheet
     Set ws = rng.Worksheet
@@ -108,14 +92,14 @@ Private Function ShouldSkipAutoColor(ByVal rng As Range) As Boolean
         Exit Function
     End If
 
-    ' Skip heavy colorizing on large changes to keep Excel snappy
-    If rng.CountLarge > 100 Then
+    ' Skip auto-color during paste to keep Ctrl+V responsive.
+    If Application.CutCopyMode <> 0 Then
         ShouldSkipAutoColor = True
         Exit Function
     End If
 
-    ' Multi-area ranges can be especially slow to iterate
-    If rng.Areas.Count > 1 And rng.CountLarge > 100 Then
+    ' Skip large changes to keep edits snappy.
+    If rng.CountLarge > 50 Then
         ShouldSkipAutoColor = True
         Exit Function
     End If

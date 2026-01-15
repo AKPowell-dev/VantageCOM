@@ -201,11 +201,13 @@ Private Function Run(ByVal cmd As String, _
     Me.Hide
 
     On Error GoTo Catch
+    Call UndoPrepareForCommand(cmd)
     If Len(arg) > 0 Then
         result = Application.Run(cmd, arg)
     Else
         result = Application.Run(cmd)
     End If
+    Call UndoFinalizeForCommand
 
     ' Close form if command was successful
     If Not result Then
@@ -221,6 +223,7 @@ Private Function Run(ByVal cmd As String, _
     Exit Function
 
 Catch:
+    Call UndoAbortForCommand
     ' Handle the case where the macro associated with the command is missing
     If Err.Number = 1004 Then
         Call SetStatusBarTemporarily(gVim.Msg.MissingMacro & cmd, 3000)

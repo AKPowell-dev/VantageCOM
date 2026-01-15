@@ -70,7 +70,11 @@ Function LazyLoad(ByVal key As String) As Boolean
     End If
 
     ' Register the key with the command
-    Application.OnKey key, cmd
+    If UndoShouldCapture(cmd) Then
+        Application.OnKey key, BuildUndoWrappedProcedure(cmd)
+    Else
+        Application.OnKey key, cmd
+    End If
     GoTo Finally
 
 Catch:
@@ -85,4 +89,27 @@ Catch:
 Finally:
     Call UndoFinalizeForCommand
     Exit Function
+End Function
+
+Public Function RunMappedCommand(ByVal cmd As String) As Boolean
+    On Error GoTo Catch
+
+    Call UndoPrepareForCommand(cmd)
+    RunMappedCommand = CBool(Application.Run(cmd))
+    Call UndoFinalizeForCommand
+    Exit Function
+
+Catch:
+    Call UndoAbortForCommand
+    If Err.Number = 1004 Then
+        Call SetStatusBarTemporarily(gVim.Msg.MissingMacro & cmd, 3000)
+    Else
+        Call ErrorHandler("RunMappedCommand")
+    End If
+End Function
+
+Private Function BuildUndoWrappedProcedure(ByVal cmd As String) As String
+    Dim safeCmd As String
+    safeCmd = Replace(cmd, """", """""")
+    BuildUndoWrappedProcedure = "'RunMappedCommand """ & safeCmd & """'"
 End Function

@@ -3,75 +3,105 @@ Option Explicit
 Option Private Module
 
 Function InsertWithIME(Optional ByVal g As String) As Boolean
-    If VarType(Selection) = vbObject Then
-        Call ChangeToShapeInsertMode
-        Call KeyStroke(Space_, BackSpace_, Ctrl_ + Home_, IME_On_)
-    Else
-        Call KeyStroke(F2_, Ctrl_ + Home_, IME_On_)
-        Call StartEditing
+    Dim engine As Object
+    Dim startedEditing As Boolean
 
-        Application.OnTime Now + 0.02 / 86400, "DisableIME"
+    On Error GoTo Catch
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+
+    startedEditing = engine.InsertWithIME()
+    If startedEditing Then
+        Call StartEditing
     End If
+    Exit Function
+Catch:
+    Call ErrorHandler("InsertWithIME")
 End Function
 
 Function InsertWithoutIME(Optional ByVal g As String) As Boolean
-    If VarType(Selection) = vbObject Then
-        Call ChangeToShapeInsertMode
-        Call KeyStroke(Space_, BackSpace_, Ctrl_ + Home_)
-    Else
-        Call KeyStroke(F2_, Ctrl_ + Home_)
-        Call StartEditing
+    Dim engine As Object
+    Dim startedEditing As Boolean
 
-        Application.OnTime Now + 0.02 / 86400, "DisableIME"
+    On Error GoTo Catch
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+
+    startedEditing = engine.InsertWithoutIME()
+    If startedEditing Then
+        Call StartEditing
     End If
+    Exit Function
+Catch:
+    Call ErrorHandler("InsertWithoutIME")
 End Function
 
 Function AppendWithIME(Optional ByVal g As String) As Boolean
-    If VarType(Selection) = vbObject Then
-        Call ChangeToShapeInsertMode
-        Call KeyStroke(Space_, BackSpace_, IME_On_)
-    Else
-        Call KeyStroke(F2_, IME_On_)
-        Call StartEditing
+    Dim engine As Object
+    Dim startedEditing As Boolean
 
-        Application.OnTime Now + 0.02 / 86400, "DisableIME"
+    On Error GoTo Catch
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+
+    startedEditing = engine.AppendWithIME()
+    If startedEditing Then
+        Call StartEditing
     End If
+    Exit Function
+Catch:
+    Call ErrorHandler("AppendWithIME")
 End Function
 
 Function AppendWithoutIME(Optional ByVal g As String) As Boolean
-    If VarType(Selection) = vbObject Then
-        Call ChangeToShapeInsertMode
-        Call KeyStroke(Space_, BackSpace_)
-    Else
-        Call KeyStroke(F2_)
-        Call StartEditing
+    Dim engine As Object
+    Dim startedEditing As Boolean
 
-        Application.OnTime Now + 0.02 / 86400, "DisableIME"
+    On Error GoTo Catch
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+
+    startedEditing = engine.AppendWithoutIME()
+    If startedEditing Then
+        Call StartEditing
     End If
+    Exit Function
+Catch:
+    Call ErrorHandler("AppendWithoutIME")
 End Function
 
 Function SubstituteWithIME(Optional ByVal g As String) As Boolean
-    If VarType(Selection) = vbObject Then
-        Call ChangeToShapeInsertMode
-        Call KeyStroke(Enter_, Delete_, IME_On_)
-    Else
-        Call KeyStroke(BackSpace_, F2_, IME_On_)
-        Call StartEditing
+    Dim engine As Object
+    Dim startedEditing As Boolean
 
-        Application.OnTime Now + 0.02 / 86400, "DisableIME"
+    On Error GoTo Catch
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+
+    startedEditing = engine.SubstituteWithIME()
+    If startedEditing Then
+        Call StartEditing
     End If
+    Exit Function
+Catch:
+    Call ErrorHandler("SubstituteWithIME")
 End Function
 
 Function SubstituteWithoutIME(Optional ByVal g As String) As Boolean
-    If VarType(Selection) = vbObject Then
-        Call ChangeToShapeInsertMode
-        Call KeyStroke(Enter_, Delete_)
-    Else
-        Call KeyStroke(BackSpace_, F2_)
-        Call StartEditing
+    Dim engine As Object
+    Dim startedEditing As Boolean
 
-        Application.OnTime Now + 0.02 / 86400, "DisableIME"
+    On Error GoTo Catch
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+
+    startedEditing = engine.SubstituteWithoutIME()
+    If startedEditing Then
+        Call StartEditing
     End If
+    Exit Function
+Catch:
+    Call ErrorHandler("SubstituteWithoutIME")
 End Function
 
 Function InsertFollowLangMode(Optional ByVal g As String) As Boolean

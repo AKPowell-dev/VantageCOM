@@ -2,6 +2,8 @@ Attribute VB_Name = "F_Cell"
 Option Explicit
 Option Private Module
 
+Private Const EXTENDED_SELECTION_ENABLED As Boolean = False
+
 Private Enum eOperationType
     SelectOp
     YankOp
@@ -562,6 +564,12 @@ End Function
 Function UnionSelectCells(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
 
+    If Not EXTENDED_SELECTION_ENABLED Then
+        On Error Resume Next
+        If Not gVim Is Nothing Then Set gVim.Vars.ExtendRange = Nothing
+        Exit Function
+    End If
+
     Dim actCell As Range
 
     If TypeName(Selection) <> "Range" Then
@@ -597,6 +605,12 @@ End Function
 Function ExceptSelectCells(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
 
+    If Not EXTENDED_SELECTION_ENABLED Then
+        On Error Resume Next
+        If Not gVim Is Nothing Then Set gVim.Vars.ExtendRange = Nothing
+        Exit Function
+    End If
+
     If TypeName(Selection) <> "Range" Then
         Exit Function
     End If
@@ -628,6 +642,12 @@ End Function
 
 Function ClearSelectCells(Optional ByVal g As String) As Boolean
     On Error GoTo Catch
+
+    If Not EXTENDED_SELECTION_ENABLED Then
+        On Error Resume Next
+        If Not gVim Is Nothing Then Set gVim.Vars.ExtendRange = Nothing
+        Exit Function
+    End If
 
     If TypeName(Selection) <> "Range" Then
         Exit Function

@@ -4,6 +4,9 @@ Option Private Module
 
 Public gVim As cls_Vim              ' Core vim instance
 Public gSelectionStamp As Long      ' Incremented on every selection change
+Public gSuppressSelectionEvents As Boolean  ' Skip selection handlers during synthetic moves
+Public gMacroSafeMode As Boolean    ' Toggle to disable slow auto features
+Public gNativeMovePassthrough As Boolean    ' Fast-repeat movement for hjkl
 Private gHelpKeySuppressed As Boolean
 
 Private gStartupScheduled As Boolean
@@ -101,6 +104,9 @@ Function StartVim(Optional ByVal g As String) As Boolean
 
     ' Defer clipboard hooking until post-init
     gClipboardHookReady = False
+
+    gMacroSafeMode = False
+    gNativeMovePassthrough = True
 
     ' Enable Vim addin (bind keys for current mode)
     gVim.Enabled = True
@@ -214,6 +220,14 @@ Function EnterCmdlineMode(Optional ByVal g As String) As Boolean
         Exit Function
     End If
 
+    cmdResult = Trim$(cmdResult)
+    Do While Left$(cmdResult, 1) = ":"
+        cmdResult = Mid$(cmdResult, 2)
+    Loop
+    If Len(cmdResult) = 0 Then
+        Exit Function
+    End If
+
     Dim cmdAndArg() As String
     cmdAndArg = Split(cmdResult, " ", 2)
 
@@ -243,7 +257,14 @@ Function EnterCmdlineMode(Optional ByVal g As String) As Boolean
     Next i
     cmdSuggests = Filter(cmdSuggests, prefix)
 
+    Dim cmdKey As String
+    cmdKey = LCase$(cmdAndArg(0))
+
     If UBound(cmdSuggests) < 0 Then
+        If cmdKey = "info" Then
+            Call ShowCommandInfo
+            Exit Function
+        End If
         Call SetStatusBarTemporarily(gVim.Msg.NoCommandAvailable & cmdResult, 3000)
         Exit Function
     End If
@@ -252,6 +273,10 @@ Function EnterCmdlineMode(Optional ByVal g As String) As Boolean
     cmd = gVim.KeyMap.Get_(cmdAndArg(0), True)
 
     If cmd = "" Then
+        If cmdKey = "info" Then
+            Call ShowCommandInfo
+            Exit Function
+        End If
         If UBound(cmdSuggests) = 0 Then
             cmd = gVim.KeyMap.Get_(cmdSuggests(0), True)
         ElseIf UBound(cmdSuggests) > 0 Then
@@ -260,11 +285,24 @@ Function EnterCmdlineMode(Optional ByVal g As String) As Boolean
         End If
     End If
 
+    On Error GoTo RunFail
+    Call UndoPrepareForCommand(cmd)
     If UBound(cmdAndArg) > 0 Then
         Application.Run cmd, Trim(cmdAndArg(1))
     Else
         Application.Run cmd
     End If
+    Call UndoFinalizeForCommand
+    Exit Function
+
+RunFail:
+    Call UndoAbortForCommand
+    If Err.Number = 1004 Then
+        Call SetStatusBarTemporarily(gVim.Msg.MissingMacro & cmd, 3000)
+    Else
+        Call ErrorHandler("EnterCmdlineMode")
+    End If
+    Exit Function
 End Function
 
 Function ShowCmdForm(ByVal prefixStr As String) As Boolean

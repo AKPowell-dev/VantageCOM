@@ -3,30 +3,22 @@ Option Explicit
 
 Private gCopyRange As Range
 Private gClipboardHooksActive As Boolean
+Private Const CLIPBOARD_HOOKS_ENABLED As Boolean = True
 
 Public Sub ClipboardHook()
     On Error Resume Next
+    If Not CLIPBOARD_HOOKS_ENABLED Then Exit Sub
     If gClipboardHooksActive Then Exit Sub
 
     Application.OnKey "^c", "ClipboardHandleCopy"
     Application.OnKey "^{INSERT}", "ClipboardHandleCopy"
     Application.OnKey "^x", "ClipboardHandleCut"
-    Application.OnKey "^v", "ClipboardHandlePaste"
-    Application.OnKey "+{INSERT}", "ClipboardHandlePaste"
-    Application.OnKey "^%v", "ClipboardOpenPasteSpecial"
-    Application.OnKey "^%{v}", "ClipboardOpenPasteSpecial"
-    Application.OnKey "^%+v", "ClipboardHandlePasteValues"
-    Application.OnKey "^%+{v}", "ClipboardHandlePasteValues"
-    Application.OnKey "^%+f", "ClipboardHandlePasteFormulas"
-    Application.OnKey "^%+{f}", "ClipboardHandlePasteFormulas"
 
     gClipboardHooksActive = True
 End Sub
 
 Public Sub ClipboardUnhook()
     On Error Resume Next
-    If Not gClipboardHooksActive Then Exit Sub
-
     Application.OnKey "^c"
     Application.OnKey "^{INSERT}"
     Application.OnKey "^x"
@@ -68,18 +60,18 @@ Public Sub ClipboardHandlePaste()
 End Sub
 
 Private Sub ClipboardHandlePasteSpecial(ByVal controlId As String)
+    Dim engine As Object
     On Error Resume Next
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Sub
+
     Select Case controlId
         Case "PasteValues"
-            Application.CommandBars.ExecuteMso "PasteValues"
+            engine.ClipboardHandlePasteValues
         Case "PasteFormulas"
-            Application.CommandBars.ExecuteMso "PasteFormulas"
+            engine.ClipboardHandlePasteFormulas
         Case Else
-            Application.CommandBars.ExecuteMso "PasteSpecialDialog"
-            If Err.Number <> 0 Then
-                Err.Clear
-                Application.Dialogs(xlDialogPasteSpecial).Show
-            End If
+            engine.ClipboardOpenPasteSpecial
     End Select
 End Sub
 
@@ -130,6 +122,10 @@ End Sub
 
 Public Sub ClipboardRefresh()
     On Error Resume Next
+    If Not CLIPBOARD_HOOKS_ENABLED Then
+        ClipboardUnhook
+        Exit Sub
+    End If
 
     ' Defer clipboard hooks until core startup completes
     If gVim Is Nothing Then

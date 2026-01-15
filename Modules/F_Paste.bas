@@ -34,7 +34,12 @@ Catch:
 End Function
 
 Private Function Paste_CtrlV()
-    Call KeyStroke(Ctrl_ + V_)
+    On Error Resume Next
+    Application.CommandBars.ExecuteMso "Paste"
+    If Err.Number <> 0 Then
+        Err.Clear
+        Call KeyStroke(Ctrl_ + V_)
+    End If
 End Function
 
 Private Function PasteRows(ByVal PasteDirection As XlSearchDirection)
@@ -111,4 +116,43 @@ Function PasteSpecial(Optional ByVal g As String) As Boolean
 
 Catch:
     Call ErrorHandler("PasteSpecial")
+End Function
+
+Function PasteExactNative(Optional ByVal g As String) As Boolean
+    On Error GoTo Catch
+
+    Call RepeatRegister("PasteExactNative")
+    Call StopVisualMode
+
+    Call Paste_CtrlV
+    PasteExactNative = False
+    Exit Function
+
+Catch:
+    Call ErrorHandler("PasteExactNative")
+End Function
+
+Function PasteValuesExact(Optional ByVal g As String) As Boolean
+    On Error GoTo Catch
+
+    Call RepeatRegister("PasteValuesExact")
+    Call StopVisualMode
+
+    On Error Resume Next
+    Application.CommandBars.ExecuteMso "PasteValuesAndNumberFormats"
+    If Err.Number <> 0 Then
+        Err.Clear
+        Application.CommandBars.ExecuteMso "PasteValues"
+        If Err.Number <> 0 Then
+            Err.Clear
+            Call Paste_CtrlV
+        End If
+    End If
+    On Error GoTo Catch
+
+    PasteValuesExact = False
+    Exit Function
+
+Catch:
+    Call ErrorHandler("PasteValuesExact")
 End Function

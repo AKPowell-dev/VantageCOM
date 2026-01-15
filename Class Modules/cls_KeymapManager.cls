@@ -132,14 +132,38 @@ End Sub
 Private Function IsPlainKey(ByVal key As String) As Boolean
     If Len(key) = 0 Then Exit Function
 
-    Dim firstChar As String
-    firstChar = Left$(key, 1)
+    Dim k As String
+    k = key
 
-    ' Treat only top-row digits as plain; everything else remains mapped.
-    If firstChar >= "0" And firstChar <= "9" Then
-        IsPlainKey = True
-    Else
-        IsPlainKey = False
+    ' Allow Shift, but keep Ctrl/Alt-modded keys mapped.
+    If Left$(k, 1) = "+" Then
+        k = Mid$(k, 2)
+        If Len(k) = 0 Then Exit Function
+    End If
+    If Left$(k, 1) = "^" Or Left$(k, 1) = "%" Then Exit Function
+
+    If Len(k) = 1 Then
+        If k >= "0" And k <= "9" Then
+            IsPlainKey = True
+            Exit Function
+        End If
+    End If
+
+    If Left$(k, 1) = "{" And Right$(k, 1) = "}" Then
+        Dim inner As String
+        inner = Mid$(k, 2, Len(k) - 2)
+        If Len(inner) = 1 Then
+            IsPlainKey = True
+        End If
+    End If
+End Function
+
+Private Function IsNumberRowKey(ByVal key As String) As Boolean
+    If Len(key) = 1 Then
+        If key >= "0" And key <= "9" Then
+            IsNumberRowKey = True
+            Exit Function
+        End If
     End If
 End Function
 
@@ -882,7 +906,7 @@ End Sub
 Private Sub Class_Initialize()
     Set cKeyMap = CreateObject("Scripting.Dictionary")
     Set cOnKeyMap = CreateObject("Scripting.Dictionary")
-    mSuppressPlainKeys = True
+    mSuppressPlainKeys = False
 End Sub
 
 Private Sub Class_Terminate()
@@ -1516,6 +1540,11 @@ Public Sub BindAll()
 
     Dim key As Variant
     For Each key In cOnKeyMap.Keys()
+        If IsNumberRowKey(CStr(key)) Then
+            Application.OnKey key
+            GoTo ContinueKey
+        End If
+
         If mSuppressPlainKeys And IsPlainKey(CStr(key)) Then
             Application.OnKey key
         ElseIf Parent.Mode.CheckBits(cOnKeyMap(key), currentModeBit) Then
@@ -1534,9 +1563,157 @@ Public Sub BindAll()
         Else
             Application.OnKey key
         End If
+ContinueKey:
     Next key
 
 
 End Sub
+
+'/*
+' * Exports key mappings for info display.
+' *
+' * @param {Boolean} includeCmdline - True to include :cmd mappings.
+' * @param {Boolean} includeNormal - True to include normal-mode mappings.
+' * @return {Variant} - 2D array of [key, action] entries.
+' */
+Public Function ExportMappings(Optional ByVal includeCmdline As Boolean = True, Optional ByVal includeNormal As Boolean = True) As Variant
+    Call MaterializeTempMappings
+
+    Dim results() As Variant
+    Dim count As Long
+
+    If cKeyMap Is Nothing Then
+        Exit Function
+    End If
+
+    Dim key As Variant
+    For Each key In cKeyMap.Keys()
+        Dim rawKey As String
+        rawKey = CStr(key)
+
+        If InStr(rawKey, KEY_SUMMARY) > 0 Or InStr(rawKey, KEY_TEMP) > 0 Then
+            GoTo ContinueKey
+        End If
+
+        Dim rawValue As String
+        rawValue = CStr(cKeyMap(key))
+        If Len(rawValue) = 0 Then
+            GoTo ContinueKey
+        End If
+
+        Dim sepPos As Long
+        sepPos = InStr(rawKey, KEY_SEPARATOR)
+        If sepPos <= 0 Then
+            GoTo ContinueKey
+        End If
+
+        Dim mode_ As String
+        Dim lhs As String
+        mode_ = Left$(rawKey, sepPos - 1)
+        lhs = Mid$(rawKey, sepPos + Len(KEY_SEPARATOR))
+
+        Dim displayKey As String
+        If mode_ = KEY_CMD Then
+            If Not includeCmdline Then GoTo ContinueKey
+            displayKey = ":" & lhs
+        ElseIf mode_ = MODE_NORMAL Then
+            If Not includeNormal Then GoTo ContinueKey
+            displayKey = FormatDisplayKey(lhs)
+        Else
+            GoTo ContinueKey
+        End If
+
+        Dim actionFilter As String
+        actionFilter = StripOuterQuotes(rawValue)
+        If actionFilter = "" Then
+            GoTo ContinueKey
+        End If
+
+        Dim actionLower As String
+        actionLower = LCase$(actionFilter)
+        If actionFilter = DUMMY_PROCEDURE Then GoTo ContinueKey
+        If Left$(actionLower, Len(SHOW_CMD_PROCEDURE)) = LCase$(SHOW_CMD_PROCEDURE) Then GoTo ContinueKey
+        If Left$(actionLower, 9) = "keystroke" Then GoTo ContinueKey
+
+        count = count + 1
+        ReDim Preserve results(1 To count, 1 To 2)
+        results(count, 1) = displayKey
+        results(count, 2) = Trim$(rawValue)
+
+ContinueKey:
+    Next key
+
+    If count > 0 Then
+        ExportMappings = results
+    End If
+End Function
+
+Private Sub MaterializeTempMappings()
+    If cKeyMap Is Nothing Then Exit Sub
+
+    Dim keys As Variant
+    keys = cKeyMap.Keys
+
+    Dim rawKey As Variant
+    For Each rawKey In keys
+        Dim keyText As String
+        keyText = CStr(rawKey)
+
+        If InStr(keyText, KEY_TEMP) = 0 Then
+            GoTo ContinueKey
+        End If
+
+        Dim sepPos As Long
+        sepPos = InStr(keyText, KEY_SEPARATOR)
+        If sepPos <= 0 Then
+            GoTo ContinueKey
+        End If
+
+        Dim mode_ As String
+        mode_ = Left$(keyText, sepPos - 1)
+
+        If mode_ = KEY_CMD Then
+            Call LazyParseKeys(mode_, "")
+        Else
+            Dim keyPart As String
+            keyPart = Mid$(keyText, sepPos + Len(KEY_SEPARATOR))
+            keyPart = Replace(keyPart, KEY_TEMP, "")
+            keyPart = Trim$(keyPart)
+
+            If Len(keyPart) > 0 Then
+                Call LazyParseKeys(mode_, keyPart)
+            End If
+        End If
+
+ContinueKey:
+    Next rawKey
+End Sub
+
+Private Function FormatDisplayKey(ByVal lhsKey As String) As String
+    Dim parts() As String
+    parts = Split(lhsKey, KEY_SEPARATOR)
+
+    Dim i As Long
+    Dim result As String
+    For i = LBound(parts) To UBound(parts)
+        If Len(result) > 0 Then
+            result = result & " "
+        End If
+        result = result & SendKeysToDisplayText(parts(i))
+    Next i
+
+    FormatDisplayKey = result
+End Function
+
+Private Function StripOuterQuotes(ByVal rawValue As String) As String
+    Dim text As String
+    text = Trim$(rawValue)
+    If Len(text) >= 2 Then
+        If Left$(text, 1) = "'" And Right$(text, 1) = "'" Then
+            text = Mid$(text, 2, Len(text) - 2)
+        End If
+    End If
+    StripOuterQuotes = text
+End Function
 
 

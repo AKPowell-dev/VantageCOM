@@ -6,29 +6,23 @@ Private Const ZOOM_STEP_PERCENT As Integer = 5 'Zoom step size in percent for ma
 
 Function Undo_CtrlZ(Optional ByVal g As String) As Boolean
     Dim times As Long
-    Dim i As Long
 
     times = gVim.Count1
     If times < 1 Then times = 1
 
-    On Error Resume Next
-    For i = 1 To times
-        Application.Undo
-        If Err.Number <> 0 Then
-            Err.Clear
-            Exit For
-        End If
-        DoEvents
-    Next i
-    On Error GoTo 0
+    Call UndoPerform(times)
 
     gVim.Count1 = 1
     Undo_CtrlZ = False
 End Function
 
 Function RedoExecute(Optional ByVal g As String) As Boolean
-    On Error Resume Next
-    Application.CommandBars.ExecuteMso "Redo"
+    Dim times As Long
+    times = gVim.Count1
+    If times < 1 Then times = 1
+
+    Call RedoPerform(times)
+    gVim.Count1 = 1
 End Function
 
 Function ToggleFreezePanes(Optional ByVal g As String) As Boolean

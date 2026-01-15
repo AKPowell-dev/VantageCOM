@@ -90,6 +90,20 @@ Function TogglePlainKeyMappings(Optional ByVal g As String) As Boolean
     Call SetStatusBarTemporarily(statusMessage, 2000)
 End Function
 
+Function ToggleMacroSafeMode(Optional ByVal g As String) As Boolean
+    Dim statusMessage As String
+    gMacroSafeMode = Not gMacroSafeMode
+
+    If gMacroSafeMode Then
+        statusMessage = "Fast mode ON: auto-color and outline highlight disabled."
+    Else
+        statusMessage = "Fast mode OFF: auto features restored."
+    End If
+
+    Call SetStatusBarTemporarily(statusMessage, 2500)
+    ToggleMacroSafeMode = False
+End Function
+
 Function OverrideShortcuts(Optional ByVal g As String) As Boolean
     Dim uiGuard As ExcelUiGuard
     Dim statusMessage As String
@@ -242,22 +256,19 @@ End Function
 Sub CycleFontColor()
     Dim uiGuard As ExcelUiGuard
     Set uiGuard = SuppressExcelUi(True)
-    Dim fontColorsArray As Variant
+    Static fontColorsArray As Variant
     Static fontCycleIndex As Long
-    Static fontCycleLastAddress As String
     Static fontCycleLastStamp As Long
-    Dim currentAddress As String
     ' Exact colors
-    fontColorsArray = Array(RGB(0, 0, 0), RGB(255, 255, 255), RGB(0, 0, 255), RGB(0, 128, 0), RGB(153, 0, 0))
+    If IsEmpty(fontColorsArray) Then
+        fontColorsArray = Array(RGB(0, 0, 0), RGB(255, 255, 255), RGB(0, 0, 255), RGB(0, 128, 0), RGB(153, 0, 0))
+    End If
     ' Exit if selection is not a range
     If TypeName(Selection) <> "Range" Then Exit Sub
     ' Reset cycle if selection changes or cursor moved
-    currentAddress = Selection.Address
-    If currentAddress <> fontCycleLastAddress _
-        Or gSelectionStamp <> fontCycleLastStamp Then
+    If gSelectionStamp <> fontCycleLastStamp Then
         fontCycleIndex = 0
     End If
-    fontCycleLastAddress = currentAddress
     fontCycleLastStamp = gSelectionStamp
     ' Apply color
     Selection.Font.Color = fontColorsArray(fontCycleIndex)
@@ -308,69 +319,14 @@ CleanFail:
     Resume CleanExit
 End Function
 
-Public Sub ResizeSelectionToWidthInches(Optional ByVal targetInches As Double = 4.7)
-    Dim uiGuard As ExcelUiGuard
-    Set uiGuard = SuppressExcelUi(True)
+Public Sub ResizeSelectionToWidthInches(Optional ByVal targetInches As Double = 4.7, Optional ByVal requirePpt As Boolean = False)
+    Dim engine As Object
     On Error GoTo CleanFail
 
-    If TypeName(Selection) <> "Range" Then GoTo CleanExit
-    If targetInches <= 0 Then GoTo CleanExit
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
 
-    Dim rng As Range
-    Set rng = Selection
-
-    ' Target in points (1 point = 1/72 inch); slight uplift for copy-as-picture alignment
-    Dim targetWidthPts As Double
-    targetWidthPts = targetInches * 73#
-
-    Dim attempt As Long
-    Dim currentWidthPts As Double
-    Const MAX_ATTEMPTS As Long = 12
-    Const TOL_PTS As Double = 0.05 ' tighter snap
-
-    For attempt = 1 To MAX_ATTEMPTS
-        currentWidthPts = MeasureCopyPictureWidthPts(rng)
-        If currentWidthPts <= 0 Then currentWidthPts = rng.Width
-        If currentWidthPts <= 0 Then GoTo CleanExit
-
-        If Abs(currentWidthPts - targetWidthPts) <= TOL_PTS Then Exit For
-
-        Dim adjustableCount As Long
-        Dim deltaPerColPts As Double
-        Dim c As Range
-
-        ' Count adjustable columns (exclude very narrow columns)
-        adjustableCount = 0
-        For Each c In rng.Columns
-            If c.ColumnWidth > 0.5 Then adjustableCount = adjustableCount + 1
-        Next c
-        If adjustableCount = 0 Then GoTo CleanExit
-
-        deltaPerColPts = (targetWidthPts - currentWidthPts) / adjustableCount
-
-        ' Apply uniform point delta per adjustable column, converting back to ColumnWidth units
-        For Each c In rng.Columns
-            If c.ColumnWidth > 0.5 Then
-                Dim wPts As Double
-                Dim wCol As Double
-                Dim targetColWidth As Double
-                wPts = c.Width
-                wCol = c.ColumnWidth
-                If wPts > 0 Then
-                    targetColWidth = wCol * (wPts + deltaPerColPts) / wPts
-                    If targetColWidth < 0.1 Then targetColWidth = 0.1
-                    c.EntireColumn.ColumnWidth = targetColWidth
-                End If
-            End If
-        Next c
-    Next attempt
-
-    ' Final snap using precise redistribution across adjustable columns
-    currentWidthPts = MeasureCopyPictureWidthPts(rng)
-    If currentWidthPts <= 0 Then currentWidthPts = rng.Width
-    If currentWidthPts > 0 And Abs(currentWidthPts - targetWidthPts) > TOL_PTS Then
-        SnapWidthsToTarget rng, targetWidthPts
-    End If
+    engine.ResizeSelectionToWidthInches targetInches, requirePpt
 
 CleanExit:
     Exit Sub
@@ -378,6 +334,38 @@ CleanFail:
     Call ErrorHandler("ResizeSelectionToWidthInches")
     Resume CleanExit
 End Sub
+
+Public Function ResizeSelectionToWidthPrompt(Optional ByVal g As String) As Boolean
+    On Error GoTo CleanFail
+
+    If TypeName(Selection) <> "Range" Then GoTo CleanExit
+
+    Dim widthValue As Variant
+    widthValue = Application.InputBox( _
+        Prompt:="Target width in inches (as printed):", _
+        Title:="Resize to printed width", _
+        Default:=4.7, _
+        Type:=1)
+    If widthValue = False Then GoTo CleanExit
+
+    Dim targetInches As Double
+    targetInches = CDbl(widthValue)
+    If targetInches <= 0 Then GoTo CleanExit
+
+    Dim engine As Object
+    Set engine = NetAddin()
+    If engine Is Nothing Then GoTo CleanExit
+
+    Call StopVisualMode
+    engine.ResizeSelectionToWidthInches targetInches, True
+
+CleanExit:
+    ResizeSelectionToWidthPrompt = False
+    Exit Function
+CleanFail:
+    Call ErrorHandler("ResizeSelectionToWidthPrompt")
+    Resume CleanExit
+End Function
 
 Private Sub SnapWidthsToTarget(ByVal rng As Range, ByVal targetWidthPts As Double)
     Dim nonAdjustPts As Double
@@ -420,48 +408,128 @@ CleanFail:
     Resume CleanExit
 End Sub
 
-Private Function MeasureCopyPictureWidthPts(ByVal rng As Range) As Double
+Private Function MeasureCopyPictureWidthPts(ByVal rng As Range, ByVal pptSlide As Object) As Double
     On Error GoTo CleanFail
-    Dim ws As Worksheet
-    Dim tmpPic As Shape
-    Dim prevSheet As Worksheet
-    Dim hadSelection As Boolean
-    Dim prevSel As Object
+    Dim pastedShp As Object
+    Dim pasteObj As Object
+    Dim attempt As Long
+    Const PP_PASTE_ENHANCED_METAFILE As Long = 2
 
-    Set ws = rng.Worksheet
-    On Error Resume Next
-    Set prevSheet = ActiveSheet
-    hadSelection = Not (Selection Is Nothing)
-    If hadSelection Then Set prevSel = Selection
-    On Error GoTo CleanFail
+    If rng Is Nothing Then GoTo CleanFail
+    If pptSlide Is Nothing Then GoTo CleanFail
 
-    Application.ScreenUpdating = False
+    For attempt = 1 To 2
+        If Not CopySelectionAsPicturePrintSafe(rng) Then GoTo NextAttempt
 
-    rng.CopyPicture Appearance:=xlScreen, Format:=xlPicture
-    ws.Paste
-    Set tmpPic = ws.Shapes(ws.Shapes.Count)
+        On Error Resume Next
+        Set pasteObj = pptSlide.Shapes.PasteSpecial(DataType:=PP_PASTE_ENHANCED_METAFILE)
+        If pasteObj Is Nothing Then Set pasteObj = pptSlide.Shapes.Paste
+        On Error GoTo CleanFail
 
-    MeasureCopyPictureWidthPts = tmpPic.Width
+        If Not pasteObj Is Nothing Then Exit For
+NextAttempt:
+        DoEvents
+    Next attempt
+
+    If pasteObj Is Nothing Then GoTo CleanFail
+
+    If TypeName(pasteObj) = "ShapeRange" Then
+        Set pastedShp = pasteObj(1)
+    Else
+        Set pastedShp = pasteObj
+    End If
+    If pastedShp Is Nothing Then GoTo CleanFail
+
+    MeasureCopyPictureWidthPts = pastedShp.Width
 
 CleanExit:
     On Error Resume Next
-    If Not tmpPic Is Nothing Then tmpPic.Delete
-    If Not prevSheet Is Nothing Then prevSheet.Activate
-    If hadSelection Then prevSel.Select
-    Application.ScreenUpdating = True
+    If Not pasteObj Is Nothing Then pasteObj.Delete
     Exit Function
 CleanFail:
     MeasureCopyPictureWidthPts = 0
     Resume CleanExit
 End Function
 
-Public Sub ResizeSelectionToWidth47()
-    ResizeSelectionToWidthInches 4.7
+Private Function TryGetPowerPointContext(ByRef pptApp As Object, ByRef pptWindow As Object, ByRef pptPres As Object, ByRef pptSlide As Object) As Boolean
+    On Error Resume Next
+    Set pptApp = GetObject(, "PowerPoint.Application")
+    If pptApp Is Nothing Then Exit Function
+    Set pptWindow = pptApp.ActiveWindow
+    If pptWindow Is Nothing Then Exit Function
+    Set pptPres = pptWindow.Presentation
+    If pptPres Is Nothing Then Exit Function
+    Set pptSlide = pptWindow.View.Slide
+    If pptSlide Is Nothing Then Exit Function
+    TryGetPowerPointContext = True
+End Function
+
+Private Function IsPowerPointReady() As Boolean
+    Dim pptApp As Object
+    Dim pptWindow As Object
+    Dim pptPres As Object
+    Dim pptSlide As Object
+    IsPowerPointReady = TryGetPowerPointContext(pptApp, pptWindow, pptPres, pptSlide)
+End Function
+
+Private Sub ScaleSelectionColumns(ByVal rng As Range, ByVal scaleFactor As Double, Optional ByVal minAdjustWidth As Double = -1)
+    On Error Resume Next
+    If rng Is Nothing Then Exit Sub
+    If scaleFactor <= 0 Then Exit Sub
+
+    Dim c As Range
+    Dim wPts As Double
+    Dim wCol As Double
+    Dim targetColWidth As Double
+
+    For Each c In rng.Columns
+        If c.EntireColumn.Hidden Then GoTo NextCol
+        If minAdjustWidth >= 0 Then
+            If c.ColumnWidth <= minAdjustWidth Then GoTo NextCol
+        End If
+        wPts = c.Width
+        If wPts <= 0 Then GoTo NextCol
+        wCol = c.ColumnWidth
+        targetColWidth = wCol * scaleFactor
+        If targetColWidth < 0.1 Then targetColWidth = 0.1
+        If targetColWidth > 255# Then targetColWidth = 255#
+        c.EntireColumn.ColumnWidth = targetColWidth
+NextCol:
+    Next c
 End Sub
 
-Public Sub ResizeSelectionToWidth95()
-    ResizeSelectionToWidthInches 9.5
+Private Sub GetColumnWidthBuckets(ByVal rng As Range, ByVal minAdjustWidth As Double, ByRef fixedPts As Double, ByRef adjustablePts As Double)
+    fixedPts = 0
+    adjustablePts = 0
+    If rng Is Nothing Then Exit Sub
+
+    Dim c As Range
+    For Each c In rng.Columns
+        If c.EntireColumn.Hidden Then GoTo NextCol
+        If c.ColumnWidth <= minAdjustWidth Then
+            fixedPts = fixedPts + c.Width
+        Else
+            adjustablePts = adjustablePts + c.Width
+        End If
+NextCol:
+    Next c
 End Sub
+
+Private Function GetPrintScaleFactor(ByVal ws As Worksheet) As Double
+    On Error Resume Next
+    Dim zoomValue As Variant
+    zoomValue = ws.PageSetup.Zoom
+    On Error GoTo 0
+    If IsNumeric(zoomValue) Then
+        Dim z As Double
+        z = CDbl(zoomValue)
+        If z > 0 Then
+            GetPrintScaleFactor = z / 100#
+            Exit Function
+        End If
+    End If
+    GetPrintScaleFactor = 1#
+End Function
 
 Public Sub FormatOverviewGraph()
     Dim uiGuard As ExcelUiGuard
@@ -1049,11 +1117,86 @@ Private Sub CopyCellPresentation(ByVal srcCell As Range, ByVal destCell As Range
     On Error GoTo 0
 End Sub
 
+
+Private Function ResolveChartSelection(ByVal sel As Object, ByRef chartObj As Object, ByRef chart As Object) As Boolean
+    Dim cur As Object
+    Dim depth As Long
+    Dim t As String
+
+    On Error Resume Next
+    If sel Is Nothing Then Exit Function
+
+    Select Case TypeName(sel)
+        Case "ChartObject"
+            Set chartObj = sel
+            Set chart = sel.Chart
+            ResolveChartSelection = Not chart Is Nothing
+            Exit Function
+        Case "Chart"
+            Set chart = sel
+            ResolveChartSelection = True
+            Exit Function
+        Case "Shape"
+            If CBool(sel.HasChart) Then
+                Set chart = sel.Chart
+                ResolveChartSelection = Not chart Is Nothing
+                Exit Function
+            End If
+    End Select
+
+    Set cur = sel
+    For depth = 1 To 6
+        If cur Is Nothing Then Exit For
+        t = TypeName(cur)
+        If t = "ChartObject" Then
+            Set chartObj = cur
+            Set chart = cur.Chart
+            ResolveChartSelection = Not chart Is Nothing
+            Exit Function
+        ElseIf t = "Chart" Then
+            Set chart = cur
+            ResolveChartSelection = True
+            Exit Function
+        End If
+        Set cur = cur.Parent
+    Next depth
+End Function
+
 Private Function CopySelectionAsPicturePrintSafe(sel As Object) As Boolean
     Dim t As String
+    Dim resolvedChart As Object
+    Dim resolvedChartObj As Object
     t = TypeName(sel)
 
     On Error Resume Next
+
+    If ResolveChartSelection(sel, resolvedChartObj, resolvedChart) Then
+        If Not resolvedChartObj Is Nothing Then
+            resolvedChartObj.Parent.Activate
+            resolvedChartObj.Activate
+        ElseIf TypeName(resolvedChart.Parent) = "ChartObject" Then
+            resolvedChart.Parent.Parent.Activate
+            resolvedChart.Parent.Activate
+        Else
+            resolvedChart.Parent.Activate
+        End If
+
+        Err.Clear
+        resolvedChart.CopyPicture format:=xlPicture, appearance:=xlScreen
+        If Err.Number <> 0 Then
+            Err.Clear: resolvedChart.CopyPicture format:=xlBitmap, appearance:=xlScreen
+            If Err.Number <> 0 Then
+                Err.Clear: resolvedChart.CopyPicture format:=xlPicture, appearance:=xlPrinter
+                If Err.Number <> 0 Then
+                    Err.Clear: resolvedChart.CopyPicture format:=xlBitmap, appearance:=xlPrinter
+                    If Err.Number <> 0 Then
+                        Err.Clear: resolvedChart.Copy
+                    End If
+                End If
+            End If
+        End If
+        GoTo DoneCopy
+    End If
 
     Select Case t
         Case "Range"
@@ -1080,11 +1223,17 @@ Private Function CopySelectionAsPicturePrintSafe(sel As Object) As Boolean
             sel.Parent.Activate
             sel.Activate
             Err.Clear
-            sel.Chart.CopyPicture format:=xlPicture, appearance:=xlPrinter
+            sel.Chart.CopyPicture format:=xlPicture, appearance:=xlScreen
             If Err.Number <> 0 Then
-                Err.Clear: sel.Chart.CopyPicture format:=xlBitmap, appearance:=xlPrinter
+                Err.Clear: sel.Chart.CopyPicture format:=xlBitmap, appearance:=xlScreen
                 If Err.Number <> 0 Then
-                    Err.Clear: sel.Chart.Copy
+                    Err.Clear: sel.Chart.CopyPicture format:=xlPicture, appearance:=xlPrinter
+                    If Err.Number <> 0 Then
+                        Err.Clear: sel.Chart.CopyPicture format:=xlBitmap, appearance:=xlPrinter
+                        If Err.Number <> 0 Then
+                            Err.Clear: sel.Chart.Copy
+                        End If
+                    End If
                 End If
             End If
 
@@ -1092,11 +1241,17 @@ Private Function CopySelectionAsPicturePrintSafe(sel As Object) As Boolean
             sel.Parent.Activate
             sel.Activate
             Err.Clear
-            sel.CopyPicture format:=xlPicture, appearance:=xlPrinter
+            sel.CopyPicture format:=xlPicture, appearance:=xlScreen
             If Err.Number <> 0 Then
-                Err.Clear: sel.CopyPicture format:=xlBitmap, appearance:=xlPrinter
+                Err.Clear: sel.CopyPicture format:=xlBitmap, appearance:=xlScreen
                 If Err.Number <> 0 Then
-                    Err.Clear: sel.Copy
+                    Err.Clear: sel.CopyPicture format:=xlPicture, appearance:=xlPrinter
+                    If Err.Number <> 0 Then
+                        Err.Clear: sel.CopyPicture format:=xlBitmap, appearance:=xlPrinter
+                        If Err.Number <> 0 Then
+                            Err.Clear: sel.Copy
+                        End If
+                    End If
                 End If
             End If
 
@@ -1109,10 +1264,16 @@ Private Function CopySelectionAsPicturePrintSafe(sel As Object) As Boolean
             sel.Parent.Parent.Activate
             Err.Clear
             If hasChart Then
-                sel.Chart.CopyPicture format:=xlPicture, appearance:=xlPrinter
+                sel.Chart.CopyPicture format:=xlPicture, appearance:=xlScreen
                 If Err.Number <> 0 Then
-                    Err.Clear: sel.Chart.CopyPicture format:=xlBitmap, appearance:=xlPrinter
-                    If Err.Number <> 0 Then Err.Clear: sel.Chart.Copy
+                    Err.Clear: sel.Chart.CopyPicture format:=xlBitmap, appearance:=xlScreen
+                    If Err.Number <> 0 Then
+                        Err.Clear: sel.Chart.CopyPicture format:=xlPicture, appearance:=xlPrinter
+                        If Err.Number <> 0 Then
+                            Err.Clear: sel.Chart.CopyPicture format:=xlBitmap, appearance:=xlPrinter
+                            If Err.Number <> 0 Then Err.Clear: sel.Chart.Copy
+                        End If
+                    End If
                 End If
             Else
                 sel.Select
@@ -1135,6 +1296,7 @@ Private Function CopySelectionAsPicturePrintSafe(sel As Object) As Boolean
             End If
     End Select
 
+DoneCopy:
     Call WaitForClipboardReady(600)
     CopySelectionAsPicturePrintSafe = HasClipboardContent()
     On Error GoTo 0
@@ -1285,6 +1447,45 @@ CleanExit:
 
 CleanFail:
     Call ErrorHandler("SetFontGaramond")
+    Resume CleanExit
+End Function
+
+Public Function CmdInsertNumbers(Optional ByVal g As String) As Boolean
+    Dim uiGuard As ExcelUiGuard
+    Set uiGuard = SuppressExcelUi(True)
+    On Error GoTo CleanFail
+
+    Call StopVisualMode
+
+    If TypeName(Selection) <> "Range" Then GoTo CleanExit
+
+    Dim startCell As Range
+    Set startCell = ActiveCell
+    If startCell Is Nothing Then GoTo CleanExit
+
+    Dim target As Range
+    Set target = startCell.Resize(1, 11)
+
+    Dim values(1 To 1, 1 To 11) As Variant
+    Dim i As Long
+    For i = 1 To 11
+        values(1, i) = i - 1
+    Next i
+
+    target.Value2 = values
+    With target
+        .Font.Name = "Garamond"
+        .Font.Italic = True
+        .Font.Color = vbBlack
+        .NumberFormat = "#,##0_);(#,##0);--_)"
+    End With
+
+CleanExit:
+    CmdInsertNumbers = False
+    Exit Function
+
+CleanFail:
+    Call ErrorHandler("CmdInsertNumbers")
     Resume CleanExit
 End Function
 
@@ -1496,6 +1697,11 @@ End Sub
 
 ' ===== Outline selection with navy box and corner markers =====
 Sub OutlineSelectionHighlight()
+    If gMacroSafeMode Then
+        Call SetStatusBarTemporarily("Fast mode on: outline highlight disabled.", 2000)
+        Exit Sub
+    End If
+
     Dim engine As Object
     On Error GoTo CleanFail
     Set engine = NetAddin()
@@ -2043,6 +2249,17 @@ Sub MoveLeftSmart()
         Exit Sub
     End If
 
+
+    Dim selType As String
+    On Error Resume Next
+    selType = TypeName(Selection)
+    On Error GoTo 0
+    If selType = "Range" Then
+        Call MoveLeft
+        gVim.Count1 = 1
+        Exit Sub
+    End If
+
     If TryMoveSelectedLabel(-DATA_LABEL_STEP * steps, 0#) Then
         gVim.Count1 = 1
         Exit Sub
@@ -2062,6 +2279,17 @@ Sub MoveRightSmart()
 
     If gScrollLockMode Then
         ScrollLockScroll 0, steps
+        gVim.Count1 = 1
+        Exit Sub
+    End If
+
+
+    Dim selType As String
+    On Error Resume Next
+    selType = TypeName(Selection)
+    On Error GoTo 0
+    If selType = "Range" Then
+        Call MoveRight
         gVim.Count1 = 1
         Exit Sub
     End If
@@ -2089,6 +2317,17 @@ Sub MoveUpSmart()
         Exit Sub
     End If
 
+
+    Dim selType As String
+    On Error Resume Next
+    selType = TypeName(Selection)
+    On Error GoTo 0
+    If selType = "Range" Then
+        Call MoveUp
+        gVim.Count1 = 1
+        Exit Sub
+    End If
+
     If TryMoveSelectedLabel(0#, -DATA_LABEL_STEP * steps) Then
         gVim.Count1 = 1
         Exit Sub
@@ -2108,6 +2347,17 @@ Sub MoveDownSmart()
 
     If gScrollLockMode Then
         ScrollLockScroll steps, 0
+        gVim.Count1 = 1
+        Exit Sub
+    End If
+
+
+    Dim selType As String
+    On Error Resume Next
+    selType = TypeName(Selection)
+    On Error GoTo 0
+    If selType = "Range" Then
+        Call MoveDown
         gVim.Count1 = 1
         Exit Sub
     End If

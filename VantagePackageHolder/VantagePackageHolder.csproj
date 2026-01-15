@@ -60,11 +60,15 @@
     <Compile Include="PowerPointAddin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\ClipboardService.cs" />
+    <Compile Include="Services\AutoColorService.cs" />
+    <Compile Include="Services\BatchResizeService.cs" />
     <Compile Include="Services\FormatService.cs" />
     <Compile Include="Services\EditingService.cs" />
+    <Compile Include="Services\InsertModeService.cs" />
     <Compile Include="Services\PowerPointExporter.cs" />
     <Compile Include="Services\RangeHelpers.cs" />
     <Compile Include="Services\UiGuard.cs" />
+    <Compile Include="Services\UtilService.cs" />
     <Compile Include="Services\WorkbookOptimizer.cs" />
     <Compile Include="Services\ChartNavigator.cs" />
     <Compile Include="Services\WorkbookAnalysisService.cs" />

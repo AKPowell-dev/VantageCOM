@@ -421,6 +421,22 @@ Private Sub CheckCommand()
         cTextLabel.Caption = TEXT_PREFIX & cCmdBuf
         cFocusLabel.Visible = False
 
+    ElseIf LCase$(cCmdBuf) = KEY_NULL Then
+        x = 6
+        y = IDX_LIST3
+        colorY = IDX_LIST3
+
+        UpdateFocus x, y
+        Set cResultColor = cColorObject(GetLabelName(x, colorY))
+        With cColorTable(GetLabelName(x, colorY))
+            cFocusLabel.Left = .Left
+            cFocusLabel.Top = .Top
+            cFocusLabel.Width = .Width
+            cFocusLabel.Height = .Height
+            cFocusLabel.Visible = True
+        End With
+        cTextLabel.Caption = TEXT_PREFIX & cCmdBuf
+
     ElseIf Len(cCmdBuf) > 0 Then
         firstKey = Left$(cCmdBuf, 1)
         x = InStr(KEY_LIST2 & KEY_LIST3, cCmdBuf)

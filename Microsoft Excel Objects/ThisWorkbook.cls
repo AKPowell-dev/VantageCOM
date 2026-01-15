@@ -42,6 +42,7 @@ Private Sub App_SheetChange(ByVal Sh As Object, ByVal target As Range)
     If target Is Nothing Then Exit Sub
     If gVim Is Nothing Then Exit Sub
     If Not gVim.Enabled Then Exit Sub
+    If gMacroSafeMode Then Exit Sub
     If Not IsActiveWorkbookSheet(target.Worksheet) Then Exit Sub
     If ShouldSkipAutoColor(target) Then Exit Sub
 
@@ -73,6 +74,10 @@ End Sub
 Private Function ShouldSkipAutoColor(ByVal rng As Range) As Boolean
     On Error GoTo CleanExit
     If rng Is Nothing Then Exit Function
+    If gMacroSafeMode Then
+        ShouldSkipAutoColor = True
+        Exit Function
+    End If
 
     Dim ws As Worksheet
     Set ws = rng.Worksheet

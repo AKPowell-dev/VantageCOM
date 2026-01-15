@@ -742,6 +742,8 @@ Private Sub InitENDict()
             .Add "ClearPrintArea", "Clear the print area"
             .Add "ShowMacroDialog", "Show the macro dialog"
             .Add "ShowSuggest", "Show command suggestions if possible"
+            .Add "ToggleMacroSafeMode", "Toggle fast mode to disable slow auto features"
+            .Add "ShowCommandInfo", "Show a list of command keys and descriptions"
             ' Automatically generated from README and DefaultConfig
         End With
     End If

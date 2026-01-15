@@ -1569,4 +1569,151 @@ ContinueKey:
 
 End Sub
 
+'/*
+' * Exports key mappings for info display.
+' *
+' * @param {Boolean} includeCmdline - True to include :cmd mappings.
+' * @param {Boolean} includeNormal - True to include normal-mode mappings.
+' * @return {Variant} - 2D array of [key, action] entries.
+' */
+Public Function ExportMappings(Optional ByVal includeCmdline As Boolean = True, Optional ByVal includeNormal As Boolean = True) As Variant
+    Call MaterializeTempMappings
+
+    Dim results() As Variant
+    Dim count As Long
+
+    If cKeyMap Is Nothing Then
+        Exit Function
+    End If
+
+    Dim key As Variant
+    For Each key In cKeyMap.Keys()
+        Dim rawKey As String
+        rawKey = CStr(key)
+
+        If InStr(rawKey, KEY_SUMMARY) > 0 Or InStr(rawKey, KEY_TEMP) > 0 Then
+            GoTo ContinueKey
+        End If
+
+        Dim rawValue As String
+        rawValue = CStr(cKeyMap(key))
+        If Len(rawValue) = 0 Then
+            GoTo ContinueKey
+        End If
+
+        Dim sepPos As Long
+        sepPos = InStr(rawKey, KEY_SEPARATOR)
+        If sepPos <= 0 Then
+            GoTo ContinueKey
+        End If
+
+        Dim mode_ As String
+        Dim lhs As String
+        mode_ = Left$(rawKey, sepPos - 1)
+        lhs = Mid$(rawKey, sepPos + Len(KEY_SEPARATOR))
+
+        Dim displayKey As String
+        If mode_ = KEY_CMD Then
+            If Not includeCmdline Then GoTo ContinueKey
+            displayKey = ":" & lhs
+        ElseIf mode_ = MODE_NORMAL Then
+            If Not includeNormal Then GoTo ContinueKey
+            displayKey = FormatDisplayKey(lhs)
+        Else
+            GoTo ContinueKey
+        End If
+
+        Dim actionFilter As String
+        actionFilter = StripOuterQuotes(rawValue)
+        If actionFilter = "" Then
+            GoTo ContinueKey
+        End If
+
+        Dim actionLower As String
+        actionLower = LCase$(actionFilter)
+        If actionFilter = DUMMY_PROCEDURE Then GoTo ContinueKey
+        If Left$(actionLower, Len(SHOW_CMD_PROCEDURE)) = LCase$(SHOW_CMD_PROCEDURE) Then GoTo ContinueKey
+        If Left$(actionLower, 9) = "keystroke" Then GoTo ContinueKey
+
+        count = count + 1
+        ReDim Preserve results(1 To count, 1 To 2)
+        results(count, 1) = displayKey
+        results(count, 2) = Trim$(rawValue)
+
+ContinueKey:
+    Next key
+
+    If count > 0 Then
+        ExportMappings = results
+    End If
+End Function
+
+Private Sub MaterializeTempMappings()
+    If cKeyMap Is Nothing Then Exit Sub
+
+    Dim keys As Variant
+    keys = cKeyMap.Keys
+
+    Dim rawKey As Variant
+    For Each rawKey In keys
+        Dim keyText As String
+        keyText = CStr(rawKey)
+
+        If InStr(keyText, KEY_TEMP) = 0 Then
+            GoTo ContinueKey
+        End If
+
+        Dim sepPos As Long
+        sepPos = InStr(keyText, KEY_SEPARATOR)
+        If sepPos <= 0 Then
+            GoTo ContinueKey
+        End If
+
+        Dim mode_ As String
+        mode_ = Left$(keyText, sepPos - 1)
+
+        If mode_ = KEY_CMD Then
+            Call LazyParseKeys(mode_, "")
+        Else
+            Dim keyPart As String
+            keyPart = Mid$(keyText, sepPos + Len(KEY_SEPARATOR))
+            keyPart = Replace(keyPart, KEY_TEMP, "")
+            keyPart = Trim$(keyPart)
+
+            If Len(keyPart) > 0 Then
+                Call LazyParseKeys(mode_, keyPart)
+            End If
+        End If
+
+ContinueKey:
+    Next rawKey
+End Sub
+
+Private Function FormatDisplayKey(ByVal lhsKey As String) As String
+    Dim parts() As String
+    parts = Split(lhsKey, KEY_SEPARATOR)
+
+    Dim i As Long
+    Dim result As String
+    For i = LBound(parts) To UBound(parts)
+        If Len(result) > 0 Then
+            result = result & " "
+        End If
+        result = result & SendKeysToDisplayText(parts(i))
+    Next i
+
+    FormatDisplayKey = result
+End Function
+
+Private Function StripOuterQuotes(ByVal rawValue As String) As String
+    Dim text As String
+    text = Trim$(rawValue)
+    If Len(text) >= 2 Then
+        If Left$(text, 1) = "'" And Right$(text, 1) = "'" Then
+            text = Mid$(text, 2, Len(text) - 2)
+        End If
+    End If
+    StripOuterQuotes = text
+End Function
+
 

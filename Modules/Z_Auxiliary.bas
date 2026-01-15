@@ -90,6 +90,20 @@ Function TogglePlainKeyMappings(Optional ByVal g As String) As Boolean
     Call SetStatusBarTemporarily(statusMessage, 2000)
 End Function
 
+Function ToggleMacroSafeMode(Optional ByVal g As String) As Boolean
+    Dim statusMessage As String
+    gMacroSafeMode = Not gMacroSafeMode
+
+    If gMacroSafeMode Then
+        statusMessage = "Fast mode ON: auto-color and outline highlight disabled."
+    Else
+        statusMessage = "Fast mode OFF: auto features restored."
+    End If
+
+    Call SetStatusBarTemporarily(statusMessage, 2500)
+    ToggleMacroSafeMode = False
+End Function
+
 Function OverrideShortcuts(Optional ByVal g As String) As Boolean
     Dim uiGuard As ExcelUiGuard
     Dim statusMessage As String
@@ -328,8 +342,8 @@ Public Function ResizeSelectionToWidthPrompt(Optional ByVal g As String) As Bool
 
     Dim widthValue As Variant
     widthValue = Application.InputBox( _
-        Prompt:="Target width in inches (PowerPoint, as printed):", _
-        Title:="Resize to PPT width", _
+        Prompt:="Target width in inches (as printed):", _
+        Title:="Resize to printed width", _
         Default:=4.7, _
         Type:=1)
     If widthValue = False Then GoTo CleanExit
@@ -337,11 +351,6 @@ Public Function ResizeSelectionToWidthPrompt(Optional ByVal g As String) As Bool
     Dim targetInches As Double
     targetInches = CDbl(widthValue)
     If targetInches <= 0 Then GoTo CleanExit
-
-    If Not IsPowerPointReady() Then
-        Call SetStatusBarTemporarily("Open PowerPoint with an active slide before resizing.", 3000)
-        GoTo CleanExit
-    End If
 
     Dim engine As Object
     Set engine = NetAddin()
@@ -1688,6 +1697,11 @@ End Sub
 
 ' ===== Outline selection with navy box and corner markers =====
 Sub OutlineSelectionHighlight()
+    If gMacroSafeMode Then
+        Call SetStatusBarTemporarily("Fast mode on: outline highlight disabled.", 2000)
+        Exit Sub
+    End If
+
     Dim engine As Object
     On Error GoTo CleanFail
     Set engine = NetAddin()

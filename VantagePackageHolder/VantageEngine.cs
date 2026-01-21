@@ -193,15 +193,15 @@ namespace VantagePackageHolder
         }
         public void ClearFormatting() => Format.ClearFormatting();
         public void CycleFormatting() => Format.CycleFormatting();
-        public void CycleNumberFormat() => Format.CycleNumberFormat();
-        public void BinaryCycle() => Format.BinaryCycle();
-        public void YearDisplayCycle() => Format.YearDisplayCycle();
-        public void NumberNarrativeCycle() => Format.NumberNarrativeCycle();
-        public void PercentCycle() => Format.PercentCycle();
+        public void CycleNumberFormat(long selectionStamp) => Format.CycleNumberFormat(selectionStamp);
+        public void BinaryCycle(long selectionStamp) => Format.BinaryCycle(selectionStamp);
+        public void YearDisplayCycle(long selectionStamp) => Format.YearDisplayCycle(selectionStamp);
+        public void NumberNarrativeCycle(long selectionStamp) => Format.NumberNarrativeCycle(selectionStamp);
+        public void PercentCycle(long selectionStamp) => Format.PercentCycle(selectionStamp);
         public void FlipSign() => Format.FlipSign();
         public void ReverseSelectionOrder() => Format.ReverseSelectionOrder();
         public void TrimConditionalFormatting() => Format.TrimConditionalFormatting();
-        public void CurrencyCycle() => Format.CurrencyCycle();
+        public void CurrencyCycle(long selectionStamp) => Format.CurrencyCycle(selectionStamp);
         public void ToggleBorder(string targetKey, int lineStyle, int weight) => Format.ToggleBorder(targetKey, lineStyle, weight);
         public void DeleteBorder(string targetKey) => Format.DeleteBorder(targetKey);
         public void SetBorderColor(string targetKey, bool isNull, bool isTheme, int themeColor, double tintAndShade, int rgb) => Format.SetBorderColor(targetKey, isNull, isTheme, themeColor, tintAndShade, rgb);

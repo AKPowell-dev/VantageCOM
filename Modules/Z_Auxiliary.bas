@@ -282,7 +282,7 @@ Function CycleNumberFormat(Optional ByVal g As String) As Boolean
     On Error GoTo CleanFail
     Set engine = NetAddin()
     If engine Is Nothing Then GoTo CleanExit
-    engine.CycleNumberFormat
+    engine.CycleNumberFormat gSelectionStamp
 CleanExit:
     CycleNumberFormat = False
     Exit Function
@@ -296,7 +296,7 @@ Function BinaryCycle(Optional ByVal g As String) As Boolean
     On Error GoTo CleanFail
     Set engine = NetAddin()
     If engine Is Nothing Then GoTo CleanExit
-    engine.BinaryCycle
+    engine.BinaryCycle gSelectionStamp
 CleanExit:
     BinaryCycle = False
     Exit Function
@@ -310,7 +310,7 @@ Function YearDisplayCycle(Optional ByVal g As String) As Boolean
     On Error GoTo CleanFail
     Set engine = NetAddin()
     If engine Is Nothing Then GoTo CleanExit
-    engine.YearDisplayCycle
+    engine.YearDisplayCycle gSelectionStamp
 CleanExit:
     YearDisplayCycle = False
     Exit Function
@@ -696,7 +696,7 @@ Function NumberNarrativeCycle(Optional ByVal g As String) As Boolean
     On Error GoTo CleanFail
     Set engine = NetAddin()
     If engine Is Nothing Then GoTo CleanExit
-    engine.NumberNarrativeCycle
+    engine.NumberNarrativeCycle gSelectionStamp
 CleanExit:
     NumberNarrativeCycle = False
     Exit Function
@@ -710,7 +710,7 @@ Function PercentCycle(Optional ByVal g As String) As Boolean
     On Error GoTo CleanFail
     Set engine = NetAddin()
     If engine Is Nothing Then GoTo CleanExit
-    engine.PercentCycle
+    engine.PercentCycle gSelectionStamp
 CleanExit:
     PercentCycle = False
     Exit Function
@@ -724,7 +724,7 @@ Function CurrencyCycle(Optional ByVal g As String) As Boolean
     On Error GoTo CleanFail
     Set engine = NetAddin()
     If engine Is Nothing Then GoTo CleanExit
-    engine.CurrencyCycle
+    engine.CurrencyCycle gSelectionStamp
 CleanExit:
     CurrencyCycle = False
     Exit Function

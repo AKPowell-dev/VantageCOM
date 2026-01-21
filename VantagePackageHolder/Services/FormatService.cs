@@ -1563,7 +1563,7 @@ namespace VantagePackageHolder
             }
         }
 
-        public void CycleNumberFormat()
+        public void CycleNumberFormat(long selectionStamp)
         {
             var formats = new[]
             {
@@ -1577,30 +1577,30 @@ namespace VantagePackageHolder
                 @"[=1]0"" Year"";0"" Years""",
                 @"""Year ""0; ""Year ""-0; ""Year 0""; """""
             };
-            ApplyNumberFormatCycle(nameof(CycleNumberFormat), formats);
+            ApplyNumberFormatCycle(nameof(CycleNumberFormat), formats, selectionStamp);
         }
 
-        public void BinaryCycle()
+        public void BinaryCycle(long selectionStamp)
         {
             var formats = new[]
             {
                 @"[>=1]""Yes"";""No"";""No""",
                 @"""On"";"""";""Off"""
             };
-            ApplyNumberFormatCycle(nameof(BinaryCycle), formats);
+            ApplyNumberFormatCycle(nameof(BinaryCycle), formats, selectionStamp);
         }
 
-        public void YearDisplayCycle()
+        public void YearDisplayCycle(long selectionStamp)
         {
             var formats = new[]
             {
                 "yyyy",
                 "mmm-yy"
             };
-            ApplyNumberFormatCycle(nameof(YearDisplayCycle), formats);
+            ApplyNumberFormatCycle(nameof(YearDisplayCycle), formats, selectionStamp);
         }
 
-        public void NumberNarrativeCycle()
+        public void NumberNarrativeCycle(long selectionStamp)
         {
             var formats = new[]
             {
@@ -1609,20 +1609,20 @@ namespace VantagePackageHolder
                 @"[=1]0"" Year"";0"" Years""",
                 @"""Year ""0; ""Year ""-0; ""Year 0""; """""
             };
-            ApplyNumberFormatCycle(nameof(NumberNarrativeCycle), formats);
+            ApplyNumberFormatCycle(nameof(NumberNarrativeCycle), formats, selectionStamp);
         }
 
-        public void PercentCycle()
+        public void PercentCycle(long selectionStamp)
         {
             var formats = new[]
             {
                 @"#,##0.0%_);(#,##0.0%);--\%_)",
                 @"#,##0""bps""_);(#,##0""bps"");""--bps """
             };
-            ApplyNumberFormatCycle(nameof(PercentCycle), formats);
+            ApplyNumberFormatCycle(nameof(PercentCycle), formats, selectionStamp);
         }
 
-        public void CurrencyCycle()
+        public void CurrencyCycle(long selectionStamp)
         {
             string pound = char.ConvertFromUtf32(0x00A3);
             string euro = char.ConvertFromUtf32(0x20AC);
@@ -1632,10 +1632,10 @@ namespace VantagePackageHolder
                 pound + "#,##0_);(" + pound + "#,##0);" + pound + "--_)",
                 euro + "#,##0_);(" + euro + "#,##0);" + euro + "--_)"
             };
-            ApplyNumberFormatCycle(nameof(CurrencyCycle), formats);
+            ApplyNumberFormatCycle(nameof(CurrencyCycle), formats, selectionStamp);
         }
 
-        private void ApplyNumberFormatCycle(string cycleName, string[] formats)
+        private void ApplyNumberFormatCycle(string cycleName, string[] formats, long selectionStamp)
         {
             if (formats == null || formats.Length == 0)
             {
@@ -1649,18 +1649,20 @@ namespace VantagePackageHolder
 
             using (new UiGuard(_app))
             {
-                var key = RangeHelpers.BuildRangeKey(sel);
                 if (!_numberFormatStates.TryGetValue(cycleName, out var state))
                 {
                     state = new NumberFormatCycleState();
                     _numberFormatStates[cycleName] = state;
                 }
 
-                if (!string.Equals(key, state.LastSelectionKey, StringComparison.Ordinal))
+                var key = RangeHelpers.BuildRangeKey(sel);
+                if (selectionStamp != state.LastSelectionStamp
+                    || !string.Equals(key, state.LastSelectionKey, StringComparison.Ordinal))
                 {
                     state.NextIndex = 0;
                 }
 
+                state.LastSelectionStamp = selectionStamp;
                 state.LastSelectionKey = key;
                 string format = formats[state.NextIndex];
                 bool success = false;
@@ -3376,6 +3378,7 @@ namespace VantagePackageHolder
         private sealed class NumberFormatCycleState
         {
             public string LastSelectionKey = string.Empty;
+            public long LastSelectionStamp;
             public int NextIndex;
         }
 

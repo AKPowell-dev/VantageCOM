@@ -713,6 +713,21 @@ namespace VantagePackageHolder
             return CopySelectionAsPicturePrintSafeInternal(selection);
         }
 
+        public bool CopySelectionAsPicturePrinterOnly()
+        {
+            object selection = null;
+            try
+            {
+                selection = _app.Selection;
+            }
+            catch
+            {
+                return false;
+            }
+
+            return CopySelectionAsPicturePrinterOnlyInternal(selection);
+        }
+
         public void CopyPasteSelectionToPowerPoint()
         {
             object selection = null;
@@ -3172,6 +3187,47 @@ namespace VantagePackageHolder
             return success;
         }
 
+        private bool CopySelectionAsPicturePrinterOnlyInternal(object selection)
+        {
+            if (selection == null)
+            {
+                return false;
+            }
+
+            var typeName = GetComTypeName(selection);
+            if (string.Equals(typeName, "Nothing", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            bool success;
+            switch (selection)
+            {
+                case Excel.Range range:
+                    success = CopyRangePicturePrinterOnly(range);
+                    break;
+                case Excel.ChartObject chartObject:
+                    success = CopyChartPicturePrinterOnly(chartObject?.Chart);
+                    break;
+                case Excel.Chart chart:
+                    success = CopyChartPicturePrinterOnly(chart);
+                    break;
+                case Excel.Shape shape:
+                    success = CopyShapePicturePrinterOnly(shape);
+                    break;
+                default:
+                    success = CopyViaReflectionPrinterOnly(selection);
+                    break;
+            }
+
+            if (success)
+            {
+                ClearCutCopyMode();
+            }
+
+            return success;
+        }
+
         private bool CopyRangePicture(Excel.Range range)
         {
             if (!RangeHelpers.IsRangeValid(range))
@@ -3221,6 +3277,45 @@ namespace VantagePackageHolder
             return TryCopyToClipboard(() => area.Copy());
         }
 
+        private bool CopyRangePicturePrinterOnly(Excel.Range range)
+        {
+            if (!RangeHelpers.IsRangeValid(range))
+            {
+                return false;
+            }
+
+            Excel.Range area = range;
+            try
+            {
+                if (range.Areas.Count > 1)
+                {
+                    area = range.Areas[1] as Excel.Range ?? range;
+                }
+            }
+            catch
+            {
+                area = range;
+            }
+
+            try
+            {
+                (area.Worksheet?.Parent as Excel.Workbook)?.Activate();
+                area.Worksheet?.Activate();
+                RangeHelpers.SafeSelect(area);
+            }
+            catch
+            {
+                // ignore
+            }
+
+            if (TryCopyToClipboard(() => area.CopyPicture(Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlPicture)))
+            {
+                return true;
+            }
+
+            return TryCopyToClipboard(() => area.CopyPicture(Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlBitmap));
+        }
+
         private bool CopyChartPicture(Excel.Chart chart)
         {
             if (chart == null)
@@ -3249,6 +3344,31 @@ namespace VantagePackageHolder
             }
 
             return TryCopyToClipboard(() => chart.Copy());
+        }
+
+        private bool CopyChartPicturePrinterOnly(Excel.Chart chart)
+        {
+            if (chart == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                (chart.Parent as Excel.Worksheet)?.Activate();
+                chart.Activate();
+            }
+            catch
+            {
+                // ignore
+            }
+
+            if (TryCopyToClipboard(() => chart.CopyPicture(Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlPicture)))
+            {
+                return true;
+            }
+
+            return TryCopyToClipboard(() => chart.CopyPicture(Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlBitmap));
         }
 
         private bool CopyShapePicture(Excel.Shape shape)
@@ -3301,6 +3421,51 @@ namespace VantagePackageHolder
             return TryCopyToClipboard(() => shape.Copy());
         }
 
+        private bool CopyShapePicturePrinterOnly(Excel.Shape shape)
+        {
+            if (shape == null)
+            {
+                return false;
+            }
+
+            bool hasChart = false;
+            try
+            {
+                hasChart = Convert.ToBoolean(shape.HasChart);
+            }
+            catch
+            {
+                hasChart = false;
+            }
+
+            try
+            {
+                if (shape.Parent is Excel.Worksheet ws)
+                {
+                    (ws.Parent as Excel.Workbook)?.Activate();
+                    ws.Activate();
+                }
+
+                shape.Select();
+            }
+            catch
+            {
+                // ignore
+            }
+
+            if (hasChart && shape.Chart != null)
+            {
+                return CopyChartPicturePrinterOnly(shape.Chart);
+            }
+
+            if (TryCopyToClipboard(() => shape.CopyPicture(Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlPicture)))
+            {
+                return true;
+            }
+
+            return TryCopyToClipboard(() => shape.CopyPicture(Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlBitmap));
+        }
+
         private bool CopyViaReflection(object target)
         {
             if (TryInvokeCopyPicture(target, Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlPicture))
@@ -3314,6 +3479,16 @@ namespace VantagePackageHolder
             }
 
             return TryInvokeCopy(target);
+        }
+
+        private bool CopyViaReflectionPrinterOnly(object target)
+        {
+            if (TryInvokeCopyPicture(target, Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlPicture))
+            {
+                return true;
+            }
+
+            return TryInvokeCopyPicture(target, Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlBitmap);
         }
 
         private bool TryCopyToClipboard(Action copyAction)

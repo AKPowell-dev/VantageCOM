@@ -16,6 +16,13 @@ Private gCustomConfigTime As Date
 Private gCustomConfigLoaded As Boolean
 Public gClipboardHookReady As Boolean   ' Defer clipboard hooks until post-init
 
+Private Sub ClearDeleteKeyBinding()
+    On Error Resume Next
+    Application.OnKey "{DEL}"
+    Application.OnKey "{DELETE}"
+    On Error GoTo 0
+End Sub
+
 Public Sub SuppressExcelHelpKey()
     On Error Resume Next
     Application.OnKey "{F1}", ""
@@ -110,6 +117,7 @@ Function StartVim(Optional ByVal g As String) As Boolean
 
     ' Enable Vim addin (bind keys for current mode)
     gVim.Enabled = True
+    Call ClearDeleteKeyBinding
 
     ' Schedule post-init (hooks and any optional work) shortly after
     On Error Resume Next
@@ -142,7 +150,9 @@ Sub LoadCustomConfigAsync()
     gCustomConfigLoaded = True
 
     ' Rebind keys after loading custom config
+    Call gVim.KeyMap.Map("nunmap <Del>")
     gVim.KeyMap.BindAll
+    Call ClearDeleteKeyBinding
     Exit Sub
 
 CleanFail:

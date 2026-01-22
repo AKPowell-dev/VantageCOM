@@ -144,6 +144,54 @@ Public Function LaunchResearchLink(Optional ByVal g As String) As Boolean
     LaunchResearchLink = False
 End Function
 
+Public Function ResetWorkbookView(Optional ByVal g As String) As Boolean
+    Dim uiGuard As ExcelUiGuard
+    Dim wb As Workbook
+    Dim ws As Worksheet
+    Dim leftMost As Worksheet
+    Dim win As Window
+
+    On Error GoTo CleanFail
+    Set uiGuard = SuppressExcelUi(True)
+
+    Set wb = ActiveWorkbook
+    If wb Is Nothing Then GoTo CleanExit
+    If wb.Worksheets.Count = 0 Then GoTo CleanExit
+
+    Set leftMost = wb.Worksheets(1)
+
+    For Each ws In wb.Worksheets
+        If ws.Visible = xlSheetVisible Then
+            ws.Activate
+            Set win = ActiveWindow
+            If Not win Is Nothing Then win.Zoom = 100
+            ws.Range("A1").Select
+            Application.Goto Reference:=ws.Range("A1"), Scroll:=True
+            If Not win Is Nothing Then
+                win.ScrollRow = 1
+                win.ScrollColumn = 1
+            End If
+        End If
+    Next ws
+
+    leftMost.Activate
+    Set win = ActiveWindow
+    If Not win Is Nothing Then win.Zoom = 100
+    leftMost.Range("A1").Select
+    Application.Goto Reference:=leftMost.Range("A1"), Scroll:=True
+    If Not win Is Nothing Then
+        win.ScrollRow = 1
+        win.ScrollColumn = 1
+    End If
+
+CleanExit:
+    ResetWorkbookView = False
+    Exit Function
+CleanFail:
+    Call ErrorHandler("ResetWorkbookView")
+    Resume CleanExit
+End Function
+
 Function ToggleScrollLockMode(Optional ByVal g As String) As Boolean
     Dim uiGuard As ExcelUiGuard
     Dim statusMessage As String

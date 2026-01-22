@@ -1565,7 +1565,11 @@ Public Sub BindAll()
         End If
 ContinueKey:
     Next key
-
+    ' Ensure native Delete key behavior (avoid Undo-breaking macro binding).
+    On Error Resume Next
+    Application.OnKey "{DEL}"
+    Application.OnKey "{DELETE}"
+    On Error GoTo 0
 
 End Sub
 

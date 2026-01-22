@@ -8,6 +8,93 @@ namespace VantagePackageHolder
 {
     internal sealed class PowerPointExporter
     {
+        public double MeasureClipboardWidthPts()
+        {
+            PowerPoint.Application pptApp = null;
+            PowerPoint.Presentation presentation = null;
+            PowerPoint.Slide tempSlide = null;
+            PowerPoint.Shape pastedShape = null;
+
+            bool createdApp = false;
+            bool createdPresentation = false;
+            bool createdSlide = false;
+
+            try
+            {
+                try
+                {
+                    pptApp = (PowerPoint.Application)Marshal.GetActiveObject("PowerPoint.Application");
+                }
+                catch (COMException)
+                {
+                    pptApp = new PowerPoint.Application();
+                    createdApp = true;
+                }
+
+                if (pptApp == null)
+                {
+                    return 0;
+                }
+
+                try { pptApp.Visible = Office.MsoTriState.msoTrue; } catch { }
+
+                try { presentation = pptApp.ActivePresentation; } catch { presentation = null; }
+                if (presentation == null)
+                {
+                    try
+                    {
+                        presentation = pptApp.Presentations.Add(Office.MsoTriState.msoFalse);
+                        createdPresentation = true;
+                    }
+                    catch
+                    {
+                        return 0;
+                    }
+                }
+
+                try
+                {
+                    tempSlide = presentation.Slides.Add(presentation.Slides.Count + 1, PowerPoint.PpSlideLayout.ppLayoutBlank);
+                    createdSlide = true;
+                }
+                catch
+                {
+                    return 0;
+                }
+
+                pastedShape = PasteShape(tempSlide);
+                if (pastedShape == null)
+                {
+                    return 0;
+                }
+
+                return pastedShape.Width;
+            }
+            catch
+            {
+                return 0;
+            }
+            finally
+            {
+                try { pastedShape?.Delete(); } catch { }
+
+                if (createdPresentation)
+                {
+                    try { presentation.Saved = Office.MsoTriState.msoTrue; } catch { }
+                    try { presentation.Close(); } catch { }
+                }
+                else if (createdSlide)
+                {
+                    try { tempSlide?.Delete(); } catch { }
+                }
+
+                if (createdApp && pptApp != null)
+                {
+                    try { pptApp.Quit(); } catch { }
+                }
+            }
+        }
+
         public void PasteClipboardIntoActiveSlide()
         {
             PowerPoint.Application pptApp;

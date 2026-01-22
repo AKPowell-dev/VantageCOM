@@ -45,7 +45,7 @@ namespace VantagePackageHolder
             _autoColor = new Lazy<AutoColorService>(() => new AutoColorService(_excel), LazyThreadSafetyMode.None);
             _util = new Lazy<UtilService>(() => new UtilService(_excel), LazyThreadSafetyMode.None);
             _insertMode = new Lazy<InsertModeService>(() => new InsertModeService(_excel), LazyThreadSafetyMode.None);
-            _batchResize = new Lazy<BatchResizeService>(() => new BatchResizeService(_excel, Format), LazyThreadSafetyMode.None);
+            _batchResize = new Lazy<BatchResizeService>(() => new BatchResizeService(_excel, Format, PowerPoint), LazyThreadSafetyMode.None);
             _optimizer = new Lazy<WorkbookOptimizer>(() => new WorkbookOptimizer(_excel), LazyThreadSafetyMode.None);
             _editing = new Lazy<EditingService>(() => new EditingService(_excel), LazyThreadSafetyMode.None);
             _analysis = new Lazy<WorkbookAnalysisService>(() => new WorkbookAnalysisService(_excel), LazyThreadSafetyMode.None);

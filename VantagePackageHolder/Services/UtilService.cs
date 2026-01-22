@@ -19,6 +19,7 @@ namespace VantagePackageHolder
         private string _savedStatusMessage = string.Empty;
         private bool _tempVisible;
         private long _lastStatusTicks;
+        private string _lastTempStatus = string.Empty;
 
         private const int ProgressBarLength = 13;
 
@@ -118,6 +119,24 @@ namespace VantagePackageHolder
                 text = string.Empty;
             }
 
+                string displayText;
+                if (!disablePrefix && !string.IsNullOrEmpty(statusPrefix))
+                {
+                    displayText = statusPrefix + text;
+                }
+                else
+                {
+                    displayText = text;
+                }
+
+                if (_statusTimer.Enabled && string.Equals(displayText, _lastTempStatus, StringComparison.Ordinal))
+                {
+                    _statusTimer.Stop();
+                    _statusTimer.Interval = Math.Max(1, milliseconds);
+                    _statusTimer.Start();
+                    return;
+                }
+
                 _tempVisible = true;
                 if (_statusTimer.Enabled)
                 {
@@ -126,15 +145,8 @@ namespace VantagePackageHolder
 
                 _statusTimer.Interval = Math.Max(1, milliseconds);
                 _statusTimer.Start();
-
-                if (!disablePrefix && !string.IsNullOrEmpty(statusPrefix))
-                {
-                    _app.StatusBar = statusPrefix + text;
-                }
-                else
-                {
-                    _app.StatusBar = text;
-                }
+                _app.StatusBar = displayText;
+                _lastTempStatus = displayText;
             }
             catch
             {
@@ -871,6 +883,7 @@ namespace VantagePackageHolder
         {
             _statusTimer.Stop();
             _tempVisible = false;
+            _lastTempStatus = string.Empty;
 
             try
             {

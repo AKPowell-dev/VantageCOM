@@ -182,6 +182,15 @@ Private Function IsShiftLetterKey(ByVal key As String) As Boolean
     End If
 End Function
 
+Private Function GetOnKeyAlias(ByVal key As String) As String
+    Select Case key
+    Case "^+{[}"
+        GetOnKeyAlias = "^{{}"
+    Case "^+{]}"
+        GetOnKeyAlias = "^{}}"
+    End Select
+End Function
+
 
 
 
@@ -1523,6 +1532,11 @@ Public Sub UnbindAll()
 
     For Each key In cOnKeyMap.Keys()
         Application.OnKey key
+        Dim aliasKey As String
+        aliasKey = GetOnKeyAlias(CStr(key))
+        If aliasKey <> "" Then
+            Application.OnKey aliasKey
+        End If
     Next key
 
 End Sub
@@ -1540,13 +1554,22 @@ Public Sub BindAll()
 
     Dim key As Variant
     For Each key In cOnKeyMap.Keys()
+        Dim aliasKey As String
+        aliasKey = GetOnKeyAlias(CStr(key))
+
         If IsNumberRowKey(CStr(key)) Then
             Application.OnKey key
+            If aliasKey <> "" Then
+                Application.OnKey aliasKey
+            End If
             GoTo ContinueKey
         End If
 
         If mSuppressPlainKeys And IsPlainKey(CStr(key)) Then
             Application.OnKey key
+            If aliasKey <> "" Then
+                Application.OnKey aliasKey
+            End If
         ElseIf Parent.Mode.CheckBits(cOnKeyMap(key), currentModeBit) Then
             ' Create the lazy load procedure for the key
             Dim lazyLoadProcedure As String
@@ -1560,8 +1583,14 @@ Public Sub BindAll()
             lazyLoadProcedure = "'LazyLoad """ & lazyLoadProcedure & """'"
 
             Application.OnKey key, lazyLoadProcedure
+            If aliasKey <> "" Then
+                Application.OnKey aliasKey, lazyLoadProcedure
+            End If
         Else
             Application.OnKey key
+            If aliasKey <> "" Then
+                Application.OnKey aliasKey
+            End If
         End If
 ContinueKey:
     Next key

@@ -34,6 +34,7 @@ namespace VantagePackageHolder
         private readonly Lazy<EditingService> _editing;
         private readonly Lazy<WorkbookAnalysisService> _analysis;
         private readonly Lazy<ChartNavigator> _charts;
+        private readonly Lazy<TraceDialogService> _traceDialogs;
         private bool _pendingFormatReset;
 
         public VantageEngine(Excel.Application excel)
@@ -50,6 +51,7 @@ namespace VantagePackageHolder
             _editing = new Lazy<EditingService>(() => new EditingService(_excel), LazyThreadSafetyMode.None);
             _analysis = new Lazy<WorkbookAnalysisService>(() => new WorkbookAnalysisService(_excel), LazyThreadSafetyMode.None);
             _charts = new Lazy<ChartNavigator>(() => new ChartNavigator(_excel), LazyThreadSafetyMode.None);
+            _traceDialogs = new Lazy<TraceDialogService>(() => new TraceDialogService(_excel), LazyThreadSafetyMode.None);
         }
 
         public void Dispose() { }
@@ -78,6 +80,7 @@ namespace VantagePackageHolder
         private EditingService Editing => _editing.Value;
         private WorkbookAnalysisService Analysis => _analysis.Value;
         private ChartNavigator Charts => _charts.Value;
+        private TraceDialogService TraceDialogs => _traceDialogs.Value;
 
         #region Clipboard hooks
         public void ClipboardHandleCopy() => Clipboard.HandleCopy();
@@ -250,6 +253,11 @@ namespace VantagePackageHolder
         public void ClearUnnecessaryFormatting() => Optimizer.ClearUnnecessaryFormatting();
         public void DrawDependencyMap() => Analysis.DrawDependencyMap();
 #endregion
+
+        #region Trace dialogs
+        public void TracePrecedentsDialog() => TraceDialogs.ShowPrecedentsDialog();
+        public void TraceDependentsDialog() => TraceDialogs.ShowDependentsDialog();
+        #endregion
 
         #region Chart helpers
         public void SelectNearestChart() => Charts.SelectNearestChart();

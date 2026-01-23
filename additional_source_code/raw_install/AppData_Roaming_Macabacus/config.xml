@@ -1,0 +1,1229 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<MacabacusSettings>
+  <Version>9.8.2.0</Version>
+  <MacabacusTabKeyTips>
+    <Excel>B</Excel>
+    <PowerPoint>B</PowerPoint>
+    <Word>B</Word>
+  </MacabacusTabKeyTips>
+  <ImportExport>
+    <SwitchToTarget>True</SwitchToTarget>
+    <BlackAndWhite>True</BlackAndWhite>
+    <HideGridlines>True</HideGridlines>
+    <RemoveBorder>True</RemoveBorder>
+    <CopyAppearance>screen</CopyAppearance>
+    <WarnAboutErrors>True</WarnAboutErrors>
+    <WarnIllegalFonts>True</WarnIllegalFonts>
+    <ShowAllNames>False</ShowAllNames>
+    <RebuildTablesOnUpdate>True</RebuildTablesOnUpdate>
+    <AutoAdjustCharts>True</AutoAdjustCharts>
+    <ScaleChartAxes>False</ScaleChartAxes>
+    <SaveSourceOnLink>False</SaveSourceOnLink>
+    <ChartsFillPlaceholders>True</ChartsFillPlaceholders>
+    <PlugUpHyperlinksAtEnd>True</PlugUpHyperlinksAtEnd>
+    <ImportPosition>0</ImportPosition>
+    <WordExportInline>True</WordExportInline>
+    <NewerVersionPrompt>True</NewerVersionPrompt>
+    <LinkAutodetect>0</LinkAutodetect>
+    <PowerPointDefaults>
+      <ImportCellsAs>1</ImportCellsAs>
+      <ImportChartsAs>0</ImportChartsAs>
+    </PowerPointDefaults>
+    <WordDefaults>
+      <ImportCellsAs>1</ImportCellsAs>
+      <ImportChartsAs>0</ImportChartsAs>
+    </WordDefaults>
+  </ImportExport>
+  <FontCompliance>
+    <ScaleChartFontsOnExport>True</ScaleChartFontsOnExport>
+    <CheckLegalFontsOnExport>True</CheckLegalFontsOnExport>
+  </FontCompliance>
+  <PowerPointHyperlinkColors>
+    <Font></Font>
+    <Underline>255,255,255</Underline>
+  </PowerPointHyperlinkColors>
+  <TextLinkCompatibilityMode>False</TextLinkCompatibilityMode>
+  <LinkHighlightColor>0</LinkHighlightColor>
+  <Agenda>
+    <FlysheetStyle>1</FlysheetStyle>
+    <CollapseSections>True</CollapseSections>
+    <SkipDoubleFlysheets>True</SkipDoubleFlysheets>
+    <OmitDoubleFlysheets>False</OmitDoubleFlysheets>
+    <IncludeSubsectionsInToc>False</IncludeSubsectionsInToc>
+    <UpdateTopicsOnContentSlides>True</UpdateTopicsOnContentSlides>
+    <OverrideNativeSectionActions>True</OverrideNativeSectionActions>
+    <ShowBulletPunctuation>False</ShowBulletPunctuation>
+    <SectionSubsectionSeparator> / </SectionSubsectionSeparator>
+    <IncludePageNumbers>True</IncludePageNumbers>
+  </Agenda>
+  <SlideNumbering>
+    <AlwaysStartAtOne>False</AlwaysStartAtOne>
+    <SequentialNumbering>False</SequentialNumbering>
+  </SlideNumbering>
+  <SlideFootnotes>
+    <Group>True</Group>
+    <Order>0</Order>
+    <Type>0</Type>
+    <Decoration>0</Decoration>
+  </SlideFootnotes>
+  <Stamps>
+    <Stamp>CONFIDENTIAL</Stamp>
+    <Stamp>DRAFT</Stamp>
+    <Stamp>For Internal Use Only</Stamp>
+  </Stamps>
+  <StampDefaultOnNewPresentation></StampDefaultOnNewPresentation>
+  <AutoColorOnEntry>True</AutoColorOnEntry>
+  <AutoColorText>False</AutoColorText>
+  <AutoColorDates>True</AutoColorDates>
+  <AutoColors>
+    <ColorInputs>0,0,255</ColorInputs>
+    <ColorPartial></ColorPartial>
+    <ColorFormulas>0,0,0</ColorFormulas>
+    <ColorSheetLinks>0,128,0</ColorSheetLinks>
+    <ColorBookLinks>128,0,128</ColorBookLinks>
+    <ColorHyperlinks>255,102,0</ColorHyperlinks>
+    <ColorDataSource></ColorDataSource>
+    <!--<ColorErrors></ColorErrors>-->
+    <DataFunctions>RDP.Data,BDH,BDP,BDS,CIQ,FDS,SNL</DataFunctions>
+  </AutoColors>
+  <ChartSeriesColors>
+    <Color>91,155,213</Color>
+    <Color>237,125,49</Color>
+    <Color>165,165,165</Color>
+    <Color>255,192,0</Color>
+    <Color>68,114,196</Color>
+    <Color>112,173,71</Color>
+  </ChartSeriesColors>
+  <RecolorColors>
+    <Color>0,0,255</Color>
+    <Color>0,0,0</Color>
+    <Color>0,128,0</Color>
+    <Color>128,0,128</Color>
+    <Color>255,102,0</Color>
+  </RecolorColors>
+  <ColorCycles>
+    <FontColorCycle>
+      <Color>0,0,255</Color>
+      <Color>255,255,255</Color>
+      <Color>200,0,0</Color>
+      <Color>0,128,0</Color>
+      <Color>153,0,0</Color>
+      <Color>255,23,23</Color>
+      <Color>0,0,0</Color>
+    </FontColorCycle>
+    <FillColorCycle>
+      <Color>0,32,96</Color>
+      <Color>220,228,244</Color>
+      <Color>240,240,240</Color>
+      <Color>255,242,204</Color>
+      <Color></Color>
+    </FillColorCycle>
+    <BorderColorCycle>
+      <Color>0,0,0</Color>
+      <Color>255,255,255</Color>
+      <Color>128,128,128</Color>
+      <Color>204,0,0</Color>
+    </BorderColorCycle>
+    <ChartColorCycle>
+      <Color>0,0,255</Color>
+      <Color>0,128,0</Color>
+      <Color>128,0,128</Color>
+      <Color>208,0,0</Color>
+    </ChartColorCycle>
+    <AutoColorCycle>
+      <Color>0,0,255</Color>
+      <Color>0,0,0</Color>
+      <Color>0,128,0</Color>
+      <Color>128,0,128</Color>
+      <Color>255,102,0</Color>
+    </AutoColorCycle>
+    <NoAutoColorCycle>
+      <Color>255,0,0</Color>
+      <Color>255,255,255</Color>
+    </NoAutoColorCycle>
+  </ColorCycles>
+  <BorderStyleCycle>
+    <Style>1,2</Style>
+    <Style>-4142,</Style>
+    <Style>-4115,2</Style>
+    <Style>-4119,4</Style>
+    <Style>1,1</Style>
+    <Style>1,3</Style>
+  </BorderStyleCycle>
+  <ActivePaletteId>000000</ActivePaletteId>
+  <Palettes>
+    <Palette>
+      <Id>000000</Id>
+      <Name><![CDATA[Default]]></Name>
+      <Colors>
+        <Color>
+          <Rgb>0,32,96</Rgb>
+          <Role>0</Role>
+        </Color>
+        <Color>
+          <Rgb>220,228,244</Rgb>
+          <Role>0</Role>
+        </Color>
+        <Color>
+          <Rgb>240,240,240</Rgb>
+          <Role>0</Role>
+        </Color>
+        <Color>
+          <Rgb>153,0,0</Rgb>
+          <Role>0</Role>
+        </Color>
+        <Color>
+          <Rgb>255,242,204</Rgb>
+          <Role>0</Role>
+        </Color>
+        <Color>
+          <Rgb>0,128,0</Rgb>
+          <Role>0</Role>
+        </Color>
+        <Color>
+          <Rgb>0,0,255</Rgb>
+          <Role>0</Role>
+        </Color>
+        <Color>
+          <Rgb>255,0,0</Rgb>
+          <Role>0</Role>
+        </Color>
+        <Color>
+          <Rgb>0,0,0</Rgb>
+          <Role>0</Role>
+        </Color>
+      </Colors>
+    </Palette>
+  </Palettes>
+  <RibbonPaletteGalleries>False</RibbonPaletteGalleries>
+  <DefaultColors>
+    <BorderColor>0,0,0</BorderColor>
+    <FontColor>0,0,0</FontColor>
+    <FillColor>220,220,220</FillColor>
+  </DefaultColors>
+  <NumberFormatCycles>
+    <GeneralNumberCycle>
+      <NumberFormat>
+        <Name><![CDATA[Number]]></Name>
+        <Format><![CDATA[#,##0_);(#,##0);--_)]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Currency]]></Name>
+        <Format><![CDATA[$#,##0_);($#,##0);--_)]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Percentage]]></Name>
+        <Format><![CDATA[#,##0.0%_);(#,##0.0%);--\%_)]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Multiple]]></Name>
+        <Format><![CDATA[#,##0.0x_);(#,##0.0x);--x_)]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Basis Points]]></Name>
+        <Format><![CDATA[#,##0"bps"_);(#,##0"bps");"--bps "]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[On/Off]]></Name>
+        <Format><![CDATA["On";;"Off"]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Yes/No]]></Name>
+        <Format><![CDATA[[=1]"Yes";[=0]"No";"ERROR"]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Years]]></Name>
+        <Format><![CDATA[[=1]0" Year";0" Years"]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Year]]></Name>
+        <Format><![CDATA["Year "0; "Year "-0; "Year 0"; ""]]></Format>
+      </NumberFormat>
+    </GeneralNumberCycle>
+    <LocalCurrencyCycle>
+      <NumberFormat>
+        <Name><![CDATA[USD 0 Dec Lg Align]]></Name>
+        <Format><![CDATA[_([$$]#,##0_)_%;([$$]#,##0)_%;_("–"_)_%;_(@_)_%]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[USD 1 Dec Lg Align]]></Name>
+        <Format><![CDATA[_([$$]#,##0.0_)_%;([$$]#,##0.0)_%;_("–"_)_%;_(@_)_%]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[USD 2 Dec Lg Align]]></Name>
+        <Format><![CDATA[_([$$]#,##0.00_)_%;([$$]#,##0.00)_%;_("–"_)_%;_(@_)_%]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[USD 0 Dec No Align]]></Name>
+        <Format><![CDATA[[$$]#,##0;([$$]#,##0);"–";@]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[EUR 0 Dec Lg Align]]></Name>
+        <Format><![CDATA[_([$€-2]#,##0_)_%;([$€-2]#,##0)_%;_("–"_)_%;_(@_)_%]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[GBP 0 Dec Lg Align]]></Name>
+        <Format><![CDATA[_([$£-809]#,##0_)_%;([$£-809]#,##0)_%;_("–"_)_%;_(@_)_%]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[YEN 0 Dec Lg Align]]></Name>
+        <Format><![CDATA[_([$¥-2]#,##0_)_%;([$¥-2]#,##0)_%;_("–"_)_%;_(@_)_%]]></Format>
+      </NumberFormat>
+    </LocalCurrencyCycle>
+    <PercentCycle>
+      <NumberFormat>
+        <Name><![CDATA[Percent Aligned Neg Pct]]></Name>
+        <Format><![CDATA[_(#,##0.0%_);(#,##0.0%);_("–"_)_%;_(@_)_%]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Percent Unaligned]]></Name>
+        <Format><![CDATA[#,##0.0%;(#,##0.0%);"–";@]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Hard Percent Aligned Neg Pct]]></Name>
+        <Format><![CDATA[_(#,##0.0"%"_);(#,##0.0"%");_("–"_)_%;_(@_)_%]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Hard Percent Unaligned]]></Name>
+        <Format><![CDATA[#,##0.0"%";(#,##0.0"%");"–";@]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[SOFR +]]></Name>
+        <Format><![CDATA["S"+0_)_%;"S"-0_)_%;"S"+0_)_%]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[LIBOR +]]></Name>
+        <Format><![CDATA[L+0_)_%;L-0_)_%;L+0_)_%]]></Format>
+      </NumberFormat>
+    </PercentCycle>
+    <MultipleCycle>
+      <NumberFormat>
+        <Name><![CDATA[Mult 1 Decimal Aligned Neg Pct]]></Name>
+        <Format><![CDATA[_(0.0x_)_)_';_((0.0x)_'_';_("–"_)_%;_(@_)_%]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Mult 2 Decimal Aligned Neg Pct]]></Name>
+        <Format><![CDATA[_(0.00x_)_)_';_((0.00x)_'_';_("–"_)_%;_(@_)_%]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Mult 1 Decimal Unaligned]]></Name>
+        <Format><![CDATA[0.0x;(0.0x);"–"]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Mult 2 Decimal Unaligned]]></Name>
+        <Format><![CDATA[0.00x;(0.00x);"–"]]></Format>
+      </NumberFormat>
+    </MultipleCycle>
+    <DateCycle>
+      <NumberFormat>
+        <Name><![CDATA[m/d/yyyy]]></Name>
+        <Format><![CDATA[m/d/yyyy;@]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Date Text Long]]></Name>
+        <Format><![CDATA[mmmm d, yyyy;@]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Date Actual Year]]></Name>
+        <Format><![CDATA[0000\A]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Date Estimated Year]]></Name>
+        <Format><![CDATA[0000\E]]></Format>
+      </NumberFormat>
+    </DateCycle>
+    <BinaryCycle>
+      <NumberFormat>
+        <Name><![CDATA[Yes/No]]></Name>
+        <Format><![CDATA["Yes";"ERROR";"No";"ERROR"]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Y/N]]></Name>
+        <Format><![CDATA["Y";"ERROR";"N";"ERROR"]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[On/Off]]></Name>
+        <Format><![CDATA["On";"ERROR";"Off";"ERROR"]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[True/False]]></Name>
+        <Format><![CDATA["True";"ERROR";"False";"ERROR"]]></Format>
+      </NumberFormat>
+    </BinaryCycle>
+    <RatioCycle>
+      <NumberFormat>
+        <Name><![CDATA[Exchange Ratio]]></Name>
+        <Format><![CDATA[0.0\:1_);(0.0)\:1_);0.0\:1_);@_)]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Fraction 1]]></Name>
+        <Format><![CDATA[# ?/?]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Fraction 2]]></Name>
+        <Format><![CDATA[# ??/??]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Fraction 3]]></Name>
+        <Format><![CDATA[# ???/???]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Halves]]></Name>
+        <Format><![CDATA[# ?/2]]></Format>
+      </NumberFormat>
+      <NumberFormat>
+        <Name><![CDATA[Thirds]]></Name>
+        <Format><![CDATA[# ?/3]]></Format>
+      </NumberFormat>
+    </RatioCycle>
+  </NumberFormatCycles>
+  <AutoAlignRightNumbers>0</AutoAlignRightNumbers>
+  <AutoItalicizePercentages>0</AutoItalicizePercentages>
+  <IndentMaxLeft>5</IndentMaxLeft>
+  <IndentMaxRight>3</IndentMaxRight>
+  <MaxPaintbrushes>3</MaxPaintbrushes>
+  <FontStyleCycle>
+    <Font>Arial</Font>
+    <Font>Times New Roman</Font>
+    <Font>Courier New</Font>
+  </FontStyleCycle>
+  <FontSizeCycle>
+    <Size>7</Size>
+    <Size>11</Size>
+    <Size>15</Size>
+  </FontSizeCycle>
+  <RowHeightCycle>
+    <Height>3</Height>
+    <Height>15</Height>
+  </RowHeightCycle>
+  <ColumnWidthCycle>
+    <Width>1</Width>
+    <Width>8.43</Width>
+    <Width>11</Width>
+  </ColumnWidthCycle>
+  <AutoFitCellsBehavior>0</AutoFitCellsBehavior>
+  <RowHeightInterval>2</RowHeightInterval>
+  <ColumnWidthInterval>2</ColumnWidthInterval>
+  <CustomCycles>
+    <Cycle name="KED Custom">
+      <Style id="84202570104PM">
+        <Name><![CDATA[Heading 1]]></Name>
+        <NumberFormat><![CDATA[#,##0_);(#,##0);--_)]]></NumberFormat>
+        <Font case="" name="Garamond" size="11" bold="True" italic="False" underline="Single" color="200,0,0" />
+        <Fill color="" patternStyle="-4142" patternColor="" />
+        <Align horizontal="General" vertical="Bottom" orientation="Horizontal" indent="0" wrap="False" />
+        <Size height="" width="" />
+        <BorderTop apply="False" style="-4142" weight="" color="" />
+        <BorderBottom apply="False" style="-4142" weight="" color="" />
+        <BorderLeft apply="False" style="-4142" weight="" color="" />
+        <BorderRight apply="False" style="-4142" weight="" color="" />
+        <Comments apply="False" />
+        <DefaultValue apply="False" />
+        <Validation apply="False" />
+      </Style>
+      <Style id="84202570140PM">
+        <Name><![CDATA[Heading 2]]></Name>
+        <NumberFormat><![CDATA[#,##0_);(#,##0);--_)]]></NumberFormat>
+        <Font case="" name="Garamond" size="11" bold="True" italic="False" underline="None" color="255,255,255" />
+        <Fill color="0,32,96" patternStyle="-4142" patternColor="" />
+        <Align horizontal="General" vertical="Bottom" orientation="Horizontal" indent="0" wrap="False" />
+        <Size height="" width="" />
+        <BorderTop apply="False" style="-4142" weight="" color="" />
+        <BorderBottom apply="False" style="-4142" weight="" color="" />
+        <BorderLeft apply="False" style="-4142" weight="" color="" />
+        <BorderRight apply="False" style="-4142" weight="" color="" />
+        <Comments apply="False" />
+        <DefaultValue apply="False" />
+        <Validation apply="False" />
+      </Style>
+      <Style id="84202570216PM">
+        <Name><![CDATA[Heading 3]]></Name>
+        <NumberFormat><![CDATA[#,##0_);(#,##0);--_)]]></NumberFormat>
+        <Font case="" name="Garamond" size="11" bold="True" italic="False" underline="None" color="0,0,0" />
+        <Fill color="220,228,244" patternStyle="-4142" patternColor="" />
+        <Align horizontal="General" vertical="Bottom" orientation="Horizontal" indent="0" wrap="False" />
+        <Size height="" width="" />
+        <BorderTop apply="True" style="1" weight="2" color="0,0,0" />
+        <BorderBottom apply="False" style="-4142" weight="" color="" />
+        <BorderLeft apply="False" style="-4142" weight="" color="" />
+        <BorderRight apply="False" style="-4142" weight="" color="" />
+        <Comments apply="False" />
+        <DefaultValue apply="False" />
+        <Validation apply="False" />
+      </Style>
+    </Cycle>
+    <Cycle name="Custom Cycle 2" />
+    <Cycle name="Custom Cycle 3" />
+    <Cycle name="Custom Cycle 4" />
+    <Cycle name="Custom Cycle 5" />
+    <Cycle name="Custom Cycle 6" />
+    <Cycle name="Custom Cycle 7" />
+    <Cycle name="Custom Cycle 8" />
+  </CustomCycles>
+  <DisableF1>True</DisableF1>
+  <DisableInsert>True</DisableInsert>
+  <DisableNumLock>True</DisableNumLock>
+  <DisableScrollLock>True</DisableScrollLock>
+  <ZoomInterval>5</ZoomInterval>
+  <HideGridlinesAutomatically>False</HideGridlinesAutomatically>
+  <ErrorValuePrompt>False</ErrorValuePrompt>
+  <DefaultErrorValue>NA</DefaultErrorValue>
+  <NameReferenceType>1</NameReferenceType>
+  <CommentShowName>True</CommentShowName>
+  <UniformRangeEditMode>True</UniformRangeEditMode>
+  <MaximizeOnStartUp>False</MaximizeOnStartUp>
+  <ShowGalleriesInRibbon>True</ShowGalleriesInRibbon>
+  <TranslatorPosition>0</TranslatorPosition>
+  <TranslatorDelay>1</TranslatorDelay>
+  <FormulaAudit>
+    <DependentsTimeout>15</DependentsTimeout>
+  </FormulaAudit>
+  <GrowthArrow>
+    <DataDriven>0</DataDriven>
+    <ArrowType>1</ArrowType>
+    <LabelPosition>0</LabelPosition>
+    <LineWeight>1.5</LineWeight>
+    <Color>0,0,0</Color>
+    <BoldLabel>0</BoldLabel>
+    <MatchLabelColor>0</MatchLabelColor>
+    <LabelBorder>-1</LabelBorder>
+    <InvertColor>False</InvertColor>
+    <RotateLabel>0</RotateLabel>
+    <LabelFormat>"CAGR "0.0%;"CAGR "(0.0%)</LabelFormat>
+    <LabelShapeType>1</LabelShapeType>
+  </GrowthArrow>
+  <QuickCharts>
+    <StandardSize>0</StandardSize>
+    <ChartWidth>6.00</ChartWidth>
+    <ChartHeight>4.00</ChartHeight>
+    <GapWidth>60</GapWidth>
+    <PreserveFormulas>0</PreserveFormulas>
+    <DefaultLineColor>255,192,0</DefaultLineColor>
+    <DefaultLineWeight>1.5</DefaultLineWeight>
+    <Waterfall>
+      <LabelPosition>0</LabelPosition>
+      <BaseColor>91,155,213</BaseColor>
+      <IncreaseColor>112,173,71</IncreaseColor>
+      <DecreaseColor>216,82,68</DecreaseColor>
+      <ShowErrorBars>0</ShowErrorBars>
+    </Waterfall>
+    <StackedWaterfall>
+      <ShowBridgeLines>-1</ShowBridgeLines>
+      <ShowIndividualValues>-1</ShowIndividualValues>
+      <MinDisplayValue>0</MinDisplayValue>
+      <LabelPosition>1</LabelPosition>
+      <TotalBarAppearance>1</TotalBarAppearance>
+      <BridgeColor>0,0,0</BridgeColor>
+    </StackedWaterfall>
+    <FootballField>
+      <Orientation>0</Orientation>
+      <StatLineStyle>1</StatLineStyle>
+    </FootballField>
+    <Marimekko>
+      <Orientation>0</Orientation>
+      <BlockGapWidth>1</BlockGapWidth>
+      <BlockGapColor>255,255,255</BlockGapColor>
+      <BlockLabelColor>255,255,255</BlockLabelColor>
+      <CategoryLabelPosition>0</CategoryLabelPosition>
+    </Marimekko>
+    <StackedColumn>
+      <ShowAmount>1</ShowAmount>
+      <ShowPercent>0</ShowPercent>
+      <ShowTotals>1</ShowTotals>
+      <BoldTotalsLabels>1</BoldTotalsLabels>
+    </StackedColumn>
+    <Butterfly>
+      <CategoryLabelPosition>0</CategoryLabelPosition>
+      <DataLabelPosition>4</DataLabelPosition>
+      <CenterCategoryLabels>0</CenterCategoryLabels>
+      <HideHorizAxis>1</HideHorizAxis>
+    </Butterfly>
+    <Scatter>
+      <LabelPosition>0</LabelPosition>
+      <ShowTrendline>0</ShowTrendline>
+      <ShowR2>1</ShowR2>
+      <ColorR2Label>1</ColorR2Label>
+      <BoldR2Label>0</BoldR2Label>
+      <ScaleAxes>1</ScaleAxes>
+    </Scatter>
+  </QuickCharts>
+  <StatLine>
+    <Color>255,192,0</Color>
+    <Weight>1.5</Weight>
+    <DashStyle>1</DashStyle>
+    <LabelType>1</LabelType>
+    <ColorLabel>True</ColorLabel>
+    <BoldLabel>True</BoldLabel>
+  </StatLine>
+  <TargetBand>
+    <Color>219,219,219</Color>
+    <Transparency>50</Transparency>
+    <MinValue>0</MinValue>
+    <MaxValue>0</MaxValue>
+  </TargetBand>
+  <LabelPoints>
+    <LastPosition>1</LastPosition>
+    <FirstPosition>0</FirstPosition>
+    <MinPosition>0</MinPosition>
+    <MaxPosition>0</MaxPosition>
+    <LabelText>0</LabelText>
+    <MatchColor>1</MatchColor>
+    <BoldFont>1</BoldFont>
+    <Rotation>0</Rotation>
+  </LabelPoints>
+  <FastFormats>
+    <ChartFormats>
+      <Chart type="">
+        <Basics name="Base Chart" units="mm">
+          <Picture />
+          <SeriesColors>
+            <Color fillForeColor="32,56,100" lineForeColor="" />
+            <Color fillForeColor="47,85,151" lineForeColor="" />
+            <Color fillForeColor="132,151,176" lineForeColor="" />
+            <Color fillForeColor="180,199,231" lineForeColor="" />
+            <Color fillForeColor="68,114,196" lineForeColor="" />
+            <Color fillForeColor="214,220,229" lineForeColor="" />
+            <Color fillForeColor="19,34,60" lineForeColor="" />
+            <Color fillForeColor="28,51,91" lineForeColor="" />
+            <Color fillForeColor="72,90,113" lineForeColor="" />
+          </SeriesColors>
+          <BaseFont fontSize="11" fontName="" fontColor="0,0,0" fontBold="True" fontItalic="False" />
+          <Size height="58" width="165" lockAspectRatio="False" />
+        </Basics>
+        <Chart autoScaling="" catLabelLevel="" depthPct="" dispBlanks="" elevation="" heightPct="" perspective="" plotVisOnly="" rightAngleAxes="" rotation="" seriesNameLevel="" showLabelsMax="" />
+        <ChartArea fillForeColor="255,255,255" fillBackColor="" lineColor="-1" lineLineStyle="" lineDashStyle="" lineWeight="" />
+        <PlotArea fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" insideTop="2" insideLeft="2" insideHeight="45" insideWidth="157" />
+        <ChartTitle show="False" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" automatic="" />
+        <Legend show="False" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" />
+        <DataTable show="False" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" showLegendKey="" hasBorderHorizontal="" hasBorderOutline="" hasBorderVertical="" />
+        <Series hasDataLabels="False" hasLeaderLines="True" hasErrorBars="False" markerSize="" markerStyle="" markerForeColorType="" markerForecolor="" markerBackColorType="" markerBackcolor="" barShape="0" explosion="" smooth="" seriesBorder="">
+          <DataLabels fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" autoText="" showLegendKey="" showCategoryName="" showBubbleSize="" showPercentage="" showSeriesName="" separator="" showValue="" hAlign="" customAngle="" position="" />
+          <LeaderLines lineColor="166,166,166" lineWeight="0.75" lineLineStyle="1" lineDashStyle="1" />
+          <ErrorBars lineColor="" lineWeight="" lineLineStyle="" lineDashStyle="" endStyle="" />
+        </Series>
+        <ChartGroups gapWidth="30" overlap="100" firstSliceAngle="" doughnutHoleSize="" bubbleScale="100" showNegativeBubbles="False" sizeRepresents="" secondPlotSize="" varyByCategories="False" hasUpDownBars="False" hasHiLoLines="False" hasDropLines="False" hasSeriesLines="False" hasRadarAxisLabels="" has3DShading="">
+          <UpBars fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+          <DownBars fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+          <HiLoLines lineColor="" lineWeight="" lineLineStyle="" lineDashStyle="" />
+          <DropLines lineColor="" lineWeight="" lineLineStyle="" lineDashStyle="" />
+          <SeriesLines lineColor="" lineWeight="" lineLineStyle="" lineDashStyle="" />
+        </ChartGroups>
+        <AxesCommon btwCategories="" otherAxisCrossesAt="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="">
+          <Title show="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" top="" left="" hAlign="" vAlign="" customAngle="" />
+          <DisplayUnitLabel show="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" top="" left="" hAlign="" vAlign="" customAngle="" />
+          <TickMarks major="" minor="" />
+          <TickLabels position="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" multiLevel="" offset="" customAngle="" align="" />
+          <MajorGridlines show="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+          <MinorGridlines show="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+        </AxesCommon>
+        <AxesPrimaryCategory btwCategories="" otherAxisCrossesAt="" lineColor="0,0,0" lineLineStyle="1" lineDashStyle="1" lineWeight="0.75">
+          <Title show="False" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" top="" left="" hAlign="" vAlign="" customAngle="" />
+          <DisplayUnitLabel show="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" top="" left="" hAlign="" vAlign="" customAngle="" />
+          <TickMarks major="3" minor="-4142" />
+          <TickLabels position="4" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" multiLevel="True" offset="100" customAngle="" align="-4108" />
+          <MajorGridlines show="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+          <MinorGridlines show="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+        </AxesPrimaryCategory>
+        <AxesPrimaryValue btwCategories="" otherAxisCrossesAt="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="">
+          <Title show="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" top="" left="" hAlign="" vAlign="" customAngle="" />
+          <DisplayUnitLabel show="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" top="" left="" hAlign="" vAlign="" customAngle="" />
+          <TickMarks major="" minor="" />
+          <TickLabels position="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" multiLevel="" offset="" customAngle="" align="" />
+          <MajorGridlines show="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+          <MinorGridlines show="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+        </AxesPrimaryValue>
+        <AxesSecondaryCategory btwCategories="" otherAxisCrossesAt="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="">
+          <Title show="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" top="" left="" hAlign="" vAlign="" customAngle="" />
+          <DisplayUnitLabel show="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" top="" left="" hAlign="" vAlign="" customAngle="" />
+          <TickMarks major="" minor="" />
+          <TickLabels position="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" multiLevel="" offset="" customAngle="" align="" />
+          <MajorGridlines show="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+          <MinorGridlines show="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+        </AxesSecondaryCategory>
+        <AxesSecondaryValue btwCategories="" otherAxisCrossesAt="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="">
+          <Title show="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" top="" left="" hAlign="" vAlign="" customAngle="" />
+          <DisplayUnitLabel show="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" top="" left="" hAlign="" vAlign="" customAngle="" />
+          <TickMarks major="" minor="" />
+          <TickLabels position="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" multiLevel="" offset="" customAngle="" align="" />
+          <MajorGridlines show="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+          <MinorGridlines show="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+        </AxesSecondaryValue>
+      </Chart>
+      <Chart type="53">
+        <Basics name="Stacked Bar Chart (Business Overview)" units="in">
+          <Picture />
+          <SeriesColors>
+            <Color fillForeColor="32,56,100" lineForeColor="" />
+            <Color fillForeColor="47,85,151" lineForeColor="" />
+            <Color fillForeColor="132,151,176" lineForeColor="" />
+            <Color fillForeColor="180,199,231" lineForeColor="" />
+            <Color fillForeColor="68,114,196" lineForeColor="" />
+            <Color fillForeColor="214,220,229" lineForeColor="" />
+            <Color fillForeColor="19,34,60" lineForeColor="" />
+            <Color fillForeColor="28,51,91" lineForeColor="" />
+            <Color fillForeColor="72,90,113" lineForeColor="" />
+          </SeriesColors>
+          <BaseFont fontSize="11" fontName="" fontColor="0,0,0" fontBold="True" fontItalic="False" />
+          <Size height="2.27" width="6.5" lockAspectRatio="False" />
+        </Basics>
+        <Chart autoScaling="" catLabelLevel="" depthPct="" dispBlanks="" elevation="" heightPct="" perspective="" plotVisOnly="" rightAngleAxes="" rotation="" seriesNameLevel="" showLabelsMax="" />
+        <ChartArea fillForeColor="255,255,255" fillBackColor="" lineColor="-1" lineLineStyle="" lineDashStyle="" lineWeight="" />
+        <PlotArea fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" insideTop="0.1" insideLeft="0.1" insideHeight="1.77" insideWidth="6.2" />
+        <ChartTitle show="False" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" automatic="" />
+        <Legend show="False" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" />
+        <DataTable show="False" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" showLegendKey="" hasBorderHorizontal="" hasBorderOutline="" hasBorderVertical="" />
+        <Series hasDataLabels="False" hasLeaderLines="True" hasErrorBars="False" markerSize="" markerStyle="" markerForeColorType="" markerForecolor="" markerBackColorType="" markerBackcolor="" barShape="0" explosion="" smooth="" seriesBorder="">
+          <DataLabels fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" autoText="" showLegendKey="" showCategoryName="" showBubbleSize="" showPercentage="" showSeriesName="" separator="" showValue="" hAlign="" customAngle="" position="" />
+          <LeaderLines lineColor="166,166,166" lineWeight="0.75" lineLineStyle="1" lineDashStyle="1" />
+          <ErrorBars lineColor="" lineWeight="" lineLineStyle="" lineDashStyle="" endStyle="" />
+        </Series>
+        <ChartGroups gapWidth="30" overlap="100" firstSliceAngle="" doughnutHoleSize="" bubbleScale="100" showNegativeBubbles="False" sizeRepresents="" secondPlotSize="" varyByCategories="False" hasUpDownBars="False" hasHiLoLines="False" hasDropLines="False" hasSeriesLines="False" hasRadarAxisLabels="" has3DShading="">
+          <UpBars fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+          <DownBars fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+          <HiLoLines lineColor="" lineWeight="" lineLineStyle="" lineDashStyle="" />
+          <DropLines lineColor="" lineWeight="" lineLineStyle="" lineDashStyle="" />
+          <SeriesLines lineColor="" lineWeight="" lineLineStyle="" lineDashStyle="" />
+        </ChartGroups>
+        <AxesCommon btwCategories="" otherAxisCrossesAt="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="">
+          <Title show="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" top="" left="" hAlign="" vAlign="" customAngle="" />
+          <DisplayUnitLabel show="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" top="" left="" hAlign="" vAlign="" customAngle="" />
+          <TickMarks major="" minor="" />
+          <TickLabels position="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" multiLevel="" offset="" customAngle="" align="" />
+          <MajorGridlines show="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+          <MinorGridlines show="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+        </AxesCommon>
+        <AxesPrimaryCategory btwCategories="" otherAxisCrossesAt="" lineColor="0,0,0" lineLineStyle="1" lineDashStyle="1" lineWeight="0.75">
+          <Title show="False" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" top="" left="" hAlign="" vAlign="" customAngle="" />
+          <DisplayUnitLabel show="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" top="" left="" hAlign="" vAlign="" customAngle="" />
+          <TickMarks major="3" minor="-4142" />
+          <TickLabels position="4" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" multiLevel="True" offset="100" customAngle="" align="-4108" />
+          <MajorGridlines show="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+          <MinorGridlines show="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+        </AxesPrimaryCategory>
+        <AxesPrimaryValue btwCategories="" otherAxisCrossesAt="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="">
+          <Title show="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" top="" left="" hAlign="" vAlign="" customAngle="" />
+          <DisplayUnitLabel show="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" top="" left="" hAlign="" vAlign="" customAngle="" />
+          <TickMarks major="" minor="" />
+          <TickLabels position="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" multiLevel="" offset="" customAngle="" align="" />
+          <MajorGridlines show="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+          <MinorGridlines show="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+        </AxesPrimaryValue>
+        <AxesSecondaryCategory btwCategories="" otherAxisCrossesAt="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="">
+          <Title show="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" top="" left="" hAlign="" vAlign="" customAngle="" />
+          <DisplayUnitLabel show="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" top="" left="" hAlign="" vAlign="" customAngle="" />
+          <TickMarks major="" minor="" />
+          <TickLabels position="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" multiLevel="" offset="" customAngle="" align="" />
+          <MajorGridlines show="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+          <MinorGridlines show="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+        </AxesSecondaryCategory>
+        <AxesSecondaryValue btwCategories="" otherAxisCrossesAt="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="">
+          <Title show="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" top="" left="" hAlign="" vAlign="" customAngle="" />
+          <DisplayUnitLabel show="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" fillForeColor="" fillBackColor="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" position="" top="" left="" hAlign="" vAlign="" customAngle="" />
+          <TickMarks major="" minor="" />
+          <TickLabels position="" fontSize="" fontColor="" fontName="" fontBold="" fontItalic="" multiLevel="" offset="" customAngle="" align="" />
+          <MajorGridlines show="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+          <MinorGridlines show="" lineColor="" lineLineStyle="" lineDashStyle="" lineWeight="" />
+        </AxesSecondaryValue>
+      </Chart>
+    </ChartFormats>
+  </FastFormats>
+  <MaximizeWorkspace>
+    <MinimizeRibbon>True</MinimizeRibbon>
+    <HideRibbon>False</HideRibbon>
+    <HideFormulaBar>True</HideFormulaBar>
+    <HideStatusBar>True</HideStatusBar>
+    <HideHeaders>False</HideHeaders>
+    <HideTabs>False</HideTabs>
+    <HideTaskPanes>False</HideTaskPanes>
+    <MaximizeWindow>True</MaximizeWindow>
+  </MaximizeWorkspace>
+  <ReplicateModule>
+    <SameSheet>True</SameSheet>
+    <NumberCopies>3</NumberCopies>
+    <SumCopies>False</SumCopies>
+    <SpacerRows>2</SpacerRows>
+    <CopyBelow>True</CopyBelow>
+  </ReplicateModule>
+  <AdjustRows action="0" number1="1" number2="1" format="0" style="-1" height="0" size="13.5" remember="True" />
+  <AdjustColumns action="0" number1="1" number2="1" format="0" style="-1" width="0" size="8.5" remember="True" />
+  <FixComments resize="True" autosize="True" />
+  <DistributeWorkbook makeCopy="True" emailCopy="False" replaceFormulas="False" fontsBlack="False" removeComments="False" removeNames="False" removeHiddenSheets="False" deleteHiddenRowsCols="False" collapseRowsCols="False" expandRowsCols="False" removeCharts="False" removeWatches="False" checkErrors="False" resetPrintAreas="False" hideGridlines="False" zoomTo100="False" returnToA1="False" activateFirstSheet="False" cleanCells="False" buryHiddenSheets="False" tableContents="False" breakHyperlinks="False" docProperties="False" customXml="False" removeInk="False" />
+  <DistributePresentation makeCopy="True" emailCopy="False" speakerNotes="False" slideComments="False" hiddenSlides="False" hiddenShapes="False" removeMasterShapes="False" removeStyles="False" offSlideShapes="False" removeTags="False" removeAltText="False" removeUnusedLayouts="False" removeSections="False" removeAnimations="False" removeTransitions="False" breakHyperlinks="False" freezeColors="False" fixGrayscale="False" convertOLEs="False" convertCharts="False" docProperties="False" customXml="False" markFinal="False" removeInk="False" lockSlides="False" />
+  <SummaryStatistics>
+    <Stats>
+      <Stat function="MAX" label="Max" enabled="True" />
+      <Stat function="MIN" label="Min" enabled="True" />
+      <Stat function="AVERAGE" label="Average" enabled="True" />
+      <Stat function="MEDIAN" label="Median" enabled="True" />
+      <Stat function="QUARTILE.EXC" label="1st Quartile" enabled="False" />
+      <Stat function="QUARTILE.INC" label="1st Quartile" enabled="False" />
+      <Stat function="QUARTILE.EXC" label="3rd Quartile" enabled="False" />
+      <Stat function="QUARTILE.INC" label="3rd Quartile" enabled="False" />
+      <Stat function="STDEV.P" label="Std Dev" enabled="False" />
+      <Stat function="STDEV.S" label="Std Dev" enabled="False" />
+      <Stat function="STDEVA" label="Std Dev" enabled="False" />
+      <Stat function="STDEVPA" label="Std Dev" enabled="False" />
+    </Stats>
+    <IgnoreCurrency>True</IgnoreCurrency>
+  </SummaryStatistics>
+  <StandardSizes>
+    <Size name="Landscape 1 x 1" height="4.47" width="9.01" />
+    <Size name="Landscape 2 x 1" height="1.96" width="9.01" />
+    <Size name="Landscape 1 x 2" height="4.47" width="4.37" />
+    <Size name="Landscape 3 x 1" height="1.2" width="9.01" />
+    <Size name="Landscape 1 x 3" height="4.47" width="2.91" />
+    <Size name="Landscape 2 x 2" height="1.96" width="4.37" />
+    <Size name="Landscape 3 x 2" height="1.2" width="4.37" />
+    <Size name="Landscape 2 x 3" height="1.96" width="2.91" />
+    <Size name="Landscape 3 x 3" height="1.2" width="2.91" />
+    <Size name="Portrait 1 x 1" height="2.45" width="6.58" />
+    <Size name="Portrait 1 x 2" height="2.34" width="3.21" />
+  </StandardSizes>
+  <MisalignmentTolerance>9</MisalignmentTolerance>
+  <SendFile>
+    <SendWhat>0</SendWhat>
+    <AttachmentType>0</AttachmentType>
+    <CompressAttachment>0</CompressAttachment>
+    <OpenPdfWhenDone>1</OpenPdfWhenDone>
+    <CopyPdfToFolder>0</CopyPdfToFolder>
+    <ExcelRecolorFonts>1</ExcelRecolorFonts>
+    <ExcelCheckForErrors>1</ExcelCheckForErrors>
+    <PowerPointDuplexPrinting>0</PowerPointDuplexPrinting>
+  </SendFile>
+  <ColorBlackOnExport>True</ColorBlackOnExport>
+  <ExportCheckForErrors>True</ExportCheckForErrors>
+  <UndoRedo enabled="True" maximum="1000">
+    <Font apply="True" name="True" color="True" size="True" bold="False" italic="False" underline="False" strike="False" scripts="False" />
+    <Fill apply="True" color="True" />
+    <Alignment apply="True" horizontal="True" vertical="True" indent="True" orientation="True" wrap="True" />
+    <Numbers apply="True" />
+    <Borders apply="True" />
+  </UndoRedo>
+  <DefaultPresTemplateId></DefaultPresTemplateId>
+  <LocalFileSharePath></LocalFileSharePath>
+  <TombstoneTemplatesFolder />
+  <PersonalLibraryFolder>C:\Users\andrep54\AppData\Roaming\Macabacus\Personal Library</PersonalLibraryFolder>
+  <SharedLibraries></SharedLibraries>
+  <WatchForLibraryChanges>True</WatchForLibraryChanges>
+  <LibraryArrangeShapes>
+    <MaxShapesPerSlide>20</MaxShapesPerSlide>
+    <CenterShapes>True</CenterShapes>
+    <ScaleMode>0</ScaleMode>
+    <StretchMode>1</StretchMode>
+    <ReorderBestFit>False</ReorderBestFit>
+    <ContainerPadding>0</ContainerPadding>
+    <MinColumnSpacing>36</MinColumnSpacing>
+    <MinRowSpacing>36</MinRowSpacing>
+    <CircleAlign>1</CircleAlign>
+    <CircleScale>20</CircleScale>
+    <RotationAngle>0</RotationAngle>
+    <RotateShapes>False</RotateShapes>
+  </LibraryArrangeShapes>
+  <LibraryTags />
+  <LibraryCacheSettings>
+    <Frequency>3</Frequency>
+    <AlwaysUseCache>True</AlwaysUseCache>
+    <ScanSleep>10</ScanSleep>
+    <SyncSleep>10</SyncSleep>
+  </LibraryCacheSettings>
+  <LibraryFavorites>
+    <Item id="f39028bd256e94e3" type="1" />
+    <Item id="5a91f21d62557f04" type="1" />
+  </LibraryFavorites>
+  <AlwaysInsertFromLibrary>
+    <Pictures>False</Pictures>
+    <Charts>False</Charts>
+  </AlwaysInsertFromLibrary>
+  <CheckOutdatedLibraryContent>True</CheckOutdatedLibraryContent>
+  <Pitchly>
+    <Library>
+      <Download>
+        <ExpiryAge>3</ExpiryAge>
+        <SimultaneousDownloads>6</SimultaneousDownloads>
+        <PageSize>100</PageSize>
+      </Download>
+      <TitleFieldName />
+    </Library>
+  </Pitchly>
+  <NetworkConnectionTimeout>3000</NetworkConnectionTimeout>
+  <WordHeadingStyles>
+    <Style id="7327635" name="Heading 1" fontName="Arial" fontSize="18" bold="1" italic="1" underline="1" color="255,0,0" highlight="0,255,0" allCaps="0"></Style>
+    <Style id="8467587" name="Heading 2" fontName="Arial" fontSize="18" bold="1" italic="1" underline="1" color="255,0,0" highlight="0,255,0" allCaps="1"></Style>
+  </WordHeadingStyles>
+  <WordListStyles>
+    <Style id="7327630" name="Numbered List" fontName="" fontSize="18" bold="1" italic="1" underline="1" color="255,0,0" highlight="0,255,0" allCaps="0" listNumbered="1" numberPosition="0.5" tabPosition="0.5" textPosition="0.5">
+      <Levels>
+        <Level id="7327631" name="Macabacus List Level 1" numbered="0" level="1" numStyle="0" numFormat="%x." fontSize="13" fontColor="255,0,0" fontBold="0" fontItalic="0" fontName="" fontShading="" headingStyle=""></Level>
+        <Level id="7327632" name="Macabacus List Level 2" numbered="0" level="2" numStyle="3" numFormat="%x." fontSize="13" fontColor="255,0,0" fontBold="0" fontItalic="0" fontName="" fontShading="" headingStyle=""></Level>
+        <Level id="7327633" name="Macabacus List Level 3" numbered="0" level="3" numStyle="4" numFormat="%x." fontSize="13" fontColor="255,0,0" fontBold="0" fontItalic="0" fontName="" fontShading=""></Level>
+        <Level id="7327634" name="Macabacus List Level 4" numbered="0" level="4" numStyle="1" numFormat="%x." fontSize="13" fontColor="255,0,0" fontBold="0" fontItalic="0" fontName="" fontShading=""></Level>
+        <Level id="7327635" name="Macabacus List Level 5" numbered="0" level="5" numStyle="2" numFormat="%x." fontSize="13" fontColor="255,0,0" fontBold="0" fontItalic="0" fontName="" fontShading=""></Level>
+        <Level id="7327636" name="Macabacus List Level 6" numbered="0" level="6" numStyle="3" numFormat="(%x)" fontSize="13" fontColor="255,0,0" fontBold="0" fontItalic="0" fontName="" fontShading=""></Level>
+        <Level id="7327637" name="Macabacus List Level 7" numbered="0" level="7" numStyle="4" numFormat="(%x)" fontSize="13" fontColor="255,0,0" fontBold="0" fontItalic="0" fontName="" fontShading=""></Level>
+        <Level id="7327638" name="Macabacus List Level 8" numbered="0" level="8" numStyle="1" numFormat="(%x)" fontSize="13" fontColor="255,0,0" fontBold="0" fontItalic="0" fontName="" fontShading=""></Level>
+        <Level id="7327639" name="Macabacus List Level 9" numbered="0" level="23" numStyle="2" numFormat="-" fontSize="13" fontColor="255,0,0" fontBold="0" fontItalic="0" fontName="" fontShading=""></Level>
+      </Levels>
+    </Style>
+  </WordListStyles>
+  <WordTextStyles>
+    <Style id="7327635" name="Heading 1" fontName="Arial" fontSize="18" bold="1" italic="1" underline="1" color="255,0,0" highlight="0,255,0" allCaps="0" superscript="0"></Style>
+    <Style id="8467587" name="Heading 2" fontName="Arial" fontSize="18" bold="1" italic="1" underline="1" color="255,0,0" highlight="0,255,0" allCaps="0" superscript="0"></Style>
+  </WordTextStyles>
+  <WordColorCycles>
+    <Font>
+      <Color>255,0,0</Color>
+      <Color>0,255,0</Color>
+      <Color>0,0,255</Color>
+    </Font>
+    <Fill>
+      <Color>255,0,0</Color>
+      <Color>0,255,0</Color>
+      <Color>0,0,255</Color>
+    </Fill>
+    <Border>
+      <Color>255,0,0</Color>
+      <Color>0,255,0</Color>
+      <Color>0,0,255</Color>
+    </Border>
+  </WordColorCycles>
+  <DocBuilderAutofillFields>
+    <Field id="company" locked="True"><![CDATA[Amalgamated Conglomerate Inc.]]></Field>
+    <Field id="first_name" locked="False"><![CDATA[John]]></Field>
+    <Field id="last_name" locked="False"><![CDATA[Doe]]></Field>
+  </DocBuilderAutofillFields>
+  <DocBuilderAutofillPreview>False</DocBuilderAutofillPreview>
+  <TurboShapes>
+    <PrimaryColor>32,32,102</PrimaryColor>
+    <SecondaryColor>217,217,217</SecondaryColor>
+    <RedColor>214,85,50</RedColor>
+    <YellowColor>234,194,130</YellowColor>
+    <GreenColor>104,164,144</GreenColor>
+    <BlueColor>74,125,177</BlueColor>
+  </TurboShapes>
+  <ProofingLanguage>1033</ProofingLanguage>
+  <ProofingRules>
+    <Common>
+      <Rule id="PunctuationSpacingIncorrect" severity="3" />
+      <Rule id="PunctuationSpacingInconsistent" severity="2" />
+      <Rule id="PunctuationMissing" severity="3" />
+      <Rule id="SentenceSpacing" severity="2" />
+      <Rule id="ColonSpacing" severity="2" />
+      <Rule id="QuotesStyle" severity="2" />
+      <Rule id="RepeatedWords" severity="3" />
+      <Rule id="HyphenWordsInconsistent" severity="2" />
+      <Rule id="NumberAbbreviation" severity="2" />
+      <Rule id="DummyText" severity="3" />
+      <Rule id="MyriadOf" severity="2" />
+      <Rule id="AsPer" severity="2" />
+      <Rule id="ConfusedWords" severity="1" />
+      <Rule id="IeEg" severity="1" />
+      <Rule id="CanceledSpelling" severity="2" />
+      <Rule id="AdviserSpelling" severity="2" />
+      <Rule id="HyphenWordsImproper" severity="3" />
+      <Rule id="IeEgComma" severity="3" />
+      <Rule id="UnnecessaryPeriods" severity="2" />
+      <Rule id="PassiveVoice" severity="0" />
+      <Rule id="CasualWriting" severity="3" />
+      <Rule id="ColorPalette" severity="2" />
+      <Rule id="ChartElements" severity="3" />
+      <Rule id="ImageDistortion" severity="3" />
+      <Rule id="ImageCropping" severity="2" />
+      <Rule id="LinkedPictures" severity="2" />
+      <Rule id="ShapeOutsideMargins" severity="2" />
+      <Rule id="FillTransparency" severity="2" />
+      <Rule id="FillGradients" severity="2" />
+      <Rule id="MultipleFontFamilies" severity="2" />
+      <Rule id="FontFamilySizeCount" severity="2" />
+      <Rule id="Links" severity="2" />
+      <Rule id="ProofingLanguage" severity="2" />
+      <Rule id="Ink" severity="3" />
+      <Rule id="Strikethrough" severity="2" />
+    </Common>
+    <PowerPoint>
+      <Rule id="BulletPunctuation" severity="2" />
+      <Rule id="HiddenShapes" severity="1" />
+      <Rule id="HiddenSlides" severity="1" />
+      <Rule id="SlideTitles" severity="3" />
+      <Rule id="SlideNumbers" severity="2" />
+      <Rule id="Hyperlinks" severity="2" />
+      <Rule id="Footnotes" severity="3" />
+      <Rule id="AgendaUpdated" severity="3" />
+      <Rule id="LineSpacing" severity="2" />
+      <Rule id="BulletSize" severity="3" />
+      <Rule id="BulletFontFamily" severity="3" />
+      <Rule id="BulletIndentation" severity="3" />
+      <Rule id="ShrinkTextOnOverflow" severity="2" />
+      <Rule id="PlaceholderFillMismatch" severity="2" />
+      <Rule id="PlaceholderFontColorMismatch" severity="2" />
+      <Rule id="PlaceholderFontStyleMismatch" severity="2" />
+      <Rule id="PlaceholderIndentMismatch" severity="2" />
+      <Rule id="PlaceholderBulletMismatch" severity="2" />
+      <Rule id="PlaceholderLayoutMismatch" severity="2" />
+      <Rule id="PlaceholderMarginMismatch" severity="2" />
+      <Rule id="MisalignedShapes" severity="2" />
+      <Rule id="RotatedShapes" severity="2" />
+      <Rule id="OverlappingText" severity="2" />
+      <Rule id="TableCellMargins" severity="2" />
+      <Rule id="ShapeOutOfBounds" severity="3" />
+      <Rule id="TemplateRules" severity="3" />
+      <Rule id="MultipleSlideMasters" severity="3" />
+      <Rule id="AirplaneMode" severity="3" />
+      <Rule id="MasterShapePosition" severity="2" />
+      <Rule id="ShapeEffects" severity="3" />
+      <Rule id="TextEffects" severity="3" />
+      <Rule id="Animation" severity="3" />
+      <Rule id="SlideCount" severity="1" />
+      <Rule id="SlideWordCount" severity="1" />
+      <Rule id="BulletWordCount" severity="1" />
+      <Rule id="MinMaxFontSize" severity="2" />
+      <Rule id="FractionalFontSize" severity="2" />
+      <Rule id="IllegalFonts" severity="3" />
+    </PowerPoint>
+    <Word>
+      <Rule id="TableCellMargins" severity="2" />
+    </Word>
+    <Settings>
+      <SentenceSpacing>1</SentenceSpacing>
+      <ColonSpacing>1</ColonSpacing>
+      <SlashSpacing>0</SlashSpacing>
+      <DashSpacing>0</DashSpacing>
+      <UnitsSpacing>0</UnitsSpacing>
+      <MillionsAbbreviation>mm</MillionsAbbreviation>
+      <BillionsAbbreviation>bn</BillionsAbbreviation>
+      <QuotesStyle>0</QuotesStyle>
+      <SlideTitleCase>0</SlideTitleCase>
+      <TrailingBulletPunctuation>0</TrailingBulletPunctuation>
+      <TrailingIeEgComma>1</TrailingIeEgComma>
+      <CanceledSpelling>0</CanceledSpelling>
+      <AdviserSpelling>0</AdviserSpelling>
+      <MaxFontSizes>5</MaxFontSizes>
+      <MaxSlides>40</MaxSlides>
+      <MaxSlideWords>300</MaxSlideWords>
+      <MaxBulletWords>40</MaxBulletWords>
+      <ProofingLanguageId>1033</ProofingLanguageId>
+    </Settings>
+  </ProofingRules>
+  <TemplateRules>
+    <RequiredSlides>
+      <Legal>False</Legal>
+      <Contact>False</Contact>
+      <FrontCover>False</FrontCover>
+      <BackCover>False</BackCover>
+    </RequiredSlides>
+    <LegalNotices>
+      <Action>0</Action>
+      <Scope>0</Scope>
+    </LegalNotices>
+    <RuleViolation>0</RuleViolation>
+  </TemplateRules>
+  <LibraryMetadataSchemas />
+  <FixOfficeDisplaySettings>True</FixOfficeDisplaySettings>
+  <Shortcuts>
+    <ExcelShortcuts>
+      <Shortcut Macro="Copy" CustomKey="Ctrl C" />
+      <Shortcut Macro="Cut" CustomKey="Ctrl X" />
+      <Shortcut Macro="CycleNumber" CustomKey="Ctrl Shift A" />
+      <Shortcut Macro="CycleCurrency" CustomKey="Ctrl Shift 4" />
+      <Shortcut Macro="CyclePercent" CustomKey="Ctrl Shift P" />
+      <Shortcut Macro="CycleMultiple" CustomKey="Ctrl Shift M" />
+      <Shortcut Macro="CycleDate" CustomKey="Ctrl Shift 2" />
+      <Shortcut Macro="CycleBinary" CustomKey="Ctrl Shift Y" />
+      <Shortcut Macro="CycleRatio" CustomKey="Alt Shift ;" />
+      <Shortcut Macro="IncrDecimal" CustomKey="Ctrl ," />
+      <Shortcut Macro="DecrDecimal" CustomKey="Ctrl ." />
+      <Shortcut Macro="ShiftDecimalLeft" CustomKey="Alt Shift ," />
+      <Shortcut Macro="ShiftDecimalRight" CustomKey="Alt Shift ." />
+      <Shortcut Macro="BlueBlackToggle" CustomKey="Ctrl ;" />
+      <Shortcut Macro="CycleFontColor" CustomKey="" />
+      <Shortcut Macro="CycleFill" CustomKey="Ctrl Shift X" />
+      <Shortcut Macro="CycleBorderColor" CustomKey="Ctrl Alt Shift '" />
+      <Shortcut Macro="CycleChartColor" CustomKey="Ctrl Alt C" />
+      <Shortcut Macro="CycleAlternateShading" CustomKey="Ctrl Alt R" />
+      <Shortcut Macro="AutoColorCycle" CustomKey="Ctrl Alt ." />
+      <Shortcut Macro="AutoColorSelection" CustomKey="Ctrl Alt A" />
+      <Shortcut Macro="AutoColorSheet" CustomKey="Ctrl Alt S" />
+      <Shortcut Macro="AutoColorWorkbook" CustomKey="Ctrl Alt Q" />
+      <Shortcut Macro="HorizAlign" CustomKey="Ctrl Shift H" />
+      <Shortcut Macro="VertAlign" CustomKey="Ctrl Shift V" />
+      <Shortcut Macro="LeftIndent" CustomKey="Ctrl Shift I" />
+      <Shortcut Macro="RightIndent" CustomKey="Ctrl Alt Shift I" />
+      <Shortcut Macro="BorderTop" CustomKey="Ctrl Alt Shift Up" />
+      <Shortcut Macro="BorderBottom" CustomKey="Ctrl Alt Shift Down" />
+      <Shortcut Macro="BorderLeft" CustomKey="Ctrl Alt Shift Left" />
+      <Shortcut Macro="BorderRight" CustomKey="Ctrl Alt Shift Right" />
+      <Shortcut Macro="BorderOutline" CustomKey="Ctrl Alt Shift A" />
+      <Shortcut Macro="BorderInside" CustomKey="Ctrl Alt Shift 7" />
+      <Shortcut Macro="" CustomKey="Ctrl Shift -" />
+      <Shortcut Macro="FontCycleStyle" CustomKey="Ctrl Alt O" />
+      <Shortcut Macro="FontCycleSize" CustomKey="Alt Shift G" />
+      <Shortcut Macro="IncrFont" CustomKey="Ctrl Shift F" />
+      <Shortcut Macro="DecrFont" CustomKey="Ctrl Shift G" />
+      <Shortcut Macro="IncrTableSize" CustomKey="Ctrl Alt Shift F" />
+      <Shortcut Macro="DecrTableSize" CustomKey="Ctrl Alt Shift G" />
+      <Shortcut Macro="PaintbrushCapture" CustomKey="Ctrl Alt Shift C" />
+      <Shortcut Macro="PaintbrushApply" CustomKey="Ctrl Alt Shift P" />
+      <Shortcut Macro="Underline" CustomKey="" />
+      <Shortcut Macro="CycleCase" CustomKey="Alt Shift C" />
+      <Shortcut Macro="CycleList" CustomKey="Ctrl Alt Shift L" />
+      <Shortcut Macro="LeaderDots" CustomKey="Alt Shift L" />
+      <Shortcut Macro="FootnoteCycle" CustomKey="Ctrl Alt Shift 6" />
+      <Shortcut Macro="FootnoteToggle" CustomKey="Ctrl Shift 6" />
+      <Shortcut Macro="WrapText" CustomKey="Ctrl Shift W" />
+      <Shortcut Macro="SumBar" CustomKey="" />
+      <Shortcut Macro="StyleCycle1" CustomKey="" />
+      <Shortcut Macro="StyleCycle2" CustomKey="Ctrl Alt 2" />
+      <Shortcut Macro="StyleCycle3" CustomKey="Ctrl Alt 3" />
+      <Shortcut Macro="StyleCycle4" CustomKey="Ctrl Alt 4" />
+      <Shortcut Macro="StyleCycle5" CustomKey="Ctrl Alt 5" />
+      <Shortcut Macro="StyleCycle6" CustomKey="Ctrl Alt 6" />
+      <Shortcut Macro="StyleCycle7" CustomKey="Ctrl Alt 7" />
+      <Shortcut Macro="StyleCycle8" CustomKey="Ctrl Alt 8" />
+      <Shortcut Macro="ProCopyRight" CustomKey="Ctrl Shift R" />
+      <Shortcut Macro="ProCopyDown" CustomKey="Ctrl Shift D" />
+      <Shortcut Macro="CheckForErrors" CustomKey="Ctrl Shift E" />
+      <Shortcut Macro="SimplifyFormula" CustomKey="Ctrl Alt Shift Q" />
+      <Shortcut Macro="CommentFormula" CustomKey="Ctrl Alt '" />
+      <Shortcut Macro="CleanFormula" CustomKey="" />
+      <Shortcut Macro="ConvFormula" CustomKey="Ctrl F2" />
+      <Shortcut Macro="Flatten" CustomKey="Ctrl Shift 3" />
+      <Shortcut Macro="FlipSign" CustomKey="Ctrl Shift -" />
+      <Shortcut Macro="Untranspose" CustomKey="Ctrl Alt Shift T" />
+      <Shortcut Macro="WrapParentheses" CustomKey="Ctrl Alt 9" />
+      <Shortcut Macro="PasteInsert" CustomKey="Ctrl Alt I" />
+      <Shortcut Macro="PasteNumFormat" CustomKey="Ctrl Alt F" />
+      <Shortcut Macro="PasteLinks" CustomKey="Ctrl Alt L" />
+      <Shortcut Macro="PasteExact" CustomKey="Ctrl Alt E" />
+      <Shortcut Macro="PasteDuplicate" CustomKey="Ctrl Alt D" />
+      <Shortcut Macro="PasteTranspose" CustomKey="Ctrl Alt T" />
+      <Shortcut Macro="ProPrecedents" CustomKey="Ctrl Shift [" />
+      <Shortcut Macro="ProDependents" CustomKey="Ctrl Shift ]" />
+      <Shortcut Macro="LastAuditedCell" CustomKey="Ctrl Shift \" />
+      <Shortcut Macro="AutoPrecedentsToggle" CustomKey="Ctrl Alt Shift [" />
+      <Shortcut Macro="AutoDependentsToggle" CustomKey="Ctrl Alt Shift ]" />
+      <Shortcut Macro="ShowAllPrecedents" CustomKey="Ctrl Alt [" />
+      <Shortcut Macro="ShowAllDependents" CustomKey="Ctrl Alt ]" />
+      <Shortcut Macro="ClearArrows" CustomKey="Ctrl Alt \" />
+      <Shortcut Macro="UniformRange" CustomKey="Ctrl Q" />
+      <Shortcut Macro="ZoomIn" CustomKey="Ctrl Alt =" />
+      <Shortcut Macro="ZoomOut" CustomKey="Ctrl Alt -" />
+      <Shortcut Macro="ToggleGridlines" CustomKey="Ctrl Alt G" />
+      <Shortcut Macro="HidePageBreaks" CustomKey="Ctrl Alt B" />
+      <Shortcut Macro="SmartPrintArea" CustomKey="Ctrl Alt Shift B" />
+      <Shortcut Macro="MaximizeWorkspace" CustomKey="Ctrl Alt Shift V" />
+      <Shortcut Macro="AddWatch" CustomKey="Ctrl Alt W" />
+      <Shortcut Macro="NextWatch" CustomKey="Ctrl Alt N" />
+      <Shortcut Macro="PrevWatch" CustomKey="Ctrl Alt P" />
+      <Shortcut Macro="RemoveWatch" CustomKey="Ctrl Alt X" />
+      <Shortcut Macro="FirstSheet" CustomKey="Ctrl Alt Home" />
+      <Shortcut Macro="LastSheet" CustomKey="Ctrl Alt End" />
+      <Shortcut Macro="NextSheet" CustomKey="Ctrl Alt PgDn" />
+      <Shortcut Macro="PrevSheet" CustomKey="Ctrl Alt PgUp" />
+      <Shortcut Macro="SheetActivate" CustomKey="Ctrl Shift T" />
+      <Shortcut Macro="SheetMoveLeft" CustomKey="Ctrl Alt Shift N" />
+      <Shortcut Macro="SheetMoveRight" CustomKey="Ctrl Alt Shift M" />
+      <Shortcut Macro="GotoMin" CustomKey="Ctrl Alt Shift ," />
+      <Shortcut Macro="GotoMax" CustomKey="Ctrl Alt Shift ." />
+      <Shortcut Macro="CycleRowHeight" CustomKey="Alt Shift Down" />
+      <Shortcut Macro="CycleColWidth" CustomKey="Alt Shift Up" />
+      <Shortcut Macro="AutoFitRow" CustomKey="Alt Shift PgDn" />
+      <Shortcut Macro="AutoFitCol" CustomKey="Ctrl Alt Shift PgDn" />
+      <Shortcut Macro="InsertRow" CustomKey="Alt Shift Ins" />
+      <Shortcut Macro="InsertCol" CustomKey="Ctrl Alt Shift Ins" />
+      <Shortcut Macro="DeleteRow" CustomKey="" />
+      <Shortcut Macro="DeleteCol" CustomKey="" />
+      <Shortcut Macro="GroupRow" CustomKey="" />
+      <Shortcut Macro="GroupCol" CustomKey="" />
+      <Shortcut Macro="UngroupRow" CustomKey="" />
+      <Shortcut Macro="UngroupCol" CustomKey="" />
+      <Shortcut Macro="HideRow" CustomKey="Alt Shift Home" />
+      <Shortcut Macro="HideCol" CustomKey="Ctrl Alt Shift Home" />
+      <Shortcut Macro="UnhideRow" CustomKey="Alt Shift End" />
+      <Shortcut Macro="UnhideCol" CustomKey="Ctrl Alt Shift End" />
+      <Shortcut Macro="ExpandRows" CustomKey="Alt Shift =" />
+      <Shortcut Macro="ExpandCols" CustomKey="Ctrl Alt Shift =" />
+      <Shortcut Macro="CollapseRows" CustomKey="Alt Shift -" />
+      <Shortcut Macro="CollapseCols" CustomKey="Ctrl Alt Shift -" />
+      <Shortcut Macro="ProperHide" CustomKey="Ctrl Alt H" />
+      <Shortcut Macro="RowColCopy" CustomKey="Ctrl Alt J" />
+      <Shortcut Macro="RowColPaste" CustomKey="Ctrl Alt K" />
+      <Shortcut Macro="PasteMatchWidth" CustomKey="Ctrl Alt Left" />
+      <Shortcut Macro="PasteMatchNone" CustomKey="Ctrl Alt Right" />
+      <Shortcut Macro="PasteMatchHeight" CustomKey="" />
+      <Shortcut Macro="PasteMatchBoth" CustomKey="" />
+      <Shortcut Macro="QuickSave" CustomKey="" />
+      <Shortcut Macro="QuickSaveAll" CustomKey="Ctrl Alt Shift S" />
+      <Shortcut Macro="QuickSaveAs" CustomKey="Alt F12" />
+      <Shortcut Macro="QuickSaveUp" CustomKey="Shift F12" />
+      <Shortcut Macro="Reopen" CustomKey="Ctrl Alt Shift O" />
+      <Shortcut Macro="CommentDelete" CustomKey="Ctrl Alt Shift D" />
+    </ExcelShortcuts>
+    <WordShortcuts>
+      <Shortcut Macro="CycleFontColor" CustomKey="Ctrl Alt 7" />
+      <Shortcut Macro="CycleFillColor" CustomKey="Ctrl Alt 8" />
+      <Shortcut Macro="CycleBorderColor" CustomKey="Ctrl Alt 9" />
+      <Shortcut Macro="UpdateLink" CustomKey="Ctrl Alt Shift U" />
+      <Shortcut Macro="ViewSource" CustomKey="Ctrl Alt Shift V" />
+      <Shortcut Macro="ZoomIn" CustomKey="Ctrl Alt =" />
+      <Shortcut Macro="ZoomOut" CustomKey="Ctrl Alt -" />
+      <Shortcut Macro="SaveAll" CustomKey="Ctrl Alt S" />
+      <Shortcut Macro="SaveUp" CustomKey="Ctrl Alt Shift F12" />
+      <Shortcut Macro="Reopen" CustomKey="Ctrl Alt Shift O" />
+    </WordShortcuts>
+  </Shortcuts>
+  <AuditWorkbook>
+    <Rule id="CoverMissing" severity="0" />
+    <Rule id="FormulaErrors" severity="3" />
+    <Rule id="EmptyCellReferences" severity="3" />
+    <Rule id="EmptyCellCommentsNotes" severity="2" />
+    <Rule id="UnusedNumericInputs" severity="3" />
+    <Rule id="FormulaInterruption" severity="3" />
+    <Rule id="PartialInputs" severity="2" />
+    <Rule id="UnnecessaryFormulas" severity="1" />
+    <Rule id="FormulasTooLong" severity="2" max="50" />
+    <Rule id="TooManyPrecedents" severity="0" max="8" />
+    <Rule id="TooManyOperators" severity="2" max="5" />
+    <Rule id="TooManyFunctions" severity="2" max="4" />
+    <Rule id="TooManyGroupings" severity="2" max="4" />
+    <Rule id="DeepNesting" severity="2" max="3" />
+    <Rule id="ConditionalComplexity" severity="2" max="2" />
+    <Rule id="DuplicateFormulas" severity="2" />
+    <Rule id="ExtraneousSheetNames" severity="2" />
+    <Rule id="CircularReferences" severity="2" />
+    <Rule id="LegacyArrayFormulas" severity="1" />
+    <Rule id="VolatileFunctions" severity="2" />
+    <Rule id="DeprecatedFunctions" severity="2" />
+    <Rule id="ApproxMatch" severity="2" />
+    <Rule id="NumericIndexReference" severity="2" />
+    <Rule id="DoubleMinus" severity="3" />
+    <Rule id="DoubleSums" severity="3" />
+    <Rule id="InputsNotColored" severity="2" />
+    <Rule id="MergedCells" severity="2" />
+    <Rule id="ExcessCondFormatting" severity="2" />
+    <Rule id="TripleSemicolonNumFormat" severity="2" />
+    <Rule id="SensitiveData" severity="2" />
+    <Rule id="CommentsAndNotes" severity="1" />
+    <Rule id="HiddenSheets" severity="2" />
+    <Rule id="VeryHiddenSheets" severity="3" />
+    <Rule id="HiddenRowsColumns" severity="3" />
+    <Rule id="CollapsedRowsColumns" severity="0" />
+    <Rule id="OldFile" severity="2" max="24" />
+    <Rule id="LargeFileSize" severity="3" max="1000000" />
+    <Rule id="LegacyFileType" severity="2" />
+    <Rule id="CalcModeManual" severity="2" />
+    <Rule id="DisplayDrawingObjects" severity="3" />
+    <Rule id="ShapesOverNonEmptyCells" severity="3" />
+    <Rule id="UnusedNames" severity="0" />
+    <Rule id="HiddenNames" severity="1" />
+    <Rule id="ExcessNames" severity="2" max="1000" />
+    <Rule id="ExcessStyles" severity="2" max="1000" />
+    <Rule id="NumbersStoredAsText" severity="3" />
+    <Rule id="DataOutliers" severity="3" />
+    <Rule id="DataValidationIgnored" severity="3" />
+    <Rule id="OmittedReferences" severity="3" />
+    <Rule id="NamesWithExtRef" severity="2" />
+    <Rule id="UsedRangeInflation" severity="2" />
+    <Rule id="CellFillColor" severity="1" />
+    <Rule id="CellBorderColor" severity="1" />
+    <Rule id="ChartFontSize" severity="1" />
+  </AuditWorkbook>
+</MacabacusSettings>

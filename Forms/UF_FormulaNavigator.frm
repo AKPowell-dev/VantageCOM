@@ -66,6 +66,7 @@ Public Sub Launch(ByVal formulaText As String, ByVal highlightStart As Long, ByV
     Call MoveTopRight
     On Error Resume Next
     Me.TextBox.SetFocus
+    Call ApplyHighlight(highlightStart, highlightLen)
     On Error GoTo 0
 End Sub
 
@@ -102,6 +103,7 @@ Private Sub UserForm_Initialize()
         .Locked = True
         .EnterKeyBehavior = False
         .TabKeyBehavior = False
+        .HideSelection = False
     End With
 
     Call LayoutControls
@@ -230,7 +232,7 @@ Private Sub UpdateCycleStatus(ByVal refIndex As Long, ByVal refCount As Long, _
 
     If refIndex <= 0 Then
         stepIndex = 1
-        statusText = "Base: " & startAddress
+        statusText = "Base: " & FormatBaseAddress(startAddress)
     Else
         stepIndex = refIndex + 1
         statusText = "Ref " & CStr(refIndex) & "/" & CStr(refCount) & ": " & currentToken
@@ -243,6 +245,39 @@ Private Sub UpdateCycleStatus(ByVal refIndex As Long, ByVal refCount As Long, _
 
     Call UpdateProgress(stepIndex, totalSteps)
 End Sub
+
+Private Function FormatBaseAddress(ByVal startAddress As String) As String
+    Dim bangPos As Long
+    Dim sheetPart As String
+    Dim addr As String
+    Dim bracketPos As Long
+
+    bangPos = InStrRev(startAddress, "!")
+    If bangPos = 0 Then
+        FormatBaseAddress = startAddress
+        Exit Function
+    End If
+
+    sheetPart = Left$(startAddress, bangPos - 1)
+    addr = Mid$(startAddress, bangPos + 1)
+
+    bracketPos = InStr(sheetPart, "]")
+    If bracketPos > 0 Then
+        sheetPart = Mid$(sheetPart, bracketPos + 1)
+    End If
+
+    If Len(sheetPart) >= 2 And Left$(sheetPart, 1) = "'" And Right$(sheetPart, 1) = "'" Then
+        sheetPart = Mid$(sheetPart, 2, Len(sheetPart) - 2)
+        sheetPart = Replace(sheetPart, "''", "'")
+    End If
+
+    addr = Replace(addr, "$", "")
+    If Len(sheetPart) = 0 Then
+        FormatBaseAddress = addr
+    Else
+        FormatBaseAddress = sheetPart & "!" & addr
+    End If
+End Function
 
 Private Sub UpdateProgress(ByVal stepIndex As Long, ByVal totalSteps As Long)
     If mProgressBack Is Nothing Or mProgressFill Is Nothing Or mProgressDot Is Nothing Then Exit Sub

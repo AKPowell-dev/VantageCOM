@@ -227,6 +227,8 @@ Sub DefaultConfig()
         .Map "nmap <Space> SubstituteFollowLangMode"
         .Map "nmap <C-F2> LockCellReference"
         .Map "nmap <C-[> FormulaNavigatorHotkeyFallback"
+        .Map "nmap <C-S-[> TraceIn"
+        .Map "nmap <C-S-]> TraceOut"
         .Map "nmap : EnterCmdlineMode"
         .Map "nmap a AppendFollowLangMode"
         .Map "nmap A AppendNotFollowLangMode"

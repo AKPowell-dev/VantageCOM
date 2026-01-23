@@ -46,3 +46,6 @@ C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\obj\Debug\VantagePa
 C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\obj\Debug\VantageP.C2003F0A.Up2Date
 C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\obj\Debug\VantagePackageHolder.dll
 C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\obj\Debug\VantagePackageHolder.pdb
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\bin\Debug\Resources\trace_collapsed.png
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\bin\Debug\Resources\trace_expanded.png
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\bin\Debug\Resources\trace_home.png

@@ -34,6 +34,32 @@ CleanFail:
     Call ErrorHandler("DrawDependencyMap")
 End Sub
 
+Public Function TraceIn(Optional ByVal g As String) As Boolean
+    Dim engine As Object
+    On Error GoTo CleanFail
+
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.TracePrecedentsDialog
+    Exit Function
+
+CleanFail:
+    Call ErrorHandler("TraceIn")
+End Function
+
+Public Function TraceOut(Optional ByVal g As String) As Boolean
+    Dim engine As Object
+    On Error GoTo CleanFail
+
+    Set engine = NetAddin()
+    If engine Is Nothing Then Exit Function
+    engine.TraceDependentsDialog
+    Exit Function
+
+CleanFail:
+    Call ErrorHandler("TraceOut")
+End Function
+
 Public Function FormulaNavigatorNext(Optional ByVal g As String) As Boolean
     Dim activeCell As Range
     Dim formulaText As String
@@ -456,6 +482,10 @@ Private Function CollectFormulaReferences(ByVal formulaText As String, ByRef ref
     For Each matchItem In matches
         If IsIndexInStringLiteral(formulaText, matchItem.FirstIndex) Then GoTo ContinueLoop
         If IsFunctionLikeToken(formulaText, matchItem) Then GoTo ContinueLoop
+        If IsBareNameToken(matchItem.value) Then
+            If IsReservedNameToken(matchItem.value) Then GoTo ContinueLoop
+            If Not IsDefinedNameToken(matchItem.value) Then GoTo ContinueLoop
+        End If
 
         count = count + 1
         refs(count).Token = matchItem.value
@@ -477,6 +507,7 @@ Private Function BuildFormulaReferencePattern() As String
     Dim colRange As String
     Dim rowRange As String
     Dim structRef As String
+    Dim nameToken As String
 
     prefix = "(?:'[^']+'|\[[^\]]+\][^!]+|[A-Za-z0-9_.]+)!"
     cell = "\$?[A-Za-z]{1,3}\$?\d{1,7}"
@@ -484,9 +515,9 @@ Private Function BuildFormulaReferencePattern() As String
     colRange = "\$?[A-Za-z]{1,3}:\$?[A-Za-z]{1,3}"
     rowRange = "\$?\d{1,7}:\$?\d{1,7}"
     structRef = "[A-Za-z_][A-Za-z0-9_]*\[[^\]]+\]"
+    nameToken = "[A-Za-z_][A-Za-z0-9_.]*"
 
-    BuildFormulaReferencePattern = "(?:" & prefix & ")?(?:" & cellRange & "|" & colRange & "|" & rowRange & ")" _
-        & "|" & structRef
+    BuildFormulaReferencePattern = "(?:" & prefix & ")?(?:" & cellRange & "|" & colRange & "|" & rowRange & "|" & nameToken & "|" & structRef & ")"
 End Function
 
 Private Function IsFunctionLikeToken(ByVal formulaText As String, ByVal matchItem As Object) As Boolean
@@ -509,6 +540,67 @@ Private Function IsFunctionLikeToken(ByVal formulaText As String, ByVal matchIte
             Exit Function
         End If
     Loop
+End Function
+
+Private Function IsBareNameToken(ByVal token As String) As Boolean
+    If InStr(token, "!") > 0 Then Exit Function
+    If InStr(token, ":") > 0 Then Exit Function
+    If InStr(token, "[") > 0 Then Exit Function
+    If IsPlainAddressToken(token) Then Exit Function
+    IsBareNameToken = True
+End Function
+
+Private Function IsReservedNameToken(ByVal token As String) As Boolean
+    Dim upperToken As String
+    upperToken = UCase$(token)
+    If upperToken = "TRUE" Or upperToken = "FALSE" Then
+        IsReservedNameToken = True
+    End If
+End Function
+
+Private Function IsDefinedNameToken(ByVal token As String) As Boolean
+    Dim wb As Workbook
+    Dim ws As Worksheet
+    Dim nm As Name
+
+    If Len(mNavStartWorkbookName) > 0 Then
+        On Error Resume Next
+        Set wb = Workbooks(mNavStartWorkbookName)
+        On Error GoTo 0
+    End If
+
+    If wb Is Nothing Then
+        Set wb = ActiveWorkbook
+    End If
+
+    On Error Resume Next
+    If Not wb Is Nothing Then
+        Set nm = wb.Names.Item(token)
+        If Err.Number = 0 And Not nm Is Nothing Then
+            IsDefinedNameToken = True
+            Exit Function
+        End If
+        Err.Clear
+    End If
+    On Error GoTo 0
+
+    On Error Resume Next
+    If Not wb Is Nothing Then
+        If Len(mNavStartSheetName) > 0 Then
+            Set ws = wb.Worksheets(mNavStartSheetName)
+        Else
+            Set ws = ActiveSheet
+        End If
+        If Not ws Is Nothing Then
+            Set nm = ws.Names.Item(token)
+            If Err.Number = 0 And Not nm Is Nothing Then
+                IsDefinedNameToken = True
+                Exit Function
+            End If
+        End If
+        Err.Clear
+    End If
+    On Error GoTo 0
 End Function
 
 Private Function IsIndexInStringLiteral(ByVal text As String, ByVal zeroBasedIndex As Long) As Boolean
@@ -584,6 +676,17 @@ Private Function SelectFormulaReference(ByVal token As String) As Boolean
         End If
     End If
 
+    If IsBareNameToken(token) Then
+        If TryResolveNameRange(token, target) Then
+            Call NavTrace("Select named range " & token)
+            Call SafeActivateWorkbook(target.Parent.Parent)
+            Call SafeActivateWorksheet(target.Parent)
+            Call SafeSelectRange(target)
+            SelectFormulaReference = True
+            Exit Function
+        End If
+    End If
+
     If IsPlainAddressToken(token) Then
         On Error Resume Next
         Set wb = Workbooks(mNavStartWorkbookName)
@@ -620,6 +723,57 @@ Private Function SelectFormulaReference(ByVal token As String) As Boolean
 CleanFail:
     Call NavTrace("Goto failed for: " & token)
     Err.Clear
+End Function
+
+Private Function TryResolveNameRange(ByVal token As String, ByRef target As Range) As Boolean
+    Dim wb As Workbook
+    Dim ws As Worksheet
+    Dim nm As Name
+
+    If Len(mNavStartWorkbookName) > 0 Then
+        On Error Resume Next
+        Set wb = Workbooks(mNavStartWorkbookName)
+        On Error GoTo 0
+    End If
+
+    If wb Is Nothing Then
+        Set wb = ActiveWorkbook
+    End If
+
+    On Error Resume Next
+    If Not wb Is Nothing Then
+        Set nm = wb.Names.Item(token)
+        If Err.Number = 0 And Not nm Is Nothing Then
+            Set target = nm.RefersToRange
+            If Not target Is Nothing Then
+                TryResolveNameRange = True
+                Exit Function
+            End If
+        End If
+        Err.Clear
+    End If
+    On Error GoTo 0
+
+    On Error Resume Next
+    If Not wb Is Nothing Then
+        If Len(mNavStartSheetName) > 0 Then
+            Set ws = wb.Worksheets(mNavStartSheetName)
+        Else
+            Set ws = ActiveSheet
+        End If
+        If Not ws Is Nothing Then
+            Set nm = ws.Names.Item(token)
+            If Err.Number = 0 And Not nm Is Nothing Then
+                Set target = nm.RefersToRange
+                If Not target Is Nothing Then
+                    TryResolveNameRange = True
+                    Exit Function
+                End If
+            End If
+        End If
+        Err.Clear
+    End If
+    On Error GoTo 0
 End Function
 
 Private Function TryParseQualifiedReference(ByVal token As String, _

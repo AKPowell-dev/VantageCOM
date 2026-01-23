@@ -34,6 +34,7 @@ namespace VantagePackageHolder
         private readonly Lazy<EditingService> _editing;
         private readonly Lazy<WorkbookAnalysisService> _analysis;
         private readonly Lazy<ChartNavigator> _charts;
+        private readonly Lazy<TraceDialogService> _traceDialogs;
         private bool _pendingFormatReset;
 
         public VantageEngine(Excel.Application excel)
@@ -45,11 +46,12 @@ namespace VantagePackageHolder
             _autoColor = new Lazy<AutoColorService>(() => new AutoColorService(_excel), LazyThreadSafetyMode.None);
             _util = new Lazy<UtilService>(() => new UtilService(_excel), LazyThreadSafetyMode.None);
             _insertMode = new Lazy<InsertModeService>(() => new InsertModeService(_excel), LazyThreadSafetyMode.None);
-            _batchResize = new Lazy<BatchResizeService>(() => new BatchResizeService(_excel, Format), LazyThreadSafetyMode.None);
+            _batchResize = new Lazy<BatchResizeService>(() => new BatchResizeService(_excel, Format, PowerPoint), LazyThreadSafetyMode.None);
             _optimizer = new Lazy<WorkbookOptimizer>(() => new WorkbookOptimizer(_excel), LazyThreadSafetyMode.None);
             _editing = new Lazy<EditingService>(() => new EditingService(_excel), LazyThreadSafetyMode.None);
             _analysis = new Lazy<WorkbookAnalysisService>(() => new WorkbookAnalysisService(_excel), LazyThreadSafetyMode.None);
             _charts = new Lazy<ChartNavigator>(() => new ChartNavigator(_excel), LazyThreadSafetyMode.None);
+            _traceDialogs = new Lazy<TraceDialogService>(() => new TraceDialogService(_excel), LazyThreadSafetyMode.None);
         }
 
         public void Dispose() { }
@@ -78,6 +80,7 @@ namespace VantagePackageHolder
         private EditingService Editing => _editing.Value;
         private WorkbookAnalysisService Analysis => _analysis.Value;
         private ChartNavigator Charts => _charts.Value;
+        private TraceDialogService TraceDialogs => _traceDialogs.Value;
 
         #region Clipboard hooks
         public void ClipboardHandleCopy() => Clipboard.HandleCopy();
@@ -193,15 +196,15 @@ namespace VantagePackageHolder
         }
         public void ClearFormatting() => Format.ClearFormatting();
         public void CycleFormatting() => Format.CycleFormatting();
-        public void CycleNumberFormat() => Format.CycleNumberFormat();
-        public void BinaryCycle() => Format.BinaryCycle();
-        public void YearDisplayCycle() => Format.YearDisplayCycle();
-        public void NumberNarrativeCycle() => Format.NumberNarrativeCycle();
-        public void PercentCycle() => Format.PercentCycle();
+        public void CycleNumberFormat(long selectionStamp) => Format.CycleNumberFormat(selectionStamp);
+        public void BinaryCycle(long selectionStamp) => Format.BinaryCycle(selectionStamp);
+        public void YearDisplayCycle(long selectionStamp) => Format.YearDisplayCycle(selectionStamp);
+        public void NumberNarrativeCycle(long selectionStamp) => Format.NumberNarrativeCycle(selectionStamp);
+        public void PercentCycle(long selectionStamp) => Format.PercentCycle(selectionStamp);
         public void FlipSign() => Format.FlipSign();
         public void ReverseSelectionOrder() => Format.ReverseSelectionOrder();
         public void TrimConditionalFormatting() => Format.TrimConditionalFormatting();
-        public void CurrencyCycle() => Format.CurrencyCycle();
+        public void CurrencyCycle(long selectionStamp) => Format.CurrencyCycle(selectionStamp);
         public void ToggleBorder(string targetKey, int lineStyle, int weight) => Format.ToggleBorder(targetKey, lineStyle, weight);
         public void DeleteBorder(string targetKey) => Format.DeleteBorder(targetKey);
         public void SetBorderColor(string targetKey, bool isNull, bool isTheme, int themeColor, double tintAndShade, int rgb) => Format.SetBorderColor(targetKey, isNull, isTheme, themeColor, tintAndShade, rgb);
@@ -250,6 +253,11 @@ namespace VantagePackageHolder
         public void ClearUnnecessaryFormatting() => Optimizer.ClearUnnecessaryFormatting();
         public void DrawDependencyMap() => Analysis.DrawDependencyMap();
 #endregion
+
+        #region Trace dialogs
+        public void TracePrecedentsDialog() => TraceDialogs.ShowPrecedentsDialog();
+        public void TraceDependentsDialog() => TraceDialogs.ShowDependentsDialog();
+        #endregion
 
         #region Chart helpers
         public void SelectNearestChart() => Charts.SelectNearestChart();

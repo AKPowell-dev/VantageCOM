@@ -713,6 +713,21 @@ namespace VantagePackageHolder
             return CopySelectionAsPicturePrintSafeInternal(selection);
         }
 
+        public bool CopySelectionAsPicturePrinterOnly()
+        {
+            object selection = null;
+            try
+            {
+                selection = _app.Selection;
+            }
+            catch
+            {
+                return false;
+            }
+
+            return CopySelectionAsPicturePrinterOnlyInternal(selection);
+        }
+
         public void CopyPasteSelectionToPowerPoint()
         {
             object selection = null;
@@ -1563,7 +1578,7 @@ namespace VantagePackageHolder
             }
         }
 
-        public void CycleNumberFormat()
+        public void CycleNumberFormat(long selectionStamp)
         {
             var formats = new[]
             {
@@ -1577,30 +1592,30 @@ namespace VantagePackageHolder
                 @"[=1]0"" Year"";0"" Years""",
                 @"""Year ""0; ""Year ""-0; ""Year 0""; """""
             };
-            ApplyNumberFormatCycle(nameof(CycleNumberFormat), formats);
+            ApplyNumberFormatCycle(nameof(CycleNumberFormat), formats, selectionStamp);
         }
 
-        public void BinaryCycle()
+        public void BinaryCycle(long selectionStamp)
         {
             var formats = new[]
             {
                 @"[>=1]""Yes"";""No"";""No""",
                 @"""On"";"""";""Off"""
             };
-            ApplyNumberFormatCycle(nameof(BinaryCycle), formats);
+            ApplyNumberFormatCycle(nameof(BinaryCycle), formats, selectionStamp);
         }
 
-        public void YearDisplayCycle()
+        public void YearDisplayCycle(long selectionStamp)
         {
             var formats = new[]
             {
                 "yyyy",
                 "mmm-yy"
             };
-            ApplyNumberFormatCycle(nameof(YearDisplayCycle), formats);
+            ApplyNumberFormatCycle(nameof(YearDisplayCycle), formats, selectionStamp);
         }
 
-        public void NumberNarrativeCycle()
+        public void NumberNarrativeCycle(long selectionStamp)
         {
             var formats = new[]
             {
@@ -1609,20 +1624,20 @@ namespace VantagePackageHolder
                 @"[=1]0"" Year"";0"" Years""",
                 @"""Year ""0; ""Year ""-0; ""Year 0""; """""
             };
-            ApplyNumberFormatCycle(nameof(NumberNarrativeCycle), formats);
+            ApplyNumberFormatCycle(nameof(NumberNarrativeCycle), formats, selectionStamp);
         }
 
-        public void PercentCycle()
+        public void PercentCycle(long selectionStamp)
         {
             var formats = new[]
             {
                 @"#,##0.0%_);(#,##0.0%);--\%_)",
                 @"#,##0""bps""_);(#,##0""bps"");""--bps """
             };
-            ApplyNumberFormatCycle(nameof(PercentCycle), formats);
+            ApplyNumberFormatCycle(nameof(PercentCycle), formats, selectionStamp);
         }
 
-        public void CurrencyCycle()
+        public void CurrencyCycle(long selectionStamp)
         {
             string pound = char.ConvertFromUtf32(0x00A3);
             string euro = char.ConvertFromUtf32(0x20AC);
@@ -1632,10 +1647,10 @@ namespace VantagePackageHolder
                 pound + "#,##0_);(" + pound + "#,##0);" + pound + "--_)",
                 euro + "#,##0_);(" + euro + "#,##0);" + euro + "--_)"
             };
-            ApplyNumberFormatCycle(nameof(CurrencyCycle), formats);
+            ApplyNumberFormatCycle(nameof(CurrencyCycle), formats, selectionStamp);
         }
 
-        private void ApplyNumberFormatCycle(string cycleName, string[] formats)
+        private void ApplyNumberFormatCycle(string cycleName, string[] formats, long selectionStamp)
         {
             if (formats == null || formats.Length == 0)
             {
@@ -1649,18 +1664,20 @@ namespace VantagePackageHolder
 
             using (new UiGuard(_app))
             {
-                var key = RangeHelpers.BuildRangeKey(sel);
                 if (!_numberFormatStates.TryGetValue(cycleName, out var state))
                 {
                     state = new NumberFormatCycleState();
                     _numberFormatStates[cycleName] = state;
                 }
 
-                if (!string.Equals(key, state.LastSelectionKey, StringComparison.Ordinal))
+                var key = RangeHelpers.BuildRangeKey(sel);
+                if (selectionStamp != state.LastSelectionStamp
+                    || !string.Equals(key, state.LastSelectionKey, StringComparison.Ordinal))
                 {
                     state.NextIndex = 0;
                 }
 
+                state.LastSelectionStamp = selectionStamp;
                 state.LastSelectionKey = key;
                 string format = formats[state.NextIndex];
                 bool success = false;
@@ -3170,6 +3187,47 @@ namespace VantagePackageHolder
             return success;
         }
 
+        private bool CopySelectionAsPicturePrinterOnlyInternal(object selection)
+        {
+            if (selection == null)
+            {
+                return false;
+            }
+
+            var typeName = GetComTypeName(selection);
+            if (string.Equals(typeName, "Nothing", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            bool success;
+            switch (selection)
+            {
+                case Excel.Range range:
+                    success = CopyRangePicturePrinterOnly(range);
+                    break;
+                case Excel.ChartObject chartObject:
+                    success = CopyChartPicturePrinterOnly(chartObject?.Chart);
+                    break;
+                case Excel.Chart chart:
+                    success = CopyChartPicturePrinterOnly(chart);
+                    break;
+                case Excel.Shape shape:
+                    success = CopyShapePicturePrinterOnly(shape);
+                    break;
+                default:
+                    success = CopyViaReflectionPrinterOnly(selection);
+                    break;
+            }
+
+            if (success)
+            {
+                ClearCutCopyMode();
+            }
+
+            return success;
+        }
+
         private bool CopyRangePicture(Excel.Range range)
         {
             if (!RangeHelpers.IsRangeValid(range))
@@ -3219,6 +3277,45 @@ namespace VantagePackageHolder
             return TryCopyToClipboard(() => area.Copy());
         }
 
+        private bool CopyRangePicturePrinterOnly(Excel.Range range)
+        {
+            if (!RangeHelpers.IsRangeValid(range))
+            {
+                return false;
+            }
+
+            Excel.Range area = range;
+            try
+            {
+                if (range.Areas.Count > 1)
+                {
+                    area = range.Areas[1] as Excel.Range ?? range;
+                }
+            }
+            catch
+            {
+                area = range;
+            }
+
+            try
+            {
+                (area.Worksheet?.Parent as Excel.Workbook)?.Activate();
+                area.Worksheet?.Activate();
+                RangeHelpers.SafeSelect(area);
+            }
+            catch
+            {
+                // ignore
+            }
+
+            if (TryCopyToClipboard(() => area.CopyPicture(Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlPicture)))
+            {
+                return true;
+            }
+
+            return TryCopyToClipboard(() => area.CopyPicture(Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlBitmap));
+        }
+
         private bool CopyChartPicture(Excel.Chart chart)
         {
             if (chart == null)
@@ -3247,6 +3344,31 @@ namespace VantagePackageHolder
             }
 
             return TryCopyToClipboard(() => chart.Copy());
+        }
+
+        private bool CopyChartPicturePrinterOnly(Excel.Chart chart)
+        {
+            if (chart == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                (chart.Parent as Excel.Worksheet)?.Activate();
+                chart.Activate();
+            }
+            catch
+            {
+                // ignore
+            }
+
+            if (TryCopyToClipboard(() => chart.CopyPicture(Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlPicture)))
+            {
+                return true;
+            }
+
+            return TryCopyToClipboard(() => chart.CopyPicture(Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlBitmap));
         }
 
         private bool CopyShapePicture(Excel.Shape shape)
@@ -3299,6 +3421,51 @@ namespace VantagePackageHolder
             return TryCopyToClipboard(() => shape.Copy());
         }
 
+        private bool CopyShapePicturePrinterOnly(Excel.Shape shape)
+        {
+            if (shape == null)
+            {
+                return false;
+            }
+
+            bool hasChart = false;
+            try
+            {
+                hasChart = Convert.ToBoolean(shape.HasChart);
+            }
+            catch
+            {
+                hasChart = false;
+            }
+
+            try
+            {
+                if (shape.Parent is Excel.Worksheet ws)
+                {
+                    (ws.Parent as Excel.Workbook)?.Activate();
+                    ws.Activate();
+                }
+
+                shape.Select();
+            }
+            catch
+            {
+                // ignore
+            }
+
+            if (hasChart && shape.Chart != null)
+            {
+                return CopyChartPicturePrinterOnly(shape.Chart);
+            }
+
+            if (TryCopyToClipboard(() => shape.CopyPicture(Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlPicture)))
+            {
+                return true;
+            }
+
+            return TryCopyToClipboard(() => shape.CopyPicture(Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlBitmap));
+        }
+
         private bool CopyViaReflection(object target)
         {
             if (TryInvokeCopyPicture(target, Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlPicture))
@@ -3312,6 +3479,16 @@ namespace VantagePackageHolder
             }
 
             return TryInvokeCopy(target);
+        }
+
+        private bool CopyViaReflectionPrinterOnly(object target)
+        {
+            if (TryInvokeCopyPicture(target, Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlPicture))
+            {
+                return true;
+            }
+
+            return TryInvokeCopyPicture(target, Excel.XlPictureAppearance.xlPrinter, Excel.XlCopyPictureFormat.xlBitmap);
         }
 
         private bool TryCopyToClipboard(Action copyAction)
@@ -3376,6 +3553,7 @@ namespace VantagePackageHolder
         private sealed class NumberFormatCycleState
         {
             public string LastSelectionKey = string.Empty;
+            public long LastSelectionStamp;
             public int NextIndex;
         }
 

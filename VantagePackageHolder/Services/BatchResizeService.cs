@@ -9,21 +9,23 @@ namespace VantagePackageHolder
 {
     internal sealed class BatchResizeService
     {
-        private const int MaxAttempts = 6;
+        private const int MaxAttempts = 7;
         private const double TolerancePoints = 0.02;
-        private const double MinAdjustColumnWidth = 0.0;
+        private const double MinAdjustColumnWidth = 0.5;
         private const double MeasurementOutlierRatio = 1.25;
         private const double CalibrationMinRatio = 0.5;
         private const double CalibrationMaxRatio = 1.5;
 
         private readonly Excel.Application _app;
         private readonly FormatService _format;
+        private readonly PowerPointExporter _ppt;
         private double? _emfCalibrationFactor;
 
-        public BatchResizeService(Excel.Application app, FormatService format)
+        public BatchResizeService(Excel.Application app, FormatService format, PowerPointExporter ppt)
         {
             _app = app ?? throw new ArgumentNullException(nameof(app));
             _format = format ?? throw new ArgumentNullException(nameof(format));
+            _ppt = ppt ?? throw new ArgumentNullException(nameof(ppt));
         }
 
         public void ResizeSelectionToWidthInches(double targetInches, bool requirePowerPoint)
@@ -103,7 +105,7 @@ namespace VantagePackageHolder
             }
         }
 
-        private double MeasureCopyPictureWidthPts(Excel.Range selection)
+        private double MeasureCopyPictureWidthPts(Excel.Range selection, bool usePowerPoint, int sampleSizeOverride = 0)
         {
             if (selection == null)
             {
@@ -125,28 +127,65 @@ namespace VantagePackageHolder
                 expectedWidthPts = 0;
             }
 
-            double[] samples = new double[3];
+            int sampleSize = usePowerPoint ? 3 : 5;
+            if (sampleSizeOverride > 0)
+            {
+                sampleSize = sampleSizeOverride;
+            }
+            double[] samples = new double[sampleSize];
             int sampleCount = 0;
 
-            for (int attempt = 0; attempt < 3; attempt++)
+            for (int attempt = 0; attempt < samples.Length; attempt++)
             {
                 ClearClipboardBestEffort();
+                uint seqBefore = GetClipboardSequenceNumber();
 
                 try
                 {
-                    if (!_format.CopySelectionAsPicturePrintSafe())
+                    if (!_format.CopySelectionAsPicturePrinterOnly())
                     {
                         continue;
                     }
 
-                    double widthPts = WaitForClipboardEmfWidthPts(650);
-                    if (widthPts <= 0)
+                    double widthPts = 0;
+                    if (usePowerPoint)
                     {
-                        widthPts = TryGetClipboardPictureWidthPts();
+                        if (!WaitForClipboardUpdate(seqBefore, 900))
+                        {
+                            continue;
+                        }
+
+                        widthPts = _ppt.MeasureClipboardWidthPts();
+                    }
+                    else
+                    {
+                        widthPts = WaitForClipboardEmfWidthPts(900, seqBefore);
+                        if (widthPts <= 0)
+                        {
+                            widthPts = TryGetClipboardPictureWidthPts();
+                        }
                     }
 
                     if (widthPts > 0)
                     {
+                        if (!usePowerPoint)
+                        {
+                            double expectedMeasured = expectedWidthPts;
+                            if (_emfCalibrationFactor.HasValue)
+                            {
+                                expectedMeasured *= _emfCalibrationFactor.Value;
+                            }
+
+                            if (expectedMeasured > 0)
+                            {
+                                double maxDeviation = expectedMeasured * 0.05;
+                                if (Math.Abs(widthPts - expectedMeasured) > maxDeviation)
+                                {
+                                    continue;
+                                }
+                            }
+                        }
+
                         samples[sampleCount++] = widthPts;
                     }
                 }
@@ -154,7 +193,7 @@ namespace VantagePackageHolder
                 {
                 }
 
-                Thread.Sleep(20);
+                Thread.Sleep(usePowerPoint ? 20 : 20);
             }
 
             if (sampleCount == 0)
@@ -170,7 +209,7 @@ namespace VantagePackageHolder
             Array.Sort(samples, 0, sampleCount);
             double measured = samples[sampleCount / 2];
 
-            if (expectedWidthPts > 0)
+            if (!usePowerPoint && expectedWidthPts > 0)
             {
                 double ratio = measured / expectedWidthPts;
                 if (ratio >= CalibrationMinRatio && ratio <= CalibrationMaxRatio)
@@ -187,11 +226,40 @@ namespace VantagePackageHolder
             return measured;
         }
 
-        private static double WaitForClipboardEmfWidthPts(int maxMillis)
+        private static bool WaitForClipboardUpdate(uint seqBefore, int maxMillis)
+        {
+            if (seqBefore == 0)
+            {
+                return true;
+            }
+
+            int deadline = Environment.TickCount + Math.Max(60, maxMillis);
+            while (Environment.TickCount < deadline)
+            {
+                if (GetClipboardSequenceNumber() != seqBefore)
+                {
+                    return true;
+                }
+
+                Application.DoEvents();
+                Thread.Sleep(10);
+            }
+
+            return false;
+        }
+
+        private static double WaitForClipboardEmfWidthPts(int maxMillis, uint seqBefore)
         {
             int deadline = Environment.TickCount + Math.Max(60, maxMillis);
             while (Environment.TickCount < deadline)
             {
+                if (seqBefore != 0 && GetClipboardSequenceNumber() == seqBefore)
+                {
+                    Application.DoEvents();
+                    Thread.Sleep(10);
+                    continue;
+                }
+
                 double widthPts = TryGetClipboardEmfWidthPtsViaWin32();
                 if (widthPts > 0)
                 {
@@ -359,6 +427,9 @@ namespace VantagePackageHolder
         [DllImport("user32.dll", SetLastError = true)]
         private static extern IntPtr GetClipboardData(uint uFormat);
 
+        [DllImport("user32.dll")]
+        private static extern uint GetClipboardSequenceNumber();
+
         private const uint CF_ENHMETAFILE = 14;
 
         private static double TryGetClipboardEmfWidthPtsViaWin32()
@@ -490,69 +561,186 @@ namespace VantagePackageHolder
                 return;
             }
 
-            System.Collections.Generic.List<ColumnInfo> columns;
-            double fixedPts;
-            double adjustablePts;
-            if (!BuildColumnInfo(selection, MinAdjustColumnWidth, out columns, out fixedPts, out adjustablePts))
+            if (!BuildColumnInfo(selection, MinAdjustColumnWidth, out var columns, out double fixedPts, out double adjustablePts))
             {
                 return;
             }
 
-            if (adjustablePts <= 0)
-            {
-                return;
-            }
-
-            double totalExcelPts = fixedPts + adjustablePts;
-            if (totalExcelPts <= 0)
-            {
-                return;
-            }
-
-            double measured = MeasureCopyPictureWidthPts(selection);
-            if (measured <= 0)
+            double tolerancePts = Math.Max(TolerancePoints, 0.1 * 72.0);
+            double initialMeasured = MeasureCopyPictureWidthPts(selection, usePowerPoint: true, sampleSizeOverride: 3);
+            if (initialMeasured <= 0)
             {
                 ResizeSelectionByPrintScale(selection, targetWidthPts, fixedPts, adjustablePts);
                 return;
             }
 
-            double scaleFactor = ComputeAdjustableScale(targetWidthPts, measured, fixedPts, adjustablePts, totalExcelPts);
-            if (scaleFactor <= 0)
+            double initialExcelPts = fixedPts + adjustablePts;
+            if (initialExcelPts <= 0)
             {
                 return;
             }
 
-            ApplyColumnWidthFactor(ws, columns, scaleFactor);
-
-            double measuredAfter = MeasureCopyPictureWidthPts(selection);
-            if (measuredAfter <= 0)
+            double scale = initialMeasured / initialExcelPts;
+            if (scale <= 0)
             {
                 return;
             }
 
-            double delta = Math.Abs(measuredAfter - targetWidthPts);
-            if (delta <= TolerancePoints)
+            double targetExcelPts = targetWidthPts / scale;
+            double targetAdjustablePts = targetExcelPts - fixedPts;
+            if (targetAdjustablePts <= 0)
             {
                 return;
             }
 
-            double correction = targetWidthPts / measuredAfter;
-            double correctedFactor = scaleFactor * correction;
-            if (correctedFactor > 0)
+            double factor = targetAdjustablePts / adjustablePts;
+            if (factor <= 0)
             {
-                ApplyColumnWidthFactor(ws, columns, correctedFactor);
-                double measuredAfter2 = MeasureCopyPictureWidthPts(selection);
-                if (measuredAfter2 > 0)
+                return;
+            }
+
+            ApplyColumnWidthFactor(ws, columns, factor);
+
+            double measured = MeasureCopyPictureWidthPts(selection, usePowerPoint: true, sampleSizeOverride: 1);
+            if (measured > 0 && Math.Abs(measured - targetWidthPts) <= tolerancePts)
+            {
+                return;
+            }
+
+            if (measured > 0)
+            {
+                double ratio = targetWidthPts / measured;
+                if (ratio > 0.0)
                 {
-                    double delta2 = Math.Abs(measuredAfter2 - targetWidthPts);
-                    if (delta2 > TolerancePoints)
+                    factor *= ratio;
+                    ApplyColumnWidthFactor(ws, columns, factor);
+                }
+
+                measured = MeasureCopyPictureWidthPts(selection, usePowerPoint: true, sampleSizeOverride: 1);
+            }
+
+            if (measured <= 0)
+            {
+                return;
+            }
+
+            double currentExcelPts = MeasureSelectionTotalWidthPts(selection);
+            if (currentExcelPts > 0)
+            {
+                scale = measured / currentExcelPts;
+            }
+
+            double deltaExcelPts = (targetWidthPts - measured) / scale;
+            if (Math.Abs(deltaExcelPts) > 0.01)
+            {
+                NudgeColumnsByPoints(ws, columns, deltaExcelPts);
+            }
+        }
+
+        private void NudgeColumnsByPoints(Excel.Worksheet ws, System.Collections.Generic.List<ColumnInfo> columns, double deltaPts)
+        {
+            if (ws == null || columns == null || columns.Count == 0 || Math.Abs(deltaPts) < 0.01)
+            {
+                return;
+            }
+
+            const double stepUnits = 1.0 / 256.0;
+            double remaining = Math.Abs(deltaPts);
+            int direction = deltaPts > 0 ? 1 : -1;
+
+            var columnSteps = new System.Collections.Generic.List<ColumnStep>();
+            foreach (var info in columns)
+            {
+                Excel.Range column = null;
+                try
+                {
+                    column = ws.Columns[info.Index] as Excel.Range;
+                    if (column == null)
                     {
-                        double correction2 = targetWidthPts / measuredAfter2;
-                        double correctedFactor2 = correctedFactor * correction2;
-                        if (correctedFactor2 > 0)
+                        continue;
+                    }
+
+                    double widthPts = column.Width;
+                    double widthUnits = column.ColumnWidth;
+                    if (widthPts <= 0 || widthUnits <= 0)
+                    {
+                        continue;
+                    }
+
+                    double pointsPerStep = (widthPts / widthUnits) * stepUnits;
+                    if (pointsPerStep <= 0)
+                    {
+                        continue;
+                    }
+
+                    columnSteps.Add(new ColumnStep { Index = info.Index, PointsPerStep = pointsPerStep });
+                }
+                catch
+                {
+                }
+                finally
+                {
+                    ReleaseCom(column);
+                }
+            }
+
+            if (columnSteps.Count == 0)
+            {
+                return;
+            }
+
+            columnSteps.Sort((a, b) => a.PointsPerStep.CompareTo(b.PointsPerStep));
+
+            for (int pass = 0; pass < 2 && remaining > 0; pass++)
+            {
+                foreach (var step in columnSteps)
+                {
+                    if (remaining <= 0)
+                    {
+                        break;
+                    }
+
+                    int stepCount = (int)(remaining / step.PointsPerStep);
+                    if (stepCount <= 0)
+                    {
+                        continue;
+                    }
+
+                    Excel.Range column = null;
+                    try
+                    {
+                        column = ws.Columns[step.Index] as Excel.Range;
+                        if (column == null)
                         {
-                            ApplyColumnWidthFactor(ws, columns, correctedFactor2);
+                            continue;
                         }
+
+                        double widthUnits = column.ColumnWidth;
+                        double targetWidth = widthUnits + direction * stepCount * stepUnits;
+                        if (targetWidth < 0.1)
+                        {
+                            targetWidth = 0.1;
+                        }
+                        else if (targetWidth > 255.0)
+                        {
+                            targetWidth = 255.0;
+                        }
+
+                        double actualDeltaUnits = targetWidth - widthUnits;
+                        if (Math.Abs(actualDeltaUnits) < 0.000001)
+                        {
+                            continue;
+                        }
+
+                        column.ColumnWidth = targetWidth;
+                        remaining -= Math.Abs(actualDeltaUnits) * step.PointsPerStep / stepUnits;
+                    }
+                    catch
+                    {
+                    }
+                    finally
+                    {
+                        ReleaseCom(column);
                     }
                 }
             }
@@ -613,6 +801,51 @@ namespace VantagePackageHolder
         {
             public int Index { get; set; }
             public double BaseWidth { get; set; }
+        }
+
+        private sealed class ColumnStep
+        {
+            public int Index { get; set; }
+            public double PointsPerStep { get; set; }
+        }
+
+        private double MeasureSelectionTotalWidthPts(Excel.Range selection)
+        {
+            if (selection == null)
+            {
+                return 0;
+            }
+
+            double total = 0;
+            var seen = new System.Collections.Generic.HashSet<int>();
+
+            foreach (Excel.Range column in selection.Columns)
+            {
+                try
+                {
+                    int index = column.Column;
+                    if (!seen.Add(index))
+                    {
+                        continue;
+                    }
+
+                    if (column.EntireColumn.Hidden)
+                    {
+                        continue;
+                    }
+
+                    total += column.Width;
+                }
+                catch
+                {
+                }
+                finally
+                {
+                    ReleaseCom(column);
+                }
+            }
+
+            return total;
         }
 
         private bool BuildColumnInfo(Excel.Range selection, double minAdjustWidth, out System.Collections.Generic.List<ColumnInfo> columns, out double fixedPts, out double adjustablePts)

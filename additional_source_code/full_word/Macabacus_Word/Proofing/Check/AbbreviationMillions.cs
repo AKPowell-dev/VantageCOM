@@ -1,0 +1,108 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
+using A;
+using MacabacusMacros.Proofing.Check;
+using Macabacus_Word.Proofing.Errors;
+using Microsoft.Office.Core;
+using Microsoft.Office.Interop.Word;
+using Microsoft.VisualBasic;
+
+namespace Macabacus_Word.Proofing.Check;
+
+public sealed class AbbreviationMillions : BaseTextCheck
+{
+	public AbbreviationMillions(string conv)
+	{
+		base.RegexObj = Text.RegexMillions(conv);
+		base.Fix = conv;
+	}
+
+	private string A(List<string> A)
+	{
+		return XC.A(24518) + Strings.Join(A.ToArray(), XC.A(19662)) + XC.A(24531);
+	}
+
+	public override void Check(Range rng, string strText)
+	{
+		MatchCollection matchCollection = base.RegexObj.Matches(strText);
+		IEnumerator enumerator = matchCollection.GetEnumerator();
+		checked
+		{
+			try
+			{
+				while (enumerator.MoveNext())
+				{
+					Match obj = (Match)enumerator.Current;
+					Range duplicate = rng.Duplicate;
+					Group obj2 = obj.Groups[1];
+					duplicate.SetRange(rng.Characters[obj2.Index + 1].Start, rng.Characters[obj2.Index + obj2.Length].End);
+					obj2 = null;
+					Main.Analysis.Errors.Add(new Macabacus_Word.Proofing.Errors.AbbreviationMillions(duplicate, base.Fix));
+					duplicate = null;
+				}
+				while (true)
+				{
+					switch (4)
+					{
+					case 0:
+						continue;
+					}
+					if (1 == 0)
+					{
+						/*OpCode not supported: LdMemberToken*/;
+					}
+					break;
+				}
+			}
+			finally
+			{
+				IDisposable disposable = enumerator as IDisposable;
+				if (disposable != null)
+				{
+					disposable.Dispose();
+				}
+			}
+			matchCollection = null;
+		}
+	}
+
+	public override void Check(object shp, TextRange2 rng, string strText)
+	{
+		MatchCollection matchCollection = base.RegexObj.Matches(strText);
+		IEnumerator enumerator = matchCollection.GetEnumerator();
+		try
+		{
+			while (enumerator.MoveNext())
+			{
+				Group obj = ((Match)enumerator.Current).Groups[1];
+				Main.Analysis.Errors.Add(new Macabacus_Word.Proofing.Errors.AbbreviationMillions(RuntimeHelpers.GetObjectValue(shp), rng.get_Characters(checked(obj.Index + 1), obj.Length), base.Fix));
+				obj = null;
+			}
+			while (true)
+			{
+				switch (1)
+				{
+				case 0:
+					continue;
+				}
+				if (1 == 0)
+				{
+					/*OpCode not supported: LdMemberToken*/;
+				}
+				break;
+			}
+		}
+		finally
+		{
+			IDisposable disposable = enumerator as IDisposable;
+			if (disposable != null)
+			{
+				disposable.Dispose();
+			}
+		}
+		matchCollection = null;
+	}
+}

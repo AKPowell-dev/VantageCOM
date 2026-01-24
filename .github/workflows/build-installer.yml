@@ -1,0 +1,59 @@
+name: Build Installer
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-installer:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build VantagePackageHolder
+        run: msbuild VantagePackageHolder\VantagePackageHolder.csproj /p:Configuration=Release /p:Platform=AnyCPU
+
+      - name: Build Installer Launcher
+        run: msbuild installer\InstallerLauncher\InstallerLauncher.csproj /p:Configuration=Release
+
+      - name: Package Installer
+        shell: pwsh
+        run: |
+          $dist = "dist\VantageInstaller"
+          Remove-Item -Recurse -Force $dist -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path $dist | Out-Null
+          Copy-Item "installer\InstallerLauncher\bin\Release\VantageInstaller.exe" $dist -Force
+          Copy-Item "installer\InstallerLauncher\bin\Release\Install-Vantage.ps1" $dist -Force
+          Copy-Item "VantagePackageHolder\bin\Release\VantagePackageHolder.dll" $dist -Force
+          if (Test-Path "VantagePackageHolder\bin\Release\Extensibility.dll") {
+            Copy-Item "VantagePackageHolder\bin\Release\Extensibility.dll" $dist -Force
+          }
+          if (Test-Path "VantagePackageHolder\bin\Release\Resources") {
+            Copy-Item "VantagePackageHolder\bin\Release\Resources" $dist -Recurse -Force
+          }
+          if (!(Test-Path "build\Vantage.xlam")) {
+            throw "Missing build\Vantage.xlam"
+          }
+          Copy-Item "build\Vantage.xlam" $dist -Force
+          Copy-Item "installer\README_INSTALLER.txt" $dist -Force
+          $zip = "dist\VantageInstaller.zip"
+          if (Test-Path $zip) { Remove-Item $zip -Force }
+          Compress-Archive -Path "$dist\*" -DestinationPath $zip
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VantageInstaller
+          path: dist/VantageInstaller.zip
+
+      - name: Publish Release Asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/VantageInstaller.zip

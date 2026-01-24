@@ -1,0 +1,5 @@
+C:\Users\andrep54\VantageCOM\VantageCOM\installer\InstallerLauncher\obj\Release\InstallerLauncher.csproj.AssemblyReference.cache
+C:\Users\andrep54\VantageCOM\VantageCOM\installer\InstallerLauncher\obj\Release\InstallerLauncher.csproj.CoreCompileInputs.cache
+C:\Users\andrep54\VantageCOM\VantageCOM\installer\InstallerLauncher\bin\Release\Install-Vantage.ps1
+C:\Users\andrep54\VantageCOM\VantageCOM\installer\InstallerLauncher\bin\Release\VantageInstaller.exe
+C:\Users\andrep54\VantageCOM\VantageCOM\installer\InstallerLauncher\obj\Release\VantageInstaller.exe

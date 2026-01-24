@@ -1,0 +1,11 @@
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\bin\Release\Resources\trace_collapsed.png
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\bin\Release\Resources\trace_expanded.png
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\bin\Release\Resources\trace_home.png
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\bin\Release\VantagePackageHolder.dll
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\bin\Release\VantagePackageHolder.pdb
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\bin\Release\Extensibility.dll
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\obj\Release\VantagePackageHolder.csproj.AssemblyReference.cache
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\obj\Release\VantagePackageHolder.csproj.CoreCompileInputs.cache
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\obj\Release\VantageP.C2003F0A.Up2Date
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\obj\Release\VantagePackageHolder.dll
+C:\Users\andrep54\VantageCOM\VantageCOM\VantagePackageHolder\obj\Release\VantagePackageHolder.pdb

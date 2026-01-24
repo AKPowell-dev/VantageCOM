@@ -44,6 +44,7 @@
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="Extensibility" />
+    <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="Microsoft.Office.Interop.Excel">
       <EmbedInteropTypes>true</EmbedInteropTypes>
     </Reference>
@@ -56,6 +57,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Addin.cs" />
+    <Compile Include="NameScrubberDialogs.cs" />
+    <Compile Include="NameScrubberForm.cs" />
+    <Compile Include="NameScrubberModels.cs" />
     <Compile Include="QuickCommandForm.cs" />
     <Compile Include="TraceDialogForm.cs" />
     <Compile Include="PowerPointAddin.cs" />
@@ -68,6 +72,8 @@
     <Compile Include="Services\InsertModeService.cs" />
     <Compile Include="Services\PowerPointExporter.cs" />
     <Compile Include="Services\RangeHelpers.cs" />
+    <Compile Include="Services\NameScrubberService.cs" />
+    <Compile Include="Services\NameScrubberUtil.cs" />
     <Compile Include="Services\TraceDialogService.cs" />
     <Compile Include="Services\UiGuard.cs" />
     <Compile Include="Services\UtilService.cs" />

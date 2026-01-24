@@ -135,11 +135,6 @@ Sub DefaultConfig()
         .Map "nmap <C-S-X> SubtractNumber"
         .Map "nmap g<C-A> VisualAddNumber"
         .Map "nmap g<C-X> VisualSubtractNumber"
-        '.Map "nmap =s AutoSum"
-        '.Map "nmap =a AutoAverage"
-        '.Map "nmap =c AutoCount"
-        '.Map "nmap =m AutoMax"
-        '.Map "nmap =i AutoMin"
 
         ' === Editing ===
         .Map "nmap wf ClearUnnecessaryFormatting"
@@ -158,6 +153,7 @@ Sub DefaultConfig()
         .Map "nmap & ToggleMergeCells"
         .Map "nmap Ff ApplyFlashFill"
         .Map "nmap Fa ApplyAutoFill"
+        .Map "nmap fa FunctionalMap"
         .Map "nmap rd DeleteRows"
         .Map "nmap cd DeleteColumns"
         .Map "nmap X DeleteValue"
@@ -191,7 +187,7 @@ Sub DefaultConfig()
         .Map "nmap wd DeleteSheet"
 
         ' === Movement & Selection ===
-        .Map "nmap gR ReverseSelectionOrder"
+        .Map "nmap <cmd>rev ReverseSelectionOrder"
         .Map "nmap h MoveLeftSmart"
         .Map "nmap j MoveDownSmart"
         .Map "nmap k MoveUpSmart"
@@ -279,12 +275,11 @@ Sub DefaultConfig()
         .Map "nmap <C-_> FlipSign"
         .Map "nmap <cmd>reload ReloadVim"
         .Map "nmap <cmd>version ShowVersion"
+        .Map "nmap <cmd>name NameScrubber"
         .Map "nmap > IncrementText"
         .Map "nmap <lt> DecrementText"
         .Map "nmap f, ApplyCommaStyle"
-        '.Map "nmap <S-Space> ExceptSelectCells"
         .Map "nmap <S-BS> ClearSelectCells"
-        '.Map "nmap == InsertFunction"
         .Map "nmap r- NarrowRowsHeight"
         .Map "nmap r+ WideRowsHeight"
         .Map "nmap rr SelectRows"

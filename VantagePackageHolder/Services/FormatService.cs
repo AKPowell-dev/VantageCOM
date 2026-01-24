@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using System.Globalization;
 using Excel = Microsoft.Office.Interop.Excel;
@@ -1583,7 +1584,7 @@ namespace VantagePackageHolder
             var formats = new[]
             {
                 "#,##0_);(#,##0);--_)",
-                "$#,##0_);($#,##0);$--_)",
+                "$#,##0_);($#,##0);--_)",
                 @"#,##0.0%_);(#,##0.0%);--\%_)",
                 "#,##0.0x_);(#,##0.0x);--x_)",
                 @"#,##0""bps""_);(#,##0""bps"");""--bps """,
@@ -1643,9 +1644,9 @@ namespace VantagePackageHolder
             string euro = char.ConvertFromUtf32(0x20AC);
             var formats = new[]
             {
-                "$#,##0_);($#,##0);$--_)",
-                pound + "#,##0_);(" + pound + "#,##0);" + pound + "--_)",
-                euro + "#,##0_);(" + euro + "#,##0);" + euro + "--_)"
+                "$#,##0_);($#,##0);--_)",
+                pound + "#,##0_);(" + pound + "#,##0);--_)",
+                euro + "#,##0_);(" + euro + "#,##0);--_)"
             };
             ApplyNumberFormatCycle(nameof(CurrencyCycle), formats, selectionStamp);
         }
@@ -1748,6 +1749,26 @@ namespace VantagePackageHolder
             long total = Convert.ToInt64(sel.Cells.CountLarge); if (total < 2) return;
             using (new UiGuard(_app))
             {
+                int topRow = 0;
+                int leftCol = 0;
+                int rowCount = 0;
+                int colCount = 0;
+                Excel.Worksheet selSheet = null;
+                Excel.Workbook selWorkbook = null;
+                try
+                {
+                    topRow = sel.Row;
+                    leftCol = sel.Column;
+                    rowCount = sel.Rows.Count;
+                    colCount = sel.Columns.Count;
+                    selSheet = sel.Worksheet;
+                    selWorkbook = selSheet?.Parent as Excel.Workbook;
+                }
+                catch
+                {
+                    return;
+                }
+
                 var values = new object[total + 1];
                 var formulas = new string[total + 1];
                 var hasFormula = new bool[total + 1];
@@ -1769,11 +1790,368 @@ namespace VantagePackageHolder
                 foreach (Excel.Range cell in sel.Cells)
                 {
                     int src = (int)total - i + 1;
-                    try { if (hasFormula[src]) cell.Formula = formulas[src]; else cell.Value2 = values[src]; i++; }
+                    try
+                    {
+                        if (hasFormula[src])
+                        {
+                            string formula = formulas[src] ?? string.Empty;
+                            cell.Formula = RemapFormulaReferences(formula, topRow, leftCol, rowCount, colCount, selSheet, selWorkbook);
+                        }
+                        else
+                        {
+                            cell.Value2 = values[src];
+                        }
+                        i++;
+                    }
                     catch { return; }
                     finally { ReleaseIfNeeded(cell); }
                 }
             }
+        }
+
+        private static readonly Regex A1ReferenceRegex = new Regex(
+            @"(?:(?<sheet>(?:'[^']+'|\[[^\]]+\][^!]+|[A-Za-z0-9_.]+))!)?(?<ref>(?:\$?[A-Za-z]{1,3}\$?\d{1,7})(?::\$?[A-Za-z]{1,3}\$?\d{1,7})?|(?:\$?[A-Za-z]{1,3}:\$?[A-Za-z]{1,3})|(?:\$?\d{1,7}:\$?\d{1,7}))",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        private static string RemapFormulaReferences(string formula, int topRow, int leftCol, int rowCount, int colCount, Excel.Worksheet selSheet, Excel.Workbook selWorkbook)
+        {
+            if (string.IsNullOrEmpty(formula))
+            {
+                return formula;
+            }
+
+            return A1ReferenceRegex.Replace(formula, match =>
+            {
+                if (IsIndexInStringLiteral(formula, match.Index))
+                {
+                    return match.Value;
+                }
+
+                string sheetToken = match.Groups["sheet"].Value;
+                if (!IsSheetMatch(sheetToken, selSheet, selWorkbook))
+                {
+                    return match.Value;
+                }
+
+                string refToken = match.Groups["ref"].Value;
+                string remapped = RemapReferenceToken(refToken, topRow, leftCol, rowCount, colCount);
+                if (string.Equals(remapped, refToken, StringComparison.Ordinal))
+                {
+                    return match.Value;
+                }
+
+                if (!string.IsNullOrEmpty(sheetToken))
+                {
+                    return sheetToken + "!" + remapped;
+                }
+                return remapped;
+            });
+        }
+
+        private static string RemapReferenceToken(string token, int topRow, int leftCol, int rowCount, int colCount)
+        {
+            if (string.IsNullOrEmpty(token))
+            {
+                return token;
+            }
+
+            int colon = token.IndexOf(':');
+            if (colon > 0)
+            {
+                string left = token.Substring(0, colon);
+                string right = token.Substring(colon + 1);
+
+                if (TryParseCellReference(left, out int lRow, out int lCol, out bool lAbsRow, out bool lAbsCol) &&
+                    TryParseCellReference(right, out int rRow, out int rCol, out bool rAbsRow, out bool rAbsCol))
+                {
+                    if (TryMapCell(lRow, lCol, topRow, leftCol, rowCount, colCount, out int nlRow, out int nlCol) &&
+                        TryMapCell(rRow, rCol, topRow, leftCol, rowCount, colCount, out int nrRow, out int nrCol))
+                    {
+                        return BuildCellReference(nlRow, nlCol, lAbsRow, lAbsCol) + ":" + BuildCellReference(nrRow, nrCol, rAbsRow, rAbsCol);
+                    }
+                    return token;
+                }
+
+                if (TryParseColumnRange(left, right, out int lColOnly, out bool lAbsColOnly, out int rColOnly, out bool rAbsColOnly))
+                {
+                    if (IsColInSelection(lColOnly, leftCol, colCount) && IsColInSelection(rColOnly, leftCol, colCount))
+                    {
+                        int nlColOnly = MirrorColumn(lColOnly, leftCol, colCount);
+                        int nrColOnly = MirrorColumn(rColOnly, leftCol, colCount);
+                        return BuildColumnReference(nlColOnly, lAbsColOnly) + ":" + BuildColumnReference(nrColOnly, rAbsColOnly);
+                    }
+                    return token;
+                }
+
+                if (TryParseRowRange(left, right, out int lRowOnly, out bool lAbsRowOnly, out int rRowOnly, out bool rAbsRowOnly))
+                {
+                    if (IsRowInSelection(lRowOnly, topRow, rowCount) && IsRowInSelection(rRowOnly, topRow, rowCount))
+                    {
+                        int nlRowOnly = MirrorRow(lRowOnly, topRow, rowCount);
+                        int nrRowOnly = MirrorRow(rRowOnly, topRow, rowCount);
+                        return BuildRowReference(nlRowOnly, lAbsRowOnly) + ":" + BuildRowReference(nrRowOnly, rAbsRowOnly);
+                    }
+                    return token;
+                }
+            }
+
+            if (TryParseCellReference(token, out int row, out int col, out bool absRow, out bool absCol))
+            {
+                if (TryMapCell(row, col, topRow, leftCol, rowCount, colCount, out int newRow, out int newCol))
+                {
+                    return BuildCellReference(newRow, newCol, absRow, absCol);
+                }
+            }
+
+            return token;
+        }
+
+        private static bool TryParseCellReference(string token, out int row, out int col, out bool absRow, out bool absCol)
+        {
+            row = 0;
+            col = 0;
+            absRow = false;
+            absCol = false;
+
+            if (string.IsNullOrEmpty(token))
+            {
+                return false;
+            }
+
+            var match = Regex.Match(token, @"^(\$?)([A-Za-z]{1,3})(\$?)(\d{1,7})$");
+            if (!match.Success)
+            {
+                return false;
+            }
+
+            absCol = match.Groups[1].Value == "$";
+            absRow = match.Groups[3].Value == "$";
+            col = ColumnNameToNumber(match.Groups[2].Value);
+            row = int.TryParse(match.Groups[4].Value, out int parsedRow) ? parsedRow : 0;
+            return col > 0 && row > 0;
+        }
+
+        private static bool TryParseColumnRange(string left, string right, out int leftCol, out bool leftAbs, out int rightCol, out bool rightAbs)
+        {
+            leftCol = 0;
+            rightCol = 0;
+            leftAbs = false;
+            rightAbs = false;
+
+            var leftMatch = Regex.Match(left, @"^(\$?)([A-Za-z]{1,3})$");
+            var rightMatch = Regex.Match(right, @"^(\$?)([A-Za-z]{1,3})$");
+            if (!leftMatch.Success || !rightMatch.Success)
+            {
+                return false;
+            }
+
+            leftAbs = leftMatch.Groups[1].Value == "$";
+            rightAbs = rightMatch.Groups[1].Value == "$";
+            leftCol = ColumnNameToNumber(leftMatch.Groups[2].Value);
+            rightCol = ColumnNameToNumber(rightMatch.Groups[2].Value);
+            return leftCol > 0 && rightCol > 0;
+        }
+
+        private static bool TryParseRowRange(string left, string right, out int leftRow, out bool leftAbs, out int rightRow, out bool rightAbs)
+        {
+            leftRow = 0;
+            rightRow = 0;
+            leftAbs = false;
+            rightAbs = false;
+
+            var leftMatch = Regex.Match(left, @"^(\$?)(\d{1,7})$");
+            var rightMatch = Regex.Match(right, @"^(\$?)(\d{1,7})$");
+            if (!leftMatch.Success || !rightMatch.Success)
+            {
+                return false;
+            }
+
+            leftAbs = leftMatch.Groups[1].Value == "$";
+            rightAbs = rightMatch.Groups[1].Value == "$";
+            leftRow = int.TryParse(leftMatch.Groups[2].Value, out int parsedLeft) ? parsedLeft : 0;
+            rightRow = int.TryParse(rightMatch.Groups[2].Value, out int parsedRight) ? parsedRight : 0;
+            return leftRow > 0 && rightRow > 0;
+        }
+
+        private static bool TryMapCell(int row, int col, int topRow, int leftCol, int rowCount, int colCount, out int newRow, out int newCol)
+        {
+            newRow = row;
+            newCol = col;
+
+            if (row < topRow || row >= topRow + rowCount)
+            {
+                return false;
+            }
+
+            if (col < leftCol || col >= leftCol + colCount)
+            {
+                return false;
+            }
+
+            newRow = topRow + (rowCount - 1 - (row - topRow));
+            newCol = leftCol + (colCount - 1 - (col - leftCol));
+            return true;
+        }
+
+        private static bool IsRowInSelection(int row, int topRow, int rowCount)
+            => row >= topRow && row < topRow + rowCount;
+
+        private static bool IsColInSelection(int col, int leftCol, int colCount)
+            => col >= leftCol && col < leftCol + colCount;
+
+        private static int MirrorRow(int row, int topRow, int rowCount)
+            => topRow + (rowCount - 1 - (row - topRow));
+
+        private static int MirrorColumn(int col, int leftCol, int colCount)
+            => leftCol + (colCount - 1 - (col - leftCol));
+
+        private static string BuildCellReference(int row, int col, bool absRow, bool absCol)
+        {
+            var colName = NumberToColumnName(col);
+            return (absCol ? "$" : string.Empty) + colName + (absRow ? "$" : string.Empty) + row.ToString();
+        }
+
+        private static string BuildColumnReference(int col, bool abs)
+        {
+            var colName = NumberToColumnName(col);
+            return (abs ? "$" : string.Empty) + colName;
+        }
+
+        private static string BuildRowReference(int row, bool abs)
+            => (abs ? "$" : string.Empty) + row.ToString();
+
+        private static int ColumnNameToNumber(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+            {
+                return 0;
+            }
+
+            int sum = 0;
+            for (int i = 0; i < name.Length; i++)
+            {
+                char c = char.ToUpperInvariant(name[i]);
+                if (c < 'A' || c > 'Z')
+                {
+                    return 0;
+                }
+                sum = sum * 26 + (c - 'A' + 1);
+            }
+            return sum;
+        }
+
+        private static string NumberToColumnName(int number)
+        {
+            if (number <= 0)
+            {
+                return string.Empty;
+            }
+
+            var sb = new StringBuilder();
+            int n = number;
+            while (n > 0)
+            {
+                int mod = (n - 1) % 26;
+                sb.Insert(0, (char)('A' + mod));
+                n = (n - 1) / 26;
+            }
+            return sb.ToString();
+        }
+
+        private static bool IsSheetMatch(string sheetToken, Excel.Worksheet selSheet, Excel.Workbook selWorkbook)
+        {
+            if (string.IsNullOrEmpty(sheetToken))
+            {
+                return true;
+            }
+
+            string token = sheetToken;
+            if (token.Length >= 2 && token[0] == '\'' && token[token.Length - 1] == '\'')
+            {
+                token = token.Substring(1, token.Length - 2).Replace("''", "'");
+            }
+
+            string workbookPart = string.Empty;
+            string sheetPart = token;
+            int rb = token.LastIndexOf(']');
+            if (rb >= 0)
+            {
+                int lb = token.LastIndexOf('[', rb);
+                if (lb >= 0)
+                {
+                    workbookPart = token.Substring(lb + 1, rb - lb - 1);
+                    sheetPart = token.Substring(rb + 1);
+                }
+            }
+
+            if (selSheet == null || string.IsNullOrEmpty(sheetPart))
+            {
+                return false;
+            }
+
+            if (!string.Equals(sheetPart, selSheet.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(workbookPart))
+            {
+                return true;
+            }
+
+            workbookPart = NormalizeWorkbookName(workbookPart);
+            string wbName = selWorkbook?.Name ?? string.Empty;
+            return string.Equals(workbookPart, wbName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string NormalizeWorkbookName(string workbookPart)
+        {
+            if (string.IsNullOrEmpty(workbookPart))
+            {
+                return workbookPart;
+            }
+
+            int slash = Math.Max(workbookPart.LastIndexOf('\\'), workbookPart.LastIndexOf('/'));
+            if (slash >= 0 && slash + 1 < workbookPart.Length)
+            {
+                return workbookPart.Substring(slash + 1);
+            }
+
+            return workbookPart;
+        }
+
+        private static bool IsIndexInStringLiteral(string text, int index)
+        {
+            if (index < 0 || string.IsNullOrEmpty(text))
+            {
+                return false;
+            }
+
+            bool inString = false;
+            int target = index + 1;
+            for (int i = 0; i < text.Length && i < target; i++)
+            {
+                if (text[i] == '"')
+                {
+                    if (inString)
+                    {
+                        if (i + 1 < text.Length && text[i + 1] == '"')
+                        {
+                            i++;
+                        }
+                        else
+                        {
+                            inString = false;
+                        }
+                    }
+                    else
+                    {
+                        inString = true;
+                    }
+                }
+            }
+
+            return inString;
         }
 
         public void TrimConditionalFormatting()

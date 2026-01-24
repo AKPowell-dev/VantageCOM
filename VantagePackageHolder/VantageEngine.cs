@@ -35,6 +35,7 @@ namespace VantagePackageHolder
         private readonly Lazy<WorkbookAnalysisService> _analysis;
         private readonly Lazy<ChartNavigator> _charts;
         private readonly Lazy<TraceDialogService> _traceDialogs;
+        private readonly Lazy<NameScrubberService> _nameScrubber;
         private bool _pendingFormatReset;
 
         public VantageEngine(Excel.Application excel)
@@ -52,6 +53,7 @@ namespace VantagePackageHolder
             _analysis = new Lazy<WorkbookAnalysisService>(() => new WorkbookAnalysisService(_excel), LazyThreadSafetyMode.None);
             _charts = new Lazy<ChartNavigator>(() => new ChartNavigator(_excel), LazyThreadSafetyMode.None);
             _traceDialogs = new Lazy<TraceDialogService>(() => new TraceDialogService(_excel), LazyThreadSafetyMode.None);
+            _nameScrubber = new Lazy<NameScrubberService>(() => new NameScrubberService(_excel), LazyThreadSafetyMode.None);
         }
 
         public void Dispose() { }
@@ -81,6 +83,7 @@ namespace VantagePackageHolder
         private WorkbookAnalysisService Analysis => _analysis.Value;
         private ChartNavigator Charts => _charts.Value;
         private TraceDialogService TraceDialogs => _traceDialogs.Value;
+        private NameScrubberService NameScrubberSvc => _nameScrubber.Value;
 
         #region Clipboard hooks
         public void ClipboardHandleCopy() => Clipboard.HandleCopy();
@@ -257,6 +260,10 @@ namespace VantagePackageHolder
         #region Trace dialogs
         public void TracePrecedentsDialog() => TraceDialogs.ShowPrecedentsDialog();
         public void TraceDependentsDialog() => TraceDialogs.ShowDependentsDialog();
+        #endregion
+
+        #region Name scrubber
+        public void NameScrubber() => NameScrubberSvc.ShowDialog();
         #endregion
 
         #region Chart helpers

@@ -4,7 +4,9 @@ param(
     [switch]$Force32,
     [switch]$Force64,
     [switch]$NoRegister,
-    [switch]$NoXlam
+    [switch]$NoXlam,
+    [string]$LogPath = "",
+    [string]$StatusPath = ""
 )
 
 Set-StrictMode -Version 2.0
@@ -17,6 +19,39 @@ if ([string]::IsNullOrWhiteSpace($SourceDir)) {
 $ProgId = "VantagePackageHolder.Addin"
 $FriendlyName = "Vantage"
 $Description = "Vantage Excel Add-in"
+
+$transcriptStarted = $false
+if (-not [string]::IsNullOrWhiteSpace($LogPath)) {
+    try {
+        $logDir = Split-Path -Parent $LogPath
+        if (-not [string]::IsNullOrWhiteSpace($logDir)) {
+            New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+        }
+        Start-Transcript -Path $LogPath -Append | Out-Null
+        $transcriptStarted = $true
+    } catch {
+        # ignore logging failures
+    }
+}
+
+try {
+    function Write-Status([string]$message) {
+        if ([string]::IsNullOrWhiteSpace($StatusPath)) {
+            return
+        }
+        try {
+            Set-Content -Path $StatusPath -Value $message -Encoding UTF8
+        } catch {
+            # ignore status failures
+        }
+    }
+
+    Write-Status "Preparing installer..."
+    try {
+        Get-ChildItem -Path $SourceDir -Recurse -File | Unblock-File
+    } catch {
+        # ignore unblock failures
+    }
 
 function Get-OfficeBitness {
     $candidates = @(
@@ -97,7 +132,9 @@ function Add-ExcelOpenEntry([string]$xlamPath) {
     Set-ItemProperty -Path $targetKey -Name "OPEN" -Value $xlamPath -Force | Out-Null
 }
 
+Write-Status "Detecting Office bitness..."
 $bitness = if ($Force32) { "x86" } elseif ($Force64) { "x64" } else { Get-OfficeBitness }
+Write-Status ("Installing for " + $bitness + " Office...")
 
 if ([string]::IsNullOrWhiteSpace($InstallDir)) {
     $base = $env:ProgramFiles
@@ -114,6 +151,7 @@ if (!(Test-Path $comDllSource)) {
     throw "Missing VantagePackageHolder.dll in $SourceDir"
 }
 
+Write-Status "Copying add-in files..."
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 Copy-Item -Path $comDllSource -Destination $InstallDir -Force
 if (Test-Path $extensibilitySource) {
@@ -124,6 +162,7 @@ if (Test-Path $resourcesSource) {
 }
 
 if (-not $NoRegister) {
+    Write-Status "Registering COM add-in..."
     $regasm = Get-RegasmPath $bitness
     $dllPath = Join-Path $InstallDir "VantagePackageHolder.dll"
     $tlbPath = Join-Path $InstallDir "VantagePackageHolder.tlb"
@@ -131,10 +170,12 @@ if (-not $NoRegister) {
     if ($LASTEXITCODE -ne 0) {
         throw "RegAsm failed with exit code $LASTEXITCODE"
     }
+    Write-Status "Registering Excel add-in..."
     Register-ExcelComAddin $bitness
 }
 
 if (-not $NoXlam) {
+    Write-Status "Installing Vantage.xlam..."
     if (!(Test-Path $xlamSource)) {
         throw "Missing Vantage.xlam in $SourceDir"
     }
@@ -146,3 +187,14 @@ if (-not $NoXlam) {
 }
 
 Write-Host "Vantage install complete."
+Write-Status "Install complete."
+}
+catch {
+    Write-Status ("FAILED: " + $_.Exception.Message)
+    throw
+}
+finally {
+    if ($transcriptStarted) {
+        try { Stop-Transcript | Out-Null } catch { }
+    }
+}

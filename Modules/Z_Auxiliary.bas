@@ -782,50 +782,8 @@ CleanFail:
 End Function
 
 Public Sub DeleteLikeExcel()
-    Dim uiGuard As ExcelUiGuard
-    Set uiGuard = SuppressExcelUi(True)
-    On Error GoTo CleanFail
-    Dim sel As Object
-    Set sel = Selection
-
-    If sel Is Nothing Then GoTo CleanExit
-
-    ' If a chart is active, delete the chart object (covers chart elements too).
-    Dim activeCh As Object
     On Error Resume Next
-    Set activeCh = ActiveChart
-    On Error GoTo CleanFail
-    If Not activeCh Is Nothing Then
-        activeCh.Parent.Delete
-        GoTo CleanExit
-    End If
-
-    If TypeName(sel) = "Range" Then
-        sel.ClearContents
-    ElseIf TypeName(sel) = "ChartObject" Then
-        sel.Delete
-    ElseIf TypeName(sel) = "Shape" Or TypeName(sel) = "ShapeRange" Then
-        sel.Delete
-    ElseIf VarType(sel) = vbObject Then
-        On Error Resume Next
-        sel.Delete
-        If Err.Number <> 0 Then
-            Err.Clear
-            Dim parentObj As Object
-            Set parentObj = Nothing
-            Set parentObj = sel.Parent
-            If Not parentObj Is Nothing Then
-                parentObj.Delete
-            End If
-        End If
-        On Error GoTo CleanFail
-    End If
-CleanExit:
-    On Error GoTo 0
-    Exit Sub
-CleanFail:
-    ' Swallow any delete errors to mirror native behaviour
-    Resume CleanExit
+    Application.SendKeys "{DEL}", True
 End Sub
 
 Sub ClearFormatting()

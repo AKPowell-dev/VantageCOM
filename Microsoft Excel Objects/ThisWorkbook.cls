@@ -46,6 +46,15 @@ Private Sub App_SheetChange(ByVal Sh As Object, ByVal target As Range)
     If Not IsActiveWorkbookSheet(target.Worksheet) Then Exit Sub
     If ShouldSkipAutoColor(target) Then Exit Sub
 
+    If target.CountLarge = 1 Then
+        Dim cellVal As Variant
+        cellVal = target.Value2
+        If IsEmpty(cellVal) Then Exit Sub
+        If Not target.HasFormula Then
+            If Not IsNumeric(cellVal) Then Exit Sub
+        End If
+    End If
+
     Dim engine As Object
     Set engine = NetAddin()
     If engine Is Nothing Then Exit Sub

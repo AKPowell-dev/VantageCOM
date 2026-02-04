@@ -59,7 +59,7 @@ Private Sub App_SheetChange(ByVal Sh As Object, ByVal target As Range)
     Set engine = NetAddin()
     If engine Is Nothing Then Exit Sub
 
-    engine.AutoColorRange target, 50
+    engine.AutoColorRange target, 10
 Done:
 End Sub
 
@@ -108,12 +108,13 @@ Private Function ShouldSkipAutoColor(ByVal rng As Range) As Boolean
     End If
 
     ' Skip large changes to keep edits snappy.
-    If rng.CountLarge > 50 Then
+    If rng.CountLarge > 10 Then
         ShouldSkipAutoColor = True
         Exit Function
     End If
 
 CleanExit:
 End Function
+
 
 

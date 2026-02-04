@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Excel = Microsoft.Office.Interop.Excel;
 
 namespace VantagePackageHolder
@@ -15,6 +16,7 @@ namespace VantagePackageHolder
         public string ParentName { get; set; }
         public string RefersTo { get; set; }
         public bool IsChecked { get; set; }
+        public List<NameDependentItem> CachedDependents { get; set; }
 
         public bool? CachedIsErroneous { get; set; }
         public bool? CachedIsLinked { get; set; }

@@ -51,6 +51,10 @@ namespace VantagePackageHolder
         private bool _placeholderActive;
         private bool _busy;
         private bool _suppressDeactivate;
+        private bool _mouseSelectionPending;
+        private NameScrubberItem _lastDependentsItem;
+        private int _lastNavigateTick;
+        private ListViewItem _lastNavigateItem;
 
         public NameScrubberForm(Excel.Application app)
         {
@@ -261,8 +265,9 @@ namespace VantagePackageHolder
 
             _namesList.ItemChecked += NamesList_ItemChecked;
             _namesList.SelectedIndexChanged += NamesList_SelectedIndexChanged;
-            _namesList.DoubleClick += (_, __) => NavigateToSelectedName();
             _namesList.MouseDown += NamesList_MouseDown;
+            _namesList.MouseUp += NamesList_MouseUp;
+            _namesList.ItemActivate += (_, __) => { };
             _dependentsList.SelectedIndexChanged += DependentsList_SelectedIndexChanged;
 
             _hideButton.Click += (_, __) => RunCommand(() => HideSelected(true));
@@ -321,10 +326,12 @@ namespace VantagePackageHolder
             _layout.RowStyles[2].SizeType = _showDependents.Checked ? SizeType.Percent : SizeType.Absolute;
             if (_showDependents.Checked)
             {
+                _lastDependentsItem = null;
                 LoadDependentsFromSelection();
             }
             else
             {
+                _lastDependentsItem = null;
                 _dependentsList.Items.Clear();
             }
         }
@@ -352,7 +359,12 @@ namespace VantagePackageHolder
                 return;
             }
 
-            LoadDependentsFromSelection();
+            if (_mouseSelectionPending)
+            {
+                return;
+            }
+
+            HandleSelectionChange(false);
         }
 
         private void NamesList_MouseDown(object sender, MouseEventArgs e)
@@ -362,37 +374,73 @@ namespace VantagePackageHolder
                 return;
             }
 
-            if (e.Clicks != 1)
-            {
-                return;
-            }
-
             var hit = _namesList.HitTest(e.Location);
             if (hit.Item == null)
             {
-                return;
-            }
-
-            if ((ModifierKeys & (Keys.Control | Keys.Shift)) != Keys.None)
-            {
+                _mouseSelectionPending = false;
                 return;
             }
 
             int checkboxWidth = 18;
             if (e.X <= checkboxWidth)
             {
+                _mouseSelectionPending = false;
                 return;
             }
 
-            _suppressCheckEvents = true;
-            hit.Item.Checked = !hit.Item.Checked;
-            if (hit.Item.Tag is NameScrubberItem nameItem)
+            _mouseSelectionPending = true;
+        }
+
+        private void NamesList_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Left)
             {
-                nameItem.IsChecked = hit.Item.Checked;
+                _mouseSelectionPending = false;
+                return;
             }
-            _suppressCheckEvents = false;
-            UpdateCheckAllState();
-            UpdateActionButtons();
+
+            var hit = _namesList.HitTest(e.Location);
+            if (hit.Item == null)
+            {
+                _mouseSelectionPending = false;
+                return;
+            }
+
+            int checkboxWidth = 18;
+            if (e.X <= checkboxWidth)
+            {
+                _mouseSelectionPending = false;
+                return;
+            }
+
+            if ((ModifierKeys & (Keys.Control | Keys.Shift)) != Keys.None)
+            {
+                _mouseSelectionPending = false;
+                return;
+            }
+
+            bool alreadySingleSelected = hit.Item.Selected && _namesList.SelectedItems.Count == 1;
+            if (!alreadySingleSelected)
+            {
+                _suppressSelectionEvents = true;
+                try
+                {
+                    _namesList.SelectedItems.Clear();
+                    hit.Item.Selected = true;
+                    _namesList.FocusedItem = hit.Item;
+                }
+                finally
+                {
+                    _suppressSelectionEvents = false;
+                }
+            }
+            else
+            {
+                _namesList.FocusedItem = hit.Item;
+            }
+
+            HandleSelectionChange(true);
+            _mouseSelectionPending = false;
         }
 
         private void DependentsList_SelectedIndexChanged(object sender, EventArgs e)
@@ -701,7 +749,64 @@ namespace VantagePackageHolder
             UpdateCheckAllState();
             UpdateActionButtons();
             UpdateCountLabel();
+            _lastDependentsItem = null;
             LoadDependentsFromSelection();
+        }
+
+        private void HandleSelectionChange(bool navigate)
+        {
+            var selectedItem = GetSingleSelectedItem();
+            if (selectedItem == null)
+            {
+                _lastDependentsItem = null;
+                if (_showDependents.Checked)
+                {
+                    _dependentsList.Items.Clear();
+                }
+                UpdateActionButtons();
+                return;
+            }
+
+            bool shouldLoadDependents = _showDependents.Checked &&
+                                        (!ReferenceEquals(selectedItem, _lastDependentsItem) || selectedItem.CachedDependents == null);
+            if (shouldLoadDependents)
+            {
+                LoadDependentsFromSelection();
+                _lastDependentsItem = selectedItem;
+            }
+
+            UpdateActionButtons();
+
+            if (navigate)
+            {
+                var focused = _namesList.FocusedItem;
+                if (focused != null)
+                {
+                    int tick = Environment.TickCount;
+                    int doubleClickWindow = Math.Max(100, SystemInformation.DoubleClickTime);
+                    if (ReferenceEquals(focused, _lastNavigateItem) && tick - _lastNavigateTick >= 0 &&
+                        tick - _lastNavigateTick <= doubleClickWindow)
+                    {
+                        _lastNavigateTick = tick;
+                        return;
+                    }
+
+                    _lastNavigateItem = focused;
+                    _lastNavigateTick = tick;
+                }
+
+                NavigateToSelectedName();
+            }
+        }
+
+        private NameScrubberItem GetSingleSelectedItem()
+        {
+            if (_namesList.SelectedItems.Count != 1)
+            {
+                return null;
+            }
+
+            return _namesList.SelectedItems[0].Tag as NameScrubberItem;
         }
 
         private void UpdateCountLabel()
@@ -813,6 +918,15 @@ namespace VantagePackageHolder
             }
         }
 
+        private void InvalidateDependentsCache()
+        {
+            _lastDependentsItem = null;
+            foreach (var item in _allNames)
+            {
+                item.CachedDependents = null;
+            }
+        }
+
         private void DisableActionButtons()
         {
             _hideButton.Enabled = false;
@@ -879,67 +993,32 @@ namespace VantagePackageHolder
                 return;
             }
 
-            var refersToRange = NameScrubberUtil.TryGetRefersToRange(item.Name);
-            if (refersToRange == null)
+            var deps = item.CachedDependents;
+            if (deps == null)
             {
-                _dependentsList.Items.Clear();
-                return;
-            }
-
-            var deps = new List<NameDependentItem>();
-            Excel.Range originalSelection = null;
-            Excel.Window activeWindow = null;
-            int? originalScrollRow = null;
-            int? originalScrollCol = null;
-            try
-            {
-                originalSelection = _app.Selection as Excel.Range;
-            }
-            catch
-            {
-                originalSelection = null;
-            }
-
-            try
-            {
-                activeWindow = _app.ActiveWindow;
-                if (activeWindow != null)
+                deps = new List<NameDependentItem>();
+                using (new UiGuard(_app, disableAlerts: true, manualCalculation: true))
                 {
-                    originalScrollRow = activeWindow.ScrollRow;
-                    originalScrollCol = activeWindow.ScrollColumn;
+                    var ranges = NameScrubberUtil.GetDependentsAcrossWorkbook(item.Name, () => _cancelRequested);
+                    foreach (var range in ranges)
+                    {
+                        var label = GetRangeLabel(range);
+                        string formula = string.Empty;
+                        try
+                        {
+                            formula = range.Formula?.ToString() ?? string.Empty;
+                        }
+                        catch
+                        {
+                            formula = string.Empty;
+                        }
+
+                        deps.Add(new NameDependentItem(range, label, formula));
+                    }
                 }
+
+                item.CachedDependents = deps;
             }
-            catch
-            {
-                activeWindow = null;
-            }
-
-            using (new UiGuard(_app, hideStatusBar: true))
-            {
-                var ranges = NameScrubberUtil.GetDependents(refersToRange, item.Name, () => _cancelRequested);
-                foreach (var range in ranges)
-                {
-                    if (!NameScrubberUtil.FormulaReferencesName(range, item.Name))
-                    {
-                        continue;
-                    }
-
-                    var label = GetRangeLabel(range);
-                    string formula = string.Empty;
-                    try
-                    {
-                        formula = range.Formula?.ToString() ?? string.Empty;
-                    }
-                    catch
-                    {
-                        formula = string.Empty;
-                    }
-
-                    deps.Add(new NameDependentItem(range, label, formula));
-                }
-            }
-
-            RestoreSelection(originalSelection, activeWindow, originalScrollRow, originalScrollCol);
 
             _dependentsList.BeginUpdate();
             _dependentsList.Items.Clear();
@@ -1051,18 +1130,21 @@ namespace VantagePackageHolder
                     return;
                 }
 
-                DebugNavigate("Navigate name: " + item.Label + "\nRefersTo: " + refersTo + "\nRefersToRange: " + DescribeRange(range));
-                if (TryGotoRefersTo(refersTo, true, range))
+                using (new UiGuard(_app))
                 {
-                    return;
-                }
+                    DebugNavigate("Navigate name: " + item.Label + "\nRefersTo: " + refersTo + "\nRefersToRange: " + DescribeRange(range));
+                    if (TryGotoRefersTo(refersTo, true, range))
+                    {
+                        return;
+                    }
 
-                if (!RangeHelpers.IsRangeValid(range))
-                {
-                    return;
-                }
+                    if (!RangeHelpers.IsRangeValid(range))
+                    {
+                        return;
+                    }
 
-                SelectRange(range, true);
+                    SelectRange(range, true);
+                }
             }
             finally
             {
@@ -1585,12 +1667,7 @@ namespace VantagePackageHolder
             SetBusy(true, "Applying names...");
 
             var changed = new List<Excel.Range>();
-            var prevCalc = _app.Calculation;
-            var prevAlerts = _app.DisplayAlerts;
-            _app.DisplayAlerts = false;
-            _app.Calculation = Excel.XlCalculation.xlCalculationManual;
-
-            using (new UiGuard(_app, hideStatusBar: true))
+            using (new UiGuard(_app, hideStatusBar: true, disableAlerts: true, manualCalculation: true))
             {
                 int total = items.Count;
                 _progress.Maximum = Math.Max(1, total);
@@ -1614,10 +1691,8 @@ namespace VantagePackageHolder
                 }
             }
 
-            _app.DisplayAlerts = prevAlerts;
-            _app.Calculation = prevCalc;
-
             SetBusy(false, null);
+            InvalidateDependentsCache();
             UpdateActionButtons();
             if (changed.Count > 0)
             {
@@ -1637,12 +1712,7 @@ namespace VantagePackageHolder
             SetBusy(true, "Unapplying names...");
 
             var changed = new List<Excel.Range>();
-            var prevCalc = _app.Calculation;
-            var prevAlerts = _app.DisplayAlerts;
-            _app.DisplayAlerts = false;
-            _app.Calculation = Excel.XlCalculation.xlCalculationManual;
-
-            using (new UiGuard(_app, hideStatusBar: true))
+            using (new UiGuard(_app, hideStatusBar: true, disableAlerts: true, manualCalculation: true))
             {
                 int total = items.Count;
                 _progress.Maximum = Math.Max(1, total);
@@ -1666,10 +1736,8 @@ namespace VantagePackageHolder
                 }
             }
 
-            _app.DisplayAlerts = prevAlerts;
-            _app.Calculation = prevCalc;
-
             SetBusy(false, null);
+            InvalidateDependentsCache();
             UpdateActionButtons();
             if (changed.Count > 0)
             {
@@ -1701,12 +1769,7 @@ namespace VantagePackageHolder
             SetBusy(true, "Deleting names...");
 
             var changed = new List<Excel.Range>();
-            var prevCalc = _app.Calculation;
-            var prevAlerts = _app.DisplayAlerts;
-            _app.DisplayAlerts = false;
-            _app.Calculation = Excel.XlCalculation.xlCalculationManual;
-
-            using (new UiGuard(_app, hideStatusBar: true))
+            using (new UiGuard(_app, hideStatusBar: true, disableAlerts: true, manualCalculation: true))
             {
                 int total = items.Count;
                 _progress.Maximum = Math.Max(1, total);
@@ -1745,11 +1808,9 @@ namespace VantagePackageHolder
                 }
             }
 
-            _app.DisplayAlerts = prevAlerts;
-            _app.Calculation = prevCalc;
-
             SetBusy(false, null);
             ReloadNames();
+            InvalidateDependentsCache();
 
             if (unapplyFirst && changed.Count > 0)
             {
@@ -1784,6 +1845,7 @@ namespace VantagePackageHolder
                 item.Name.Name = input;
                 item.Label = NameScrubberUtil.StripSheetPrefix(input);
                 item.RefersTo = NameScrubberUtil.SafeRefersTo(item.Name);
+                InvalidateDependentsCache();
                 ApplyFilterAndSearch();
             }
             catch (Exception ex)
@@ -1824,6 +1886,7 @@ namespace VantagePackageHolder
                 item.Name.RefersTo = input;
                 item.RefersTo = NameScrubberUtil.SafeRefersTo(item.Name);
                 item.Text = BuildValueText(item.Name);
+                InvalidateDependentsCache();
                 ApplyFilterAndSearch();
             }
             catch (Exception ex)
@@ -1861,12 +1924,7 @@ namespace VantagePackageHolder
             _progress.Maximum = Math.Max(1, count);
             _progress.Value = 0;
 
-            var prevCalc = _app.Calculation;
-            var prevAlerts = _app.DisplayAlerts;
-            _app.DisplayAlerts = false;
-            _app.Calculation = Excel.XlCalculation.xlCalculationManual;
-
-            using (new UiGuard(_app, hideStatusBar: true))
+            using (new UiGuard(_app, hideStatusBar: true, disableAlerts: true, manualCalculation: true))
             {
                 for (int i = count; i >= 1; i--)
                 {
@@ -1926,9 +1984,6 @@ namespace VantagePackageHolder
                     }
                 }
             }
-
-            _app.DisplayAlerts = prevAlerts;
-            _app.Calculation = prevCalc;
 
             SetBusy(false, null);
             MessageBox.Show(this,

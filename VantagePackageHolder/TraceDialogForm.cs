@@ -3726,7 +3726,7 @@ namespace VantagePackageHolder
             Excel.Range originalSelection = null;
             Excel.Range originalActiveCell = null;
 
-            using (new UiGuard(_app, hideStatusBar: true))
+            using (new UiGuard(_app, hideStatusBar: true, disableAlerts: true, manualCalculation: true))
             {
                 try
                 {
@@ -3899,7 +3899,7 @@ namespace VantagePackageHolder
             Excel.Range originalActiveCell = null;
             bool timedOut = false;
 
-            using (new UiGuard(_app, hideStatusBar: true))
+            using (new UiGuard(_app, hideStatusBar: true, disableAlerts: true, manualCalculation: true))
             {
                 try
                 {

@@ -18,6 +18,9 @@ End Function
 ' * @returns {Boolean} - True if the procedure is successfully loaded and executed, False otherwise.
 ' */
 Function LazyLoad(ByVal key As String) As Boolean
+    Dim numLockWasOn As Boolean
+    numLockWasOn = IsNumLockOn()
+
     ' Start Vim if not already started
     If gVim Is Nothing Then
         Call StartVim
@@ -32,14 +35,9 @@ Function LazyLoad(ByVal key As String) As Boolean
         Application.OnKey key
 
         Call KeyUpControlKeys
-        Dim numLockWasOn As Boolean
-        numLockWasOn = ((GetKeyState(NumLock_) And &H1) <> 0)
         Application.SendKeys key
-        If numLockWasOn <> ((GetKeyState(NumLock_) And &H1) <> 0) Then
-            keybd_event NumLock_, 0, 0, 0
-            keybd_event NumLock_, 0, KEYUP, 0
-        End If
         Call UnkeyUpControlKeys
+        Call RestoreNumLockState(numLockWasOn)
         Exit Function
     End If
 
@@ -88,6 +86,7 @@ Catch:
 
 Finally:
     Call UndoFinalizeForCommand
+    Call RestoreNumLockState(numLockWasOn)
     Exit Function
 End Function
 
@@ -113,3 +112,22 @@ Private Function BuildUndoWrappedProcedure(ByVal cmd As String) As String
     safeCmd = Replace(cmd, """", """""")
     BuildUndoWrappedProcedure = "'RunMappedCommand """ & safeCmd & """'"
 End Function
+
+Private Function IsNumLockOn() As Boolean
+    On Error Resume Next
+    IsNumLockOn = ((GetKeyState(NumLock_) And &H1) <> 0)
+    On Error GoTo 0
+End Function
+
+Private Sub RestoreNumLockState(ByVal shouldBeOn As Boolean)
+    On Error Resume Next
+    Dim isOn As Boolean
+    isOn = ((GetKeyState(NumLock_) And &H1) <> 0)
+    If shouldBeOn <> isOn Then
+        keybd_event NumLock_, 0, 0, 0
+        keybd_event NumLock_, 0, KEYUP, 0
+    End If
+    On Error GoTo 0
+End Sub
+
+

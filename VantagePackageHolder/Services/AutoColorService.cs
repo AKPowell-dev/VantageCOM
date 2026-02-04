@@ -72,7 +72,27 @@ namespace VantagePackageHolder
                 sheetName = string.Empty;
             }
 
-            using (new UiGuard(_app, hideStatusBar: true))
+            if (cellCount <= 1)
+            {
+                foreach (Excel.Range cell in target.Cells)
+                {
+                    try
+                    {
+                        ApplyColorToCell(cell, sheetName, workbook);
+                    }
+                    catch
+                    {
+                        // ignore cell errors
+                    }
+                    finally
+                    {
+                        ReleaseCom(cell);
+                    }
+                }
+                return;
+            }
+
+            using (new UiGuard(_app))
             {
                 foreach (Excel.Range cell in target.Cells)
                 {

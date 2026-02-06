@@ -276,6 +276,7 @@ Sub DefaultConfig()
         .Map "nmap <cmd>reload ReloadVim"
         .Map "nmap <cmd>version ShowVersion"
         .Map "nmap <cmd>name NameScrubber"
+        .Map "nmap <cmd>sm ShortcutManager"
         .Map "nmap > IncrementText"
         .Map "nmap <lt> DecrementText"
         .Map "nmap f, ApplyCommaStyle"

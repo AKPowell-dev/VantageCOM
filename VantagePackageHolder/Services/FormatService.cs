@@ -22,6 +22,7 @@ namespace VantagePackageHolder
         private readonly Dictionary<string, NumberFormatCycleState> _numberFormatStates = new Dictionary<string, NumberFormatCycleState>(StringComparer.Ordinal);
         private readonly Dictionary<string, bool> _borderCycleStates = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         private string _borderCycleSelectionKey = string.Empty;
+        private long _borderCycleLastStamp = -1;
 
         public FormatService(Excel.Application app, ClipboardService clipboard, PowerPointExporter ppt)
         {
@@ -793,13 +794,16 @@ namespace VantagePackageHolder
         // ===== Cycle state reset for formatting cycles =====
         private string _cycleFmtLastKey = string.Empty;
         private int _cycleFmtNextStyle = 1;
+        private long _cycleFmtLastStamp = 0;
 
         public void ResetCycleState()
         {
             _cycleFmtLastKey = string.Empty;
             _cycleFmtNextStyle = 1;
+            _cycleFmtLastStamp = 0;
             _borderCycleStates.Clear();
             _borderCycleSelectionKey = string.Empty;
+            _borderCycleLastStamp = -1;
             _numberFormatStates.Clear();
         }
 
@@ -1362,18 +1366,20 @@ namespace VantagePackageHolder
             }
         }
 
-        public void CycleFormatting()
+        public void CycleFormatting(long selectionStamp)
         {
             if (!RangeHelpers.TryGetActiveRange(_app, out var sel)) return;
             using (new UiGuard(_app))
             {
                 string key = RangeHelpers.BuildRangeKey(sel);
-                bool selectionMoved = !string.Equals(key, _cycleFmtLastKey, StringComparison.Ordinal);
+                bool selectionMoved = !string.Equals(key, _cycleFmtLastKey, StringComparison.Ordinal)
+                    || selectionStamp != _cycleFmtLastStamp;
                 if (selectionMoved)
                 {
                     _cycleFmtNextStyle = 1;
                 }
                 _cycleFmtLastKey = key;
+                _cycleFmtLastStamp = selectionStamp;
 
                 Excel.Range firstCell = null;
                 try
@@ -1453,6 +1459,16 @@ namespace VantagePackageHolder
             }
 
             ToggleBorder(descriptor, lineStyle, weight);
+        }
+
+        public void ToggleBorderWithStamp(string targetKey, int lineStyle, int weight, long selectionStamp)
+        {
+            if (!TryGetBorderDescriptor(targetKey, out var descriptor))
+            {
+                return;
+            }
+
+            ToggleBorder(descriptor, lineStyle, weight, selectionStamp);
         }
 
         public void DeleteBorder(string targetKey)
@@ -2874,6 +2890,24 @@ namespace VantagePackageHolder
             }
         }
 
+        private void ToggleBorder(BorderDescriptor descriptor, int lineStyle, int weight, long selectionStamp)
+        {
+            if (!RangeHelpers.TryGetRangeOrActiveCell(_app, out var selection))
+            {
+                return;
+            }
+
+            using (new UiGuard(_app))
+            {
+                bool state = GetNextBorderState(descriptor.Key, selectionStamp);
+                var style = NormalizeLineStyle(lineStyle);
+                var borderWeight = NormalizeBorderWeight(weight);
+                var color = BorderColorSpec.Automatic;
+                var mode = state ? BorderOperation.Set : BorderOperation.Delete;
+                ApplyBorders(selection, descriptor.Indexes, mode, style, borderWeight, color);
+            }
+        }
+
         private void DeleteBorder(BorderDescriptor descriptor)
         {
             if (!RangeHelpers.TryGetRangeOrActiveCell(_app, out var selection))
@@ -2950,6 +2984,19 @@ namespace VantagePackageHolder
             return next;
         }
 
+        private bool GetNextBorderState(string key, long selectionStamp)
+        {
+            EnsureBorderCycleFresh(selectionStamp);
+            bool next = true;
+            if (_borderCycleStates.TryGetValue(key, out var current))
+            {
+                next = !current;
+            }
+
+            _borderCycleStates[key] = next;
+            return next;
+        }
+
         private void ResetBorderCycleKeys(IEnumerable<string> keys)
         {
             if (keys == null)
@@ -2975,6 +3022,7 @@ namespace VantagePackageHolder
             {
                 _borderCycleStates.Clear();
                 _borderCycleSelectionKey = string.Empty;
+                _borderCycleLastStamp = -1;
                 return;
             }
 
@@ -2987,6 +3035,36 @@ namespace VantagePackageHolder
                 }
 
                 _borderCycleSelectionKey = key;
+                _borderCycleLastStamp = -1;
+                _borderCycleStates.Clear();
+            }
+            finally
+            {
+                ReleaseIfNeeded(selection);
+            }
+        }
+
+        private void EnsureBorderCycleFresh(long selectionStamp)
+        {
+            if (!RangeHelpers.TryGetRangeOrActiveCell(_app, out var selection))
+            {
+                _borderCycleStates.Clear();
+                _borderCycleSelectionKey = string.Empty;
+                _borderCycleLastStamp = selectionStamp;
+                return;
+            }
+
+            try
+            {
+                string key = RangeHelpers.BuildRangeKey(selection);
+                if (selectionStamp == _borderCycleLastStamp
+                    && string.Equals(key, _borderCycleSelectionKey, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                _borderCycleSelectionKey = key;
+                _borderCycleLastStamp = selectionStamp;
                 _borderCycleStates.Clear();
             }
             finally

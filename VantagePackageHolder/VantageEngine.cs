@@ -198,7 +198,7 @@ namespace VantagePackageHolder
             }
         }
         public void ClearFormatting() => Format.ClearFormatting();
-        public void CycleFormatting() => Format.CycleFormatting();
+        public void CycleFormatting(long selectionStamp) => Format.CycleFormatting(selectionStamp);
         public void CycleNumberFormat(long selectionStamp) => Format.CycleNumberFormat(selectionStamp);
         public void BinaryCycle(long selectionStamp) => Format.BinaryCycle(selectionStamp);
         public void YearDisplayCycle(long selectionStamp) => Format.YearDisplayCycle(selectionStamp);
@@ -209,6 +209,7 @@ namespace VantagePackageHolder
         public void TrimConditionalFormatting() => Format.TrimConditionalFormatting();
         public void CurrencyCycle(long selectionStamp) => Format.CurrencyCycle(selectionStamp);
         public void ToggleBorder(string targetKey, int lineStyle, int weight) => Format.ToggleBorder(targetKey, lineStyle, weight);
+        public void ToggleBorderWithStamp(string targetKey, int lineStyle, int weight, long selectionStamp) => Format.ToggleBorderWithStamp(targetKey, lineStyle, weight, selectionStamp);
         public void DeleteBorder(string targetKey) => Format.DeleteBorder(targetKey);
         public void SetBorderColor(string targetKey, bool isNull, bool isTheme, int themeColor, double tintAndShade, int rgb) => Format.SetBorderColor(targetKey, isNull, isTheme, themeColor, tintAndShade, rgb);
         public void ResizeSelectionToWidthInches(double targetInches, bool requirePowerPoint) => BatchResize.ResizeSelectionToWidthInches(targetInches, requirePowerPoint);

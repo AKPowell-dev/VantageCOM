@@ -13,7 +13,7 @@ Private Function InvokeBorderToggle(ByVal targetKey As String, _
     If engine Is Nothing Then GoTo CleanExit
 
     Call RepeatRegister(macroName, lineStyle, weight)
-    Call engine.ToggleBorder(targetKey, lineStyle, weight)
+    Call engine.ToggleBorderWithStamp(targetKey, lineStyle, weight, gSelectionStamp)
     InvokeBorderToggle = True
 
 CleanExit:

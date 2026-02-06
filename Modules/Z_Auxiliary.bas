@@ -846,25 +846,40 @@ Sub CycleBorder(side As String)
     Static lastAddress As String
     Static lastSelectionStamp As Long
     Static lastSide As String
+    Static lastActiveKey As String
     Dim rng As Range
     Dim b As border
     Dim currentAddress As String
     Dim sideKey As String
+    Dim currentActiveKey As String
+    Dim wsName As String
+    Dim wbName As String
     ' Only run on range
     If TypeName(Selection) <> "Range" Then Exit Sub
     Set rng = Selection
     currentAddress = rng.Address
+    If Not ActiveCell Is Nothing Then
+        On Error Resume Next
+        wsName = ActiveCell.Worksheet.Name
+        wbName = ActiveCell.Worksheet.Parent.Name
+        On Error GoTo 0
+        currentActiveKey = wbName & "|" & wsName & "|" & ActiveCell.Address
+    Else
+        currentActiveKey = ""
+    End If
     ' Reset cycle if selection changes or cursor moved
     sideKey = LCase$(side)
     If currentAddress <> lastAddress _
         Or gSelectionStamp <> lastSelectionStamp _
-        Or sideKey <> lastSide Then
+        Or sideKey <> lastSide _
+        Or currentActiveKey <> lastActiveKey Then
         lastIndex = 0
     End If
     lastAddress = currentAddress
     lastSelectionStamp = gSelectionStamp
-    ' Border styles to cycle: dashed (first), double, none
-    borderStyles = Array(xlDash, xlDouble, xlNone)
+    lastActiveKey = currentActiveKey
+    ' Border styles to cycle: border, none
+    borderStyles = Array(xlContinuous, xlNone)
     ' Apply to the specified side
     Select Case sideKey
         Case "h": Set b = rng.Borders(xlEdgeLeft)
@@ -874,7 +889,7 @@ Sub CycleBorder(side As String)
         Case Else: Exit Sub
     End Select
     lastSide = sideKey
-    b.lineStyle = borderStyles(lastIndex)
+    b.LineStyle = borderStyles(lastIndex)
     ' Advance cycle
     lastIndex = lastIndex + 1
     If lastIndex > UBound(borderStyles) Then lastIndex = 0
@@ -2039,7 +2054,7 @@ Public Sub CycleFormatting()
     On Error GoTo CleanFail
     Set engine = NetAddin()
     If engine Is Nothing Then GoTo CleanExit
-    engine.CycleFormatting
+    engine.CycleFormatting gSelectionStamp
 CleanExit:
     Exit Sub
 CleanFail:

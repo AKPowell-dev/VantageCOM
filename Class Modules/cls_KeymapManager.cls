@@ -1681,6 +1681,71 @@ ContinueKey:
     End If
 End Function
 
+Public Function ExportCommandMappings() As Variant
+    Call MaterializeTempMappings
+
+    Dim results() As Variant
+    Dim count As Long
+
+    If cKeyMap Is Nothing Then
+        Exit Function
+    End If
+
+    Dim key As Variant
+    For Each key In cKeyMap.Keys()
+        Dim rawKey As String
+        rawKey = CStr(key)
+
+        If InStr(rawKey, KEY_SUMMARY) > 0 Or InStr(rawKey, KEY_TEMP) > 0 Then
+            GoTo ContinueKey
+        End If
+
+        Dim sepPos As Long
+        sepPos = InStr(rawKey, KEY_SEPARATOR)
+        If sepPos <= 0 Then
+            GoTo ContinueKey
+        End If
+
+        Dim mode_ As String
+        Dim lhs As String
+        mode_ = Left$(rawKey, sepPos - 1)
+        lhs = Mid$(rawKey, sepPos + Len(KEY_SEPARATOR))
+
+        If mode_ <> KEY_CMD Then
+            GoTo ContinueKey
+        End If
+
+        Dim rawValue As String
+        rawValue = CStr(cKeyMap(key))
+        If Len(rawValue) = 0 Then
+            GoTo ContinueKey
+        End If
+
+        Dim actionFilter As String
+        actionFilter = StripOuterQuotes(rawValue)
+        If actionFilter = "" Then
+            GoTo ContinueKey
+        End If
+
+        Dim actionLower As String
+        actionLower = LCase$(actionFilter)
+        If actionFilter = DUMMY_PROCEDURE Then GoTo ContinueKey
+        If Left$(actionLower, Len(SHOW_CMD_PROCEDURE)) = LCase$(SHOW_CMD_PROCEDURE) Then GoTo ContinueKey
+        If Left$(actionLower, 9) = "keystroke" Then GoTo ContinueKey
+
+        count = count + 1
+        ReDim Preserve results(1 To count, 1 To 2)
+        results(count, 1) = ":" & lhs
+        results(count, 2) = Trim$(rawValue)
+
+ContinueKey:
+    Next key
+
+    If count > 0 Then
+        ExportCommandMappings = results
+    End If
+End Function
+
 Private Sub MaterializeTempMappings()
     If cKeyMap Is Nothing Then Exit Sub
 

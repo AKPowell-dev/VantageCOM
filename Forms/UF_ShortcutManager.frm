@@ -38,8 +38,8 @@ Private mLoading As Boolean
 Private mHasShown As Boolean
 
 Private Const USE_FIXED_SIZE As Boolean = True
-Private Const FIXED_WIDTH_PX As Long = 760
-Private Const FIXED_HEIGHT_PX As Long = 1120
+Private Const FIXED_WIDTH_PT As Double = 520
+Private Const FIXED_HEIGHT_PT As Double = 620
 Private Const SEARCH_WIDTH_PX As Long = 320
 Private Const SEARCH_MIN_WIDTH_PX As Long = 220
 Private Const LIST_SCROLLBAR_PTS As Long = 12
@@ -74,13 +74,13 @@ Public Sub ShowManager()
     If Me.Visible Then Exit Sub
 
     If lstShortcuts Is Nothing Then BuildControls
-
-    EnsureMinimumSize
-    mHasShown = True
-
-    Me.StartUpPosition = 1
+    ApplyFixedSize
+    Me.StartUpPosition = 0
+    PositionInExcel
     Me.Show vbModeless
-
+    mHasShown = True
+    ApplyFixedSize
+    PositionInExcel
     EnableResize
     LayoutControls
     LoadItems
@@ -833,18 +833,24 @@ Private Sub EnsureMinimumSize()
     If Not USE_FIXED_SIZE Then Exit Sub
     Dim targetW As Double
     Dim targetH As Double
-    targetW = PixelsToTwipsX(FIXED_WIDTH_PX)
-    targetH = PixelsToTwipsY(FIXED_HEIGHT_PX)
+    targetW = FIXED_WIDTH_PT
+    targetH = FIXED_HEIGHT_PT
+    ConstrainToActiveWindow targetW, targetH
     If Me.Width < targetW Then Me.Width = targetW
     If Me.Height < targetH Then Me.Height = targetH
 End Sub
 
 Private Sub ApplyFixedSize()
     If Not USE_FIXED_SIZE Then Exit Sub
-    If FIXED_WIDTH_PX <= 0 Or FIXED_HEIGHT_PX <= 0 Then Exit Sub
+    If FIXED_WIDTH_PT <= 0 Or FIXED_HEIGHT_PT <= 0 Then Exit Sub
 
-    Me.Width = PixelsToTwipsX(FIXED_WIDTH_PX)
-    Me.Height = PixelsToTwipsY(FIXED_HEIGHT_PX)
+    Dim targetW As Double
+    Dim targetH As Double
+    targetW = FIXED_WIDTH_PT
+    targetH = FIXED_HEIGHT_PT
+    ConstrainToActiveWindow targetW, targetH
+    Me.Width = targetW
+    Me.Height = targetH
 End Sub
 
 Private Function GetInnerWidth() As Double
@@ -870,41 +876,46 @@ Private Function ClampSize(ByVal value As Double, ByVal minValue As Double) As D
 End Function
 
 Private Function TwipsToPoints(ByVal value As Double) As Double
-    TwipsToPoints = value / 20#
+    TwipsToPoints = value
 End Function
 
 Private Function PointsToTwips(ByVal value As Double) As Double
-    PointsToTwips = value * 20#
+    PointsToTwips = value
 End Function
 
 Private Function PixelsToTwipsX(ByVal pixels As Long) As Double
-    Dim pxPerPt As Double
-    On Error Resume Next
-    If Not Application.ActiveWindow Is Nothing Then
-        pxPerPt = Application.ActiveWindow.PointsToScreenPixelsX(1)
-    ElseIf Application.Windows.Count > 0 Then
-        pxPerPt = Application.Windows(1).PointsToScreenPixelsX(1)
-    End If
-    If Err.Number <> 0 Or pxPerPt <= 0 Then
-        Err.Clear
-        pxPerPt = DEFAULT_DPI / 72#
-    End If
-    On Error GoTo 0
-    PixelsToTwipsX = (pixels / pxPerPt) * 20#
+    PixelsToTwipsX = pixels * 72# / DEFAULT_DPI
 End Function
 
 Private Function PixelsToTwipsY(ByVal pixels As Long) As Double
-    Dim pxPerPt As Double
+    PixelsToTwipsY = pixels * 72# / DEFAULT_DPI
+End Function
+
+Private Sub ConstrainToActiveWindow(ByRef widthTwips As Double, ByRef heightTwips As Double)
     On Error Resume Next
+    Dim winW As Double
+    Dim winH As Double
     If Not Application.ActiveWindow Is Nothing Then
-        pxPerPt = Application.ActiveWindow.PointsToScreenPixelsY(1)
-    ElseIf Application.Windows.Count > 0 Then
-        pxPerPt = Application.Windows(1).PointsToScreenPixelsY(1)
-    End If
-    If Err.Number <> 0 Or pxPerPt <= 0 Then
-        Err.Clear
-        pxPerPt = DEFAULT_DPI / 72#
+        winW = Application.ActiveWindow.Width
+        winH = Application.ActiveWindow.Height
+        If winW > 0 Then
+            If widthTwips > winW - 30 Then widthTwips = winW - 30
+        End If
+        If winH > 0 Then
+            If heightTwips > winH - 40 Then heightTwips = winH - 40
+        End If
     End If
     On Error GoTo 0
-    PixelsToTwipsY = (pixels / pxPerPt) * 20#
-End Function
+End Sub
+
+Private Sub PositionInExcel()
+    On Error Resume Next
+    Dim leftPos As Double
+    Dim topPos As Double
+    leftPos = Application.Left + (Application.Width - Me.Width) / 2
+    topPos = Application.Top + (Application.Height - Me.Height) / 2
+    If leftPos < Application.Left + 4 Then leftPos = Application.Left + 4
+    If topPos < Application.Top + 4 Then topPos = Application.Top + 4
+    Me.Move leftPos, topPos
+    On Error GoTo 0
+End Sub

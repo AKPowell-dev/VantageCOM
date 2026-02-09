@@ -203,11 +203,11 @@ End Function
 Private Function ShortcutManager_KeyExists(ByVal items As Collection, ByVal keyText As String) As Boolean
     Dim item As cls_ShortcutItem
     For Each item In items
-        If StrComp(item.CurrentKey, keyText, vbTextCompare) = 0 Then
+        If StrComp(item.CurrentKey, keyText, vbBinaryCompare) = 0 Then
             ShortcutManager_KeyExists = True
             Exit Function
         End If
-        If StrComp(item.DefaultKey, keyText, vbTextCompare) = 0 Then
+        If StrComp(item.DefaultKey, keyText, vbBinaryCompare) = 0 Then
             ShortcutManager_KeyExists = True
             Exit Function
         End If
@@ -217,7 +217,7 @@ End Function
 Private Function ShortcutManager_ItemExists(ByVal items As Collection, ByVal actionText As String) As Boolean
     Dim item As cls_ShortcutItem
     For Each item In items
-        If StrComp(item.Action, actionText, vbTextCompare) = 0 Then
+        If StrComp(item.Action, actionText, vbBinaryCompare) = 0 Then
             ShortcutManager_ItemExists = True
             Exit Function
         End If
@@ -257,7 +257,7 @@ Public Sub ShortcutManager_ApplyChange(ByVal item As cls_ShortcutItem, ByVal new
     End If
 
     If Len(oldKey) > 0 Then
-        If StrComp(oldKey, newKey, vbTextCompare) <> 0 Then
+        If StrComp(oldKey, newKey, vbBinaryCompare) <> 0 Then
             gVim.KeyMap.Map "nunmap " & oldKey
         End If
     End If
@@ -329,8 +329,8 @@ End Sub
 Public Function ShortcutManager_FindByKey(ByVal items As Collection, ByVal keyText As String, Optional ByVal ignoreAction As String = "") As cls_ShortcutItem
     Dim item As cls_ShortcutItem
     For Each item In items
-        If StrComp(item.CurrentKey, keyText, vbTextCompare) = 0 Then
-            If Len(ignoreAction) = 0 Or StrComp(item.Action, ignoreAction, vbTextCompare) <> 0 Then
+        If StrComp(item.CurrentKey, keyText, vbBinaryCompare) = 0 Then
+            If Len(ignoreAction) = 0 Or StrComp(item.Action, ignoreAction, vbBinaryCompare) <> 0 Then
                 Set ShortcutManager_FindByKey = item
                 Exit Function
             End If
@@ -523,7 +523,7 @@ ContinueLine:
 
     Dim item As cls_ShortcutItem
     For Each item In items
-        If StrComp(item.CurrentKey, item.DefaultKey, vbTextCompare) <> 0 Then
+        If StrComp(item.CurrentKey, item.DefaultKey, vbBinaryCompare) <> 0 Then
             cleaned.Add "nunmap " & item.DefaultKey
             If Len(Trim$(item.CurrentKey)) > 0 Then
                 cleaned.Add "nmap " & item.CurrentKey & " " & item.Action

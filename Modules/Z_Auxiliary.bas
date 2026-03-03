@@ -910,6 +910,81 @@ Sub CycleBorderTop(): CycleBorder "k": End Sub
 
 Sub CycleBorderRight(): CycleBorder "l": End Sub
 
+Sub CycleSpecialBorder(side As String)
+    Dim uiGuard As ExcelUiGuard
+    Set uiGuard = SuppressExcelUi(True)
+    Dim borderStyles As Variant
+    Static lastIndex As Long
+    Static lastAddress As String
+    Static lastSelectionStamp As Long
+    Static lastSide As String
+    Static lastActiveKey As String
+    Dim rng As Range
+    Dim b As border
+    Dim currentAddress As String
+    Dim sideKey As String
+    Dim currentActiveKey As String
+    Dim wsName As String
+    Dim wbName As String
+
+    If TypeName(Selection) <> "Range" Then Exit Sub
+    Set rng = Selection
+    currentAddress = rng.Address
+
+    If Not ActiveCell Is Nothing Then
+        On Error Resume Next
+        wsName = ActiveCell.Worksheet.Name
+        wbName = ActiveCell.Worksheet.Parent.Name
+        On Error GoTo 0
+        currentActiveKey = wbName & "|" & wsName & "|" & ActiveCell.Address
+    Else
+        currentActiveKey = ""
+    End If
+
+    sideKey = LCase$(side)
+    If currentAddress <> lastAddress _
+        Or gSelectionStamp <> lastSelectionStamp _
+        Or sideKey <> lastSide _
+        Or currentActiveKey <> lastActiveKey Then
+        lastIndex = 0
+    End If
+
+    lastAddress = currentAddress
+    lastSelectionStamp = gSelectionStamp
+    lastActiveKey = currentActiveKey
+
+    ' First: dotted border, second: double border
+    borderStyles = Array(Array(xlDot, xlThin), Array(xlDouble, xlThick))
+
+    Select Case sideKey
+        Case "h": Set b = rng.Borders(xlEdgeLeft)
+        Case "j": Set b = rng.Borders(xlEdgeBottom)
+        Case "k": Set b = rng.Borders(xlEdgeTop)
+        Case "l": Set b = rng.Borders(xlEdgeRight)
+        Case Else: Exit Sub
+    End Select
+
+    lastSide = sideKey
+    b.LineStyle = borderStyles(lastIndex)(0)
+    b.Weight = borderStyles(lastIndex)(1)
+
+    lastIndex = lastIndex + 1
+    If lastIndex > UBound(borderStyles) Then lastIndex = 0
+
+    Set uiGuard = Nothing
+    On Error Resume Next
+    SafeSelectRange rng
+    On Error GoTo 0
+End Sub
+
+Sub CycleSpecialBorderLeft(): CycleSpecialBorder "h": End Sub
+
+Sub CycleSpecialBorderBottom(): CycleSpecialBorder "j": End Sub
+
+Sub CycleSpecialBorderTop(): CycleSpecialBorder "k": End Sub
+
+Sub CycleSpecialBorderRight(): CycleSpecialBorder "l": End Sub
+
 Sub InsertHyperlinkDialog()
     Dim uiGuard As ExcelUiGuard
     Set uiGuard = SuppressExcelUi(True)

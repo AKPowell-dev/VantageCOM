@@ -26,10 +26,10 @@ Sub DefaultConfig()
         .Map "nmap gc SelectNearestChart"
 
         ' === Borders ===
-        .Map "nmap bsh CycleBorderLeft"
-        .Map "nmap bsj CycleBorderBottom"
-        .Map "nmap bsk CycleBorderTop"
-        .Map "nmap bsl CycleBorderRight"
+        .Map "nmap bsh CycleSpecialBorderLeft"
+        .Map "nmap bsj CycleSpecialBorderBottom"
+        .Map "nmap bsk CycleSpecialBorderTop"
+        .Map "nmap bsl CycleSpecialBorderRight"
         .Map "nmap bb ToggleBorderAll 1 2"
         .Map "nmap ba ToggleBorderAround 1 2"
         .Map "nmap bh ToggleBorderLeft 1 2"

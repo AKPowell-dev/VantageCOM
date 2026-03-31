@@ -30,6 +30,15 @@ Function LazyLoad(ByVal key As String) As Boolean
     Dim cmd As String
     cmd = gVim.KeyMap.Get_(key)
 
+    If IsNativeAltPassthrough(key) Then
+        Application.OnKey key
+
+        Application.SendKeys key, True
+        gVim.KeyMap.BindSingleKey key
+        Call RestoreNumLockState(numLockWasOn)
+        Exit Function
+    End If
+
     ' Clear mapping if command is empty string
     If cmd = "" Then
         Application.OnKey key
@@ -129,5 +138,27 @@ Private Sub RestoreNumLockState(ByVal shouldBeOn As Boolean)
     End If
     On Error GoTo 0
 End Sub
+
+Private Function IsNativeAltPassthrough(ByVal key As String) As Boolean
+    If Not IsAltCurrentlyDown() Then Exit Function
+
+    If Len(key) = 1 Then
+        IsNativeAltPassthrough = True
+        Exit Function
+    End If
+
+    If Left$(key, 1) = "+" Then
+        key = Mid$(key, 2)
+    End If
+
+    If Left$(key, 1) = "{" And Right$(key, 1) = "}" Then
+        IsNativeAltPassthrough = (Len(Mid$(key, 2, Len(key) - 2)) = 1)
+    End If
+End Function
+
+Private Function IsAltCurrentlyDown() As Boolean
+    IsAltCurrentlyDown = ((GetAsyncKeyState(AltLeft_) And &H8000) <> 0) _
+                         Or ((GetAsyncKeyState(AltRight_) And &H8000) <> 0)
+End Function
 
 

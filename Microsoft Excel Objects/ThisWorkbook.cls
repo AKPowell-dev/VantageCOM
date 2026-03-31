@@ -1,6 +1,8 @@
 Option Explicit
 Public WithEvents App As Application
 
+Private mAutoColorBusy As Boolean
+
 Public Sub EnsureAppHook()
     On Error Resume Next
     If App Is Nothing Then
@@ -43,6 +45,7 @@ Private Sub App_SheetChange(ByVal Sh As Object, ByVal target As Range)
     If gVim Is Nothing Then Exit Sub
     If Not gVim.Enabled Then Exit Sub
     If gMacroSafeMode Then Exit Sub
+    If mAutoColorBusy Then Exit Sub
     If Not IsActiveWorkbookSheet(target.Worksheet) Then Exit Sub
     If ShouldSkipAutoColor(target) Then Exit Sub
 
@@ -59,8 +62,10 @@ Private Sub App_SheetChange(ByVal Sh As Object, ByVal target As Range)
     Set engine = NetAddin()
     If engine Is Nothing Then Exit Sub
 
+    mAutoColorBusy = True
     engine.AutoColorRange target, 10
 Done:
+    mAutoColorBusy = False
 End Sub
 
 Private Sub App_WindowActivate(ByVal Wb As Workbook, ByVal Wn As Window)

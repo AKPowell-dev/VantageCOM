@@ -18,8 +18,8 @@ Option Explicit
 Private Const KEY_LIST1 As String = "wbertyuiop"    ' Theme color selection key (section 1)
 Private Const KEY_LIST2 As String = "asdfghjkl;"    ' Default color selection key (section 2)
 Private Const KEY_LIST3 As String = "zxcvm"        ' Custom color selection key (section 3)
-Private Const KEY_LIST4 As String = "12345678"        ' Expanded custom block keys (section 4)
-Private Const KEY_LIST4_COUNT As Long = 8           ' Number of keys/columns in the new block
+Private Const KEY_LIST4 As String = "0123456789"      ' Expanded numeric block keys (section 4)
+Private Const KEY_LIST4_COUNT As Long = 10            ' Number of keys/columns in the numeric block
 Private Const KEY_DETAIL As String = "1234567890"   ' Detail keys (10 entries)
 Private Const KEY_NULL As String = "n"              ' Auto/Null selection key
 Private Const BORDER_COLOR As Long = vbBlack        ' Color box border color
@@ -148,27 +148,59 @@ Private Sub UserForm_Initialize()
 
     ' --- new section: customize these arrays freely ---------------------------------------
     Dim customBlockTopColors As Variant
-    Dim customBlockDetailColors As Variant
+    Dim customBlockDetailBaseColors As Variant
+    Dim customBlockTealDetailColors As Variant
+    Dim customBlockOrangeDetailColors As Variant
+    Dim customBlockLuminance As Long
 
     customBlockTopColors = Array( _
         RGB(0, 32, 96), _
-        RGB(21, 96, 130), _
-        RGB(78, 167, 46), _
-        RGB(210, 250, 212), _
-        RGB(153, 70, 60), _
+        RGB(235, 243, 248), _
+        RGB(84, 123, 155), _
+        RGB(46, 110, 106), _
+        RGB(132, 168, 146), _
+        RGB(212, 168, 92), _
+        RGB(230, 174, 131), _
+        RGB(184, 128, 110), _
         RGB(192, 0, 0), _
-        RGB(68, 84, 106), _
-        RGB(222, 175, 99))
+        RGB(68, 84, 106))
 
-    customBlockDetailColors = Array( _
-        Array(RGB(223, 241, 255), RGB(176, 222, 255), RGB(128, 201, 255), RGB(79, 180, 255), RGB(32, 160, 255), RGB(0, 137, 238), RGB(0, 99, 172), RGB(0, 82, 142), RGB(0, 66, 115), RGB(0, 49, 85)), _
-        Array(RGB(225, 243, 251), RGB(179, 221, 242), RGB(133, 204, 235), RGB(85, 185, 227), RGB(39, 166, 220), RGB(29, 132, 175), RGB(19, 86, 115), RGB(16, 72, 97), RGB(13, 57, 77), RGB(10, 43, 56)), _
-        Array(RGB(236, 249, 232), RGB(208, 239, 197), RGB(181, 230, 162), RGB(152, 220, 126), RGB(124, 205, 91), RGB(97, 200, 57), RGB(71, 150, 41), RGB(60, 125, 34), RGB(48, 100, 28), RGB(35, 75, 20)), _
-        Array(RGB(210, 250, 212), RGB(188, 229, 192), RGB(166, 208, 171), RGB(145, 186, 151), RGB(123, 165, 130), RGB(101, 144, 110), RGB(79, 123, 89), RGB(58, 101, 69), RGB(36, 80, 48), RGB(14, 59, 28)), _
-        Array(RGB(247, 232, 234), RGB(234, 205, 202), RGB(221, 175, 170), RGB(209, 145, 137), RGB(197, 115, 105), RGB(184, 84, 73), RGB(137, 63, 54), RGB(115, 52, 45), RGB(91, 41, 36), RGB(69, 31, 27)), _
-        Array(RGB(247, 231, 231), RGB(239, 207, 207), RGB(227, 169, 169), RGB(214, 131, 131), RGB(200, 94, 94), RGB(178, 61, 61), RGB(137, 47, 47), RGB(99, 33, 33), RGB(63, 21, 21), RGB(38, 12, 12)), _
-        Array(RGB(236, 241, 242), RGB(205, 213, 222), RGB(173, 186, 203), RGB(142, 159, 183), RGB(112, 133, 163), RGB(87, 110, 136), RGB(61, 84, 95), RGB(51, 63, 79), RGB(40, 51, 64), RGB(30, 37, 47)), _
-        Array(RGB(252, 248, 241), RGB(247, 236, 217), RGB(242, 224, 193), RGB(237, 211, 169), RGB(232, 200, 147), RGB(226, 187, 122), RGB(216, 162, 71), RGB(198, 139, 43), RGB(158, 112, 33), RGB(118, 83, 24)))
+    ' Softer companion tones for the numeric detail grids.
+    customBlockDetailBaseColors = Array( _
+        RGB(40, 90, 158), _
+        RGB(230, 238, 244), _
+        RGB(101, 132, 155), _
+        RGB(72, 122, 118), _
+        RGB(143, 174, 156), _
+        RGB(205, 174, 116), _
+        RGB(239, 208, 184), _
+        RGB(178, 136, 124), _
+        RGB(176, 58, 58), _
+        RGB(92, 108, 128))
+
+    customBlockTealDetailColors = Array( _
+        RGB(231, 245, 244), _
+        RGB(193, 230, 226), _
+        RGB(155, 213, 208), _
+        RGB(117, 198, 191), _
+        RGB(80, 182, 174), _
+        RGB(62, 147, 140), _
+        RGB(40, 98, 94), _
+        RGB(34, 81, 78), _
+        RGB(27, 65, 62), _
+        RGB(20, 48, 46))
+
+    customBlockOrangeDetailColors = Array( _
+        RGB(251, 233, 220), _
+        RGB(248, 203, 173), _
+        RGB(242, 186, 145), _
+        RGB(236, 170, 116), _
+        RGB(229, 149, 88), _
+        RGB(205, 125, 67), _
+        RGB(173, 103, 54), _
+        RGB(141, 84, 45), _
+        RGB(113, 69, 38), _
+        RGB(102, 66, 38))
     ' --------------------------------------------------------------------------------------
 
     Dim lncBlack As Variant
@@ -185,6 +217,15 @@ Private Sub UserForm_Initialize()
 
     Dim lncWhite As Variant
     lncWhite = Array(0, -5, -15, -25, -35, -45, -55, -65, -75, -85, -95)
+
+    Dim lncComfortDark As Variant
+    lncComfortDark = Array(0, 100, 88, 74, 58, 42, 26, 10, -6, -20, -34)
+
+    Dim lncComfortDefault As Variant
+    lncComfortDefault = Array(0, 88, 72, 56, 38, 22, 6, -10, -26, -42, -56)
+
+    Dim lncComfortLight As Variant
+    lncComfortLight = Array(0, -8, -18, -28, -38, -48, -58, -68, -78, -88, -96)
 
     ' Theme colours (unchanged)
     For i = 0 To 9
@@ -245,7 +286,7 @@ Private Sub UserForm_Initialize()
         PutColor i, IDX_LIST3, Color, BORDER_COLOR
     Next i
 
-    ' Expanded custom block (five new columns)
+    ' Expanded numeric block (0-9)
     For i = 0 To KEY_LIST4_COUNT - 1
         Set Color = New cls_FontColor
         Color.Setup colorCode:=customBlockTopColors(i)
@@ -260,7 +301,23 @@ Private Sub UserForm_Initialize()
 
         For j = 1 To Len(KEY_DETAIL)
             Set Color = New cls_FontColor
-            Color.Setup colorCode:=customBlockDetailColors(i)(j - 1)
+            If i = 3 Then
+                Color.Setup colorCode:=customBlockTealDetailColors(j - 1)
+            ElseIf i = 6 Then
+                Color.Setup colorCode:=customBlockOrangeDetailColors(j - 1)
+            Else
+                Color.Setup colorCode:=customBlockDetailBaseColors(i)
+                customBlockLuminance = Color.luminance
+
+                Select Case customBlockLuminance
+                    Case 51 To 203:  Color.AddLuminance = lncComfortDefault(j)
+                    Case 1 To 50:    Color.AddLuminance = lncComfortDark(j)
+                    Case 204 To 254: Color.AddLuminance = lncComfortLight(j)
+                    Case 0:          Color.AddLuminance = lncComfortDark(j)
+                    Case 255:        Color.AddLuminance = lncComfortLight(j)
+                End Select
+            End If
+
             PutColor CUSTOM_BLOCK_START_COL + i, IDX_DETAIL_TOP + (j - 1) * 2, Color
         Next j
     Next i

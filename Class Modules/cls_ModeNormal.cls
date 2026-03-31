@@ -153,20 +153,7 @@ Private Sub AppForLock_WorkbookDeactivate(ByVal Wb As Workbook)
 End Sub
 
 Private Sub App_SheetSelectionChange(ByVal Sh As Object, ByVal target As Range)
-    On Error GoTo Catch
-
-    If gSuppressSelectionEvents Then Exit Sub
-    If gVim Is Nothing Then Exit Sub
-    If Not gVim.Enabled Then Exit Sub
-    If Not target Is Nothing Then
-        If target.CountLarge > 5000 Then Exit Sub
-    End If
-
-    gSelectionStamp = gSelectionStamp + 1
-    Exit Sub
-
-Catch:
-    Call ErrorHandler("ModeNormal.App_SheetSelectionChange")
+    ' Selection-stamp tracking is handled centrally in ThisWorkbook.App_SheetSelectionChange.
 End Sub
 
 Private Sub Class_Initialize()

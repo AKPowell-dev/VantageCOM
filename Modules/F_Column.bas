@@ -346,11 +346,15 @@ Function AdjustColumnsWidth(Optional ByVal g As String) As Boolean
     Call RepeatRegister("AdjustColumnsWidth")
     Call StopVisualMode
 
+    Dim target As Range
+    Set target = Selection
+
     If gVim.Count1 > 1 Then
-        Selection.Resize(Selection.Rows.Count, gVim.Count1).Select
+        Set target = Selection.Resize(Selection.Rows.Count, gVim.Count1)
+        target.Select
     End If
 
-    Call KeyStroke(Alt_, H_, O_, I_)
+    target.EntireColumn.AutoFit
     Exit Function
 
 Catch:
@@ -362,11 +366,15 @@ Function SetColumnsWidth(Optional ByVal g As String) As Boolean
 
     Call StopVisualMode
 
+    Dim target As Range
+    Set target = Selection
+
     If gVim.Count1 > 1 Then
-        Selection.Resize(Selection.Rows.Count, gVim.Count1).Select
+        Set target = Selection.Resize(Selection.Rows.Count, gVim.Count1)
+        target.Select
     End If
 
-    Call KeyStroke(Alt_, H_, O_, W_)
+    Application.Dialogs(xlDialogColumnWidth).Show
     Exit Function
 
 Catch:

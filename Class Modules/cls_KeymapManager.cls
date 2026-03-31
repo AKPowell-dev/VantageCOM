@@ -1554,46 +1554,9 @@ Public Sub BindAll()
 
     Dim key As Variant
     For Each key In cOnKeyMap.Keys()
-        Dim aliasKey As String
-        aliasKey = GetOnKeyAlias(CStr(key))
-
-        If IsNumberRowKey(CStr(key)) Then
-            Application.OnKey key
-            If aliasKey <> "" Then
-                Application.OnKey aliasKey
-            End If
-            GoTo ContinueKey
-        End If
-
-        If mSuppressPlainKeys And IsPlainKey(CStr(key)) Then
-            Application.OnKey key
-            If aliasKey <> "" Then
-                Application.OnKey aliasKey
-            End If
-        ElseIf Parent.Mode.CheckBits(cOnKeyMap(key), currentModeBit) Then
-            ' Create the lazy load procedure for the key
-            Dim lazyLoadProcedure As String
-            If key = "{226}" Then
-                lazyLoadProcedure = "{\}"
-            Else
-                lazyLoadProcedure = Replace(key, "{'}", "{''}")
-                lazyLoadProcedure = Replace(lazyLoadProcedure, "{""}", "{""""}")
-            End If
-
-            lazyLoadProcedure = "'LazyLoad """ & lazyLoadProcedure & """'"
-
-            Application.OnKey key, lazyLoadProcedure
-            If aliasKey <> "" Then
-                Application.OnKey aliasKey, lazyLoadProcedure
-            End If
-        Else
-            Application.OnKey key
-            If aliasKey <> "" Then
-                Application.OnKey aliasKey
-            End If
-        End If
-ContinueKey:
+        Call BindSingleKeyInternal(CStr(key), currentModeBit)
     Next key
+
     ' Ensure native Delete key behavior (avoid Undo-breaking macro binding).
     On Error Resume Next
     Application.OnKey "{DEL}"
@@ -1601,6 +1564,66 @@ ContinueKey:
     On Error GoTo 0
 
 End Sub
+
+Public Sub BindSingleKey(ByVal rawKey As String)
+    Dim currentModeBit As Long
+    currentModeBit = Parent.Mode.ModeBit(Parent.Mode.Current, isFallback:=True)
+    Call BindSingleKeyInternal(rawKey, currentModeBit)
+End Sub
+
+Private Sub BindSingleKeyInternal(ByVal rawKey As String, ByVal currentModeBit As Long)
+    If Len(rawKey) = 0 Then Exit Sub
+    If cOnKeyMap.Count = 0 Then
+        Call InitDummyKey
+    End If
+    If Not cOnKeyMap.Exists(rawKey) Then Exit Sub
+
+    Dim aliasKey As String
+    aliasKey = GetOnKeyAlias(rawKey)
+
+    If IsNumberRowKey(rawKey) Then
+        Application.OnKey rawKey
+        If aliasKey <> "" Then
+            Application.OnKey aliasKey
+        End If
+        Exit Sub
+    End If
+
+    If mSuppressPlainKeys And IsPlainKey(rawKey) Then
+        Application.OnKey rawKey
+        If aliasKey <> "" Then
+            Application.OnKey aliasKey
+        End If
+        Exit Sub
+    End If
+
+    If Parent.Mode.CheckBits(cOnKeyMap(rawKey), currentModeBit) Then
+        Dim lazyLoadProcedure As String
+        lazyLoadProcedure = BuildLazyLoadProcedure(rawKey)
+
+        Application.OnKey rawKey, lazyLoadProcedure
+        If aliasKey <> "" Then
+            Application.OnKey aliasKey, lazyLoadProcedure
+        End If
+    Else
+        Application.OnKey rawKey
+        If aliasKey <> "" Then
+            Application.OnKey aliasKey
+        End If
+    End If
+End Sub
+
+Private Function BuildLazyLoadProcedure(ByVal rawKey As String) As String
+    Dim lazyLoadKey As String
+    If rawKey = "{226}" Then
+        lazyLoadKey = "{\}"
+    Else
+        lazyLoadKey = Replace(rawKey, "{'}", "{''}")
+        lazyLoadKey = Replace(lazyLoadKey, "{""}", "{""""}")
+    End If
+
+    BuildLazyLoadProcedure = "'LazyLoad """ & lazyLoadKey & """'"
+End Function
 
 '/*
 ' * Exports key mappings for info display.

@@ -2821,7 +2821,7 @@ namespace VantagePackageHolder
 
             if (targetRange != null)
             {
-                const string format = "$#,##0_);($#,##0);$--_)";
+                const string format = "$#,##0_);($#,##0);--_)";
                 try
                 {
                     targetRange.NumberFormat = format;

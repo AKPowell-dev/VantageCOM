@@ -13,7 +13,7 @@ Sub DefaultConfig()
         .Map "nmap xp CopyPasteAsPictureToPPT"
 
         ' === Charts ===
-        .Map "nmap fg FormatChart_FG"
+        .Map "nmap fg SetFontGaramond"
         .Map "nmap gd MDL_SelectDataLabels"
         .Map "nmap gh MDL_Left"
         .Map "nmap gl MDL_Right"
@@ -110,7 +110,7 @@ Sub DefaultConfig()
         .Map "nmap bc ChangeShapeBorderColor"
 
         ' === Fonts & Format ===
-        .Map "nmap fG SetFontGaramond"
+        .Map "nmap fG FormatChart_FG"
         .Map "nmap fr SmartFormatRight"
         .Map "nmap fx OutlineSelectionHighlight"
         .Map "nmap <C-S-z> CycleFontColor"

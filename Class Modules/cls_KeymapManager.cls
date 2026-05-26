@@ -1554,46 +1554,9 @@ Public Sub BindAll()
 
     Dim key As Variant
     For Each key In cOnKeyMap.Keys()
-        Dim aliasKey As String
-        aliasKey = GetOnKeyAlias(CStr(key))
-
-        If IsNumberRowKey(CStr(key)) Then
-            Application.OnKey key
-            If aliasKey <> "" Then
-                Application.OnKey aliasKey
-            End If
-            GoTo ContinueKey
-        End If
-
-        If mSuppressPlainKeys And IsPlainKey(CStr(key)) Then
-            Application.OnKey key
-            If aliasKey <> "" Then
-                Application.OnKey aliasKey
-            End If
-        ElseIf Parent.Mode.CheckBits(cOnKeyMap(key), currentModeBit) Then
-            ' Create the lazy load procedure for the key
-            Dim lazyLoadProcedure As String
-            If key = "{226}" Then
-                lazyLoadProcedure = "{\}"
-            Else
-                lazyLoadProcedure = Replace(key, "{'}", "{''}")
-                lazyLoadProcedure = Replace(lazyLoadProcedure, "{""}", "{""""}")
-            End If
-
-            lazyLoadProcedure = "'LazyLoad """ & lazyLoadProcedure & """'"
-
-            Application.OnKey key, lazyLoadProcedure
-            If aliasKey <> "" Then
-                Application.OnKey aliasKey, lazyLoadProcedure
-            End If
-        Else
-            Application.OnKey key
-            If aliasKey <> "" Then
-                Application.OnKey aliasKey
-            End If
-        End If
-ContinueKey:
+        Call BindSingleKeyInternal(CStr(key), currentModeBit)
     Next key
+
     ' Ensure native Delete key behavior (avoid Undo-breaking macro binding).
     On Error Resume Next
     Application.OnKey "{DEL}"
@@ -1601,6 +1564,66 @@ ContinueKey:
     On Error GoTo 0
 
 End Sub
+
+Public Sub BindSingleKey(ByVal rawKey As String)
+    Dim currentModeBit As Long
+    currentModeBit = Parent.Mode.ModeBit(Parent.Mode.Current, isFallback:=True)
+    Call BindSingleKeyInternal(rawKey, currentModeBit)
+End Sub
+
+Private Sub BindSingleKeyInternal(ByVal rawKey As String, ByVal currentModeBit As Long)
+    If Len(rawKey) = 0 Then Exit Sub
+    If cOnKeyMap.Count = 0 Then
+        Call InitDummyKey
+    End If
+    If Not cOnKeyMap.Exists(rawKey) Then Exit Sub
+
+    Dim aliasKey As String
+    aliasKey = GetOnKeyAlias(rawKey)
+
+    If IsNumberRowKey(rawKey) Then
+        Application.OnKey rawKey
+        If aliasKey <> "" Then
+            Application.OnKey aliasKey
+        End If
+        Exit Sub
+    End If
+
+    If mSuppressPlainKeys And IsPlainKey(rawKey) Then
+        Application.OnKey rawKey
+        If aliasKey <> "" Then
+            Application.OnKey aliasKey
+        End If
+        Exit Sub
+    End If
+
+    If Parent.Mode.CheckBits(cOnKeyMap(rawKey), currentModeBit) Then
+        Dim lazyLoadProcedure As String
+        lazyLoadProcedure = BuildLazyLoadProcedure(rawKey)
+
+        Application.OnKey rawKey, lazyLoadProcedure
+        If aliasKey <> "" Then
+            Application.OnKey aliasKey, lazyLoadProcedure
+        End If
+    Else
+        Application.OnKey rawKey
+        If aliasKey <> "" Then
+            Application.OnKey aliasKey
+        End If
+    End If
+End Sub
+
+Private Function BuildLazyLoadProcedure(ByVal rawKey As String) As String
+    Dim lazyLoadKey As String
+    If rawKey = "{226}" Then
+        lazyLoadKey = "{\}"
+    Else
+        lazyLoadKey = Replace(rawKey, "{'}", "{''}")
+        lazyLoadKey = Replace(lazyLoadKey, "{""}", "{""""}")
+    End If
+
+    BuildLazyLoadProcedure = "'LazyLoad """ & lazyLoadKey & """'"
+End Function
 
 '/*
 ' * Exports key mappings for info display.
@@ -1678,6 +1701,71 @@ ContinueKey:
 
     If count > 0 Then
         ExportMappings = results
+    End If
+End Function
+
+Public Function ExportCommandMappings() As Variant
+    Call MaterializeTempMappings
+
+    Dim results() As Variant
+    Dim count As Long
+
+    If cKeyMap Is Nothing Then
+        Exit Function
+    End If
+
+    Dim key As Variant
+    For Each key In cKeyMap.Keys()
+        Dim rawKey As String
+        rawKey = CStr(key)
+
+        If InStr(rawKey, KEY_SUMMARY) > 0 Or InStr(rawKey, KEY_TEMP) > 0 Then
+            GoTo ContinueKey
+        End If
+
+        Dim sepPos As Long
+        sepPos = InStr(rawKey, KEY_SEPARATOR)
+        If sepPos <= 0 Then
+            GoTo ContinueKey
+        End If
+
+        Dim mode_ As String
+        Dim lhs As String
+        mode_ = Left$(rawKey, sepPos - 1)
+        lhs = Mid$(rawKey, sepPos + Len(KEY_SEPARATOR))
+
+        If mode_ <> KEY_CMD Then
+            GoTo ContinueKey
+        End If
+
+        Dim rawValue As String
+        rawValue = CStr(cKeyMap(key))
+        If Len(rawValue) = 0 Then
+            GoTo ContinueKey
+        End If
+
+        Dim actionFilter As String
+        actionFilter = StripOuterQuotes(rawValue)
+        If actionFilter = "" Then
+            GoTo ContinueKey
+        End If
+
+        Dim actionLower As String
+        actionLower = LCase$(actionFilter)
+        If actionFilter = DUMMY_PROCEDURE Then GoTo ContinueKey
+        If Left$(actionLower, Len(SHOW_CMD_PROCEDURE)) = LCase$(SHOW_CMD_PROCEDURE) Then GoTo ContinueKey
+        If Left$(actionLower, 9) = "keystroke" Then GoTo ContinueKey
+
+        count = count + 1
+        ReDim Preserve results(1 To count, 1 To 2)
+        results(count, 1) = ":" & lhs
+        results(count, 2) = Trim$(rawValue)
+
+ContinueKey:
+    Next key
+
+    If count > 0 Then
+        ExportCommandMappings = results
     End If
 End Function
 

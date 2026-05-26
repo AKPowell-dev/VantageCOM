@@ -566,7 +566,10 @@ namespace VantagePackageHolder
                 return;
             }
 
-            double tolerancePts = Math.Max(TolerancePoints, 0.1 * 72.0);
+            // ~0.014 inch — tight enough that PPT measurement noise won't cause false convergence
+            const double tightTolerancePts = 1.0;
+
+            // Baseline: 3-sample median for a reliable initial scale estimate
             double initialMeasured = MeasureCopyPictureWidthPts(selection, usePowerPoint: true, sampleSizeOverride: 3);
             if (initialMeasured <= 0)
             {
@@ -601,39 +604,66 @@ namespace VantagePackageHolder
 
             ApplyColumnWidthFactor(ws, columns, factor);
 
-            double measured = MeasureCopyPictureWidthPts(selection, usePowerPoint: true, sampleSizeOverride: 1);
-            if (measured > 0 && Math.Abs(measured - targetWidthPts) <= tolerancePts)
+            // Iterative correction: re-read current column widths each pass so ratio and nudge
+            // calculations are based on actual state, not stale BaseWidth snapshots.
+            for (int pass = 0; pass < 5; pass++)
             {
-                return;
-            }
-
-            if (measured > 0)
-            {
-                double ratio = targetWidthPts / measured;
-                if (ratio > 0.0)
+                double measured = MeasureCopyPictureWidthPts(selection, usePowerPoint: true, sampleSizeOverride: 1);
+                if (measured <= 0)
                 {
-                    factor *= ratio;
-                    ApplyColumnWidthFactor(ws, columns, factor);
+                    break;
                 }
 
-                measured = MeasureCopyPictureWidthPts(selection, usePowerPoint: true, sampleSizeOverride: 1);
-            }
+                double error = measured - targetWidthPts;
+                if (Math.Abs(error) <= tightTolerancePts)
+                {
+                    break;
+                }
 
-            if (measured <= 0)
-            {
-                return;
-            }
+                if (!BuildColumnInfo(selection, MinAdjustColumnWidth, out var currColumns, out double currFixedPts, out double currAdjustablePts))
+                {
+                    break;
+                }
 
-            double currentExcelPts = MeasureSelectionTotalWidthPts(selection);
-            if (currentExcelPts > 0)
-            {
-                scale = measured / currentExcelPts;
-            }
+                double currExcelPts = currFixedPts + currAdjustablePts;
+                if (currExcelPts <= 0)
+                {
+                    break;
+                }
 
-            double deltaExcelPts = (targetWidthPts - measured) / scale;
-            if (Math.Abs(deltaExcelPts) > 0.01)
-            {
-                NudgeColumnsByPoints(ws, columns, deltaExcelPts);
+                double currScale = measured / currExcelPts;
+                if (currScale <= 0)
+                {
+                    break;
+                }
+
+                if (Math.Abs(error) > 5.0)
+                {
+                    // Large error: ratio-correct from current column widths
+                    double currTargetExcelPts = targetWidthPts / currScale;
+                    double currTargetAdjustablePts = currTargetExcelPts - currFixedPts;
+                    if (currTargetAdjustablePts <= 0)
+                    {
+                        break;
+                    }
+
+                    double newFactor = currTargetAdjustablePts / currAdjustablePts;
+                    if (newFactor <= 0)
+                    {
+                        break;
+                    }
+
+                    ApplyColumnWidthFactor(ws, currColumns, newFactor);
+                }
+                else
+                {
+                    // Small error: nudge at sub-step granularity
+                    double deltaExcelPts = (targetWidthPts - measured) / currScale;
+                    if (Math.Abs(deltaExcelPts) > 0.01)
+                    {
+                        NudgeColumnsByPoints(ws, currColumns, deltaExcelPts);
+                    }
+                }
             }
         }
 

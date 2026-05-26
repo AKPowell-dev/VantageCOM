@@ -26,6 +26,13 @@ ADDIN_FRIENDLY_NAME = "Vantage Package Holder Add-in"
 DEFAULT_REPO_ROOT = Path(r"C:\Users\andrep54\Vantage Add-in")
 
 
+def _expand_path(path_str: str) -> Path:
+    """Expand environment variables and user home in a path string."""
+    expanded = os.path.expandvars(path_str)
+    expanded = os.path.expanduser(expanded)
+    return Path(expanded)
+
+
 def get_default_addins_folder() -> Optional[str]:
     """Return the default Microsoft Excel Add-ins folder for the current user."""
     user_profile = os.environ.get("USERPROFILE") or os.path.expanduser("~")
@@ -134,7 +141,7 @@ def collect_vba_sources(repo_dir: Path) -> Dict[str, Sequence[Path]]:
 def resolve_repo_dir(custom_root: Optional[str]) -> Path:
     """Determine which folder contains the workbook sources."""
     if custom_root:
-        candidate = Path(custom_root).expanduser()
+        candidate = _expand_path(custom_root)
         if not candidate.exists():
             raise RuntimeError(f"Specified repo root does not exist: {candidate}")
         return candidate
@@ -152,7 +159,7 @@ def resolve_repo_dir(custom_root: Optional[str]) -> Path:
 def _resolve_csproj_path(repo_dir: Path, csproj_hint: Optional[str]) -> Optional[Path]:
     """Return a resolved csproj path if it exists."""
     if csproj_hint:
-        candidate = Path(csproj_hint)
+        candidate = _expand_path(csproj_hint)
         if not candidate.is_absolute():
             candidate = repo_dir / candidate
         if not candidate.exists():
@@ -829,10 +836,10 @@ def update_xlam(
                 raise RuntimeError("Cannot register COM add-in because no DLL was built.")
             register_com_addin_per_user(com_output, regasm_path)
 
-    target_directory = Path(target_dir).expanduser()
+    target_directory = _expand_path(target_dir)
     target_directory.mkdir(parents=True, exist_ok=True)
 
-    build_directory = Path(build_dir).expanduser() if build_dir else None
+    build_directory = _expand_path(build_dir) if build_dir else None
     built_path = build_xlam(repo_dir, filename, build_directory, excel_visible)
 
     target_path = target_directory / filename

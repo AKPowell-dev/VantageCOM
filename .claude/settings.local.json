@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\andrep54\\\\VantageCOM\\\\VantageCOM\" -Recurse -File)",
+      "Bash(Select-Object FullName)",
+      "PowerShell(head *)",
+      "Bash(dotnet build *)",
+      "PowerShell(Copy-Item *)",
+      "Bash(python update_xlam.py)"
+    ]
+  }
+}

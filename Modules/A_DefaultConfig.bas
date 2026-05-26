@@ -13,7 +13,7 @@ Sub DefaultConfig()
         .Map "nmap xp CopyPasteAsPictureToPPT"
 
         ' === Charts ===
-        .Map "nmap fg FormatChart_FG"
+        .Map "nmap fg SetFontGaramond"
         .Map "nmap gd MDL_SelectDataLabels"
         .Map "nmap gh MDL_Left"
         .Map "nmap gl MDL_Right"
@@ -26,10 +26,10 @@ Sub DefaultConfig()
         .Map "nmap gc SelectNearestChart"
 
         ' === Borders ===
-        .Map "nmap bsh CycleBorderLeft"
-        .Map "nmap bsj CycleBorderBottom"
-        .Map "nmap bsk CycleBorderTop"
-        .Map "nmap bsl CycleBorderRight"
+        .Map "nmap bsh CycleSpecialBorderLeft"
+        .Map "nmap bsj CycleSpecialBorderBottom"
+        .Map "nmap bsk CycleSpecialBorderTop"
+        .Map "nmap bsl CycleSpecialBorderRight"
         .Map "nmap bb ToggleBorderAll 1 2"
         .Map "nmap ba ToggleBorderAround 1 2"
         .Map "nmap bh ToggleBorderLeft 1 2"
@@ -110,7 +110,7 @@ Sub DefaultConfig()
         .Map "nmap bc ChangeShapeBorderColor"
 
         ' === Fonts & Format ===
-        .Map "nmap fG SetFontGaramond"
+        .Map "nmap fG FormatChart_FG"
         .Map "nmap fr SmartFormatRight"
         .Map "nmap fx OutlineSelectionHighlight"
         .Map "nmap <C-S-z> CycleFontColor"
@@ -276,6 +276,7 @@ Sub DefaultConfig()
         .Map "nmap <cmd>reload ReloadVim"
         .Map "nmap <cmd>version ShowVersion"
         .Map "nmap <cmd>name NameScrubber"
+        .Map "nmap <cmd>sm ShortcutManager"
         .Map "nmap > IncrementText"
         .Map "nmap <lt> DecrementText"
         .Map "nmap f, ApplyCommaStyle"
@@ -358,7 +359,7 @@ Sub DefaultConfig()
         .Map "nmap gp PasteSpecial"
         .Map "nmap U PasteValue"
         .Map "nmap <C-S-q> PasteExact"
-        .Map "nmap <cmd>cons PasteCondensed"
+        .Map "nmap <cmd>cond PasteCondensed"
         .Map "nmap <cmd>num CmdInsertNumbers"
         .Map "nmap <cmd>econs Econs_Output_PPT_V2"
         .Map "nmap <cmd>bo FormatOverviewGraph"

@@ -346,11 +346,15 @@ Function AdjustRowsHeight(Optional ByVal g As String) As Boolean
     Call RepeatRegister("AdjustRowsHeight")
     Call StopVisualMode
 
+    Dim target As Range
+    Set target = Selection
+
     If gVim.Count1 > 1 Then
-        Selection.Resize(gVim.Count1, Selection.Columns.Count).Select
+        Set target = Selection.Resize(gVim.Count1, Selection.Columns.Count)
+        target.Select
     End If
 
-    Call KeyStroke(Alt_, H_, O_, A_)
+    target.EntireRow.AutoFit
     Exit Function
 
 Catch:
@@ -362,11 +366,15 @@ Function SetRowsHeight(Optional ByVal g As String) As Boolean
 
     Call StopVisualMode
 
+    Dim target As Range
+    Set target = Selection
+
     If gVim.Count1 > 1 Then
-        Selection.Resize(gVim.Count1, Selection.Columns.Count).Select
+        Set target = Selection.Resize(gVim.Count1, Selection.Columns.Count)
+        target.Select
     End If
 
-    Call KeyStroke(Alt_, H_, O_, H_)
+    Application.Dialogs(xlDialogRowHeight).Show
     Exit Function
 
 Catch:

@@ -507,8 +507,23 @@ Catch:
 End Function
 
 Function ToggleWrapText(Optional ByVal g As String) As Boolean
+    On Error GoTo Catch
+
     Call StopVisualMode
-    Call KeyStroke(Alt_, H_, W_)
+    If TypeName(Selection) <> "Range" Then Exit Function
+
+    Dim wrapState As Variant
+    wrapState = Selection.WrapText
+
+    If IsNull(wrapState) Then
+        Selection.WrapText = True
+    Else
+        Selection.WrapText = Not CBool(wrapState)
+    End If
+    Exit Function
+
+Catch:
+    Call ErrorHandler("ToggleWrapText")
 End Function
 
 Function ToggleMergeCells(Optional ByVal g As String) As Boolean

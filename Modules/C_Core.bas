@@ -2,6 +2,8 @@ Attribute VB_Name = "C_Core"
 Option Explicit
 Option Private Module
 
+Private Const DEBUG_CMDLINE As Boolean = False
+
 Public gVim As cls_Vim              ' Core vim instance
 Public gSelectionStamp As Long      ' Incremented on every selection change
 Public gSuppressSelectionEvents As Boolean  ' Skip selection handlers during synthetic moves
@@ -246,6 +248,17 @@ Function EnterCmdlineMode(Optional ByVal g As String) As Boolean
     Dim isExcFlag As Boolean
     Dim i As Long
 
+    Dim cmdKey As String
+    cmdKey = LCase$(cmdAndArg(0))
+
+    If cmdKey = "info" Then
+        Call ShowCommandInfo
+        Exit Function
+    ElseIf cmdKey = "sm" Then
+        Call ShortcutManager
+        Exit Function
+    End If
+
     If Right(cmdAndArg(0), 1) = "!" Then
         prefix = Left(cmdAndArg(0), Len(cmdAndArg(0)) - 1)
         isExcFlag = True
@@ -267,12 +280,14 @@ Function EnterCmdlineMode(Optional ByVal g As String) As Boolean
     Next i
     cmdSuggests = Filter(cmdSuggests, prefix)
 
-    Dim cmdKey As String
     cmdKey = LCase$(cmdAndArg(0))
 
     If UBound(cmdSuggests) < 0 Then
         If cmdKey = "info" Then
             Call ShowCommandInfo
+            Exit Function
+        ElseIf cmdKey = "sm" Then
+            Call ShortcutManager
             Exit Function
         End If
         Call SetStatusBarTemporarily(gVim.Msg.NoCommandAvailable & cmdResult, 3000)
@@ -285,6 +300,9 @@ Function EnterCmdlineMode(Optional ByVal g As String) As Boolean
     If cmd = "" Then
         If cmdKey = "info" Then
             Call ShowCommandInfo
+            Exit Function
+        ElseIf cmdKey = "sm" Then
+            Call ShortcutManager
             Exit Function
         End If
         If UBound(cmdSuggests) = 0 Then

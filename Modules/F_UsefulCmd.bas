@@ -204,17 +204,27 @@ Function ShowMacroDialog(Optional ByVal g As String) As Boolean
 End Function
 
 Function SetPrintArea(Optional ByVal g As String) As Boolean
-    Call StopVisualMode
+    On Error GoTo Catch
 
-    'Send Alt, P, R, S
-    Call KeyStroke(Alt_, P_, R_, S_)
+    Call StopVisualMode
+    If TypeName(Selection) <> "Range" Then Exit Function
+
+    ActiveSheet.PageSetup.PrintArea = Selection.Address(RowAbsolute:=True, ColumnAbsolute:=True)
+    Exit Function
+
+Catch:
+    Call ErrorHandler("SetPrintArea")
 End Function
 
 Function ClearPrintArea(Optional ByVal g As String) As Boolean
-    Call StopVisualMode
+    On Error GoTo Catch
 
-    'Send Alt, P, R, C
-    Call KeyStroke(Alt_, P_, R_, C_)
+    Call StopVisualMode
+    ActiveSheet.PageSetup.PrintArea = vbNullString
+    Exit Function
+
+Catch:
+    Call ErrorHandler("ClearPrintArea")
 End Function
 
 Function Sort(Optional ByVal sortOrder As XlSortOrder) As Boolean

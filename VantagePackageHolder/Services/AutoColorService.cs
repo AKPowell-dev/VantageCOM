@@ -72,23 +72,67 @@ namespace VantagePackageHolder
                 sheetName = string.Empty;
             }
 
-            using (new UiGuard(_app, hideStatusBar: true))
+            dynamic undoRecord = null;
+            bool recordingStarted = false;
+            try
             {
-                foreach (Excel.Range cell in target.Cells)
+                try
                 {
-                    try
+                    undoRecord = ((dynamic)_app).UndoRecord;
+                    undoRecord.StartCustomRecord("AutoColor");
+                    recordingStarted = true;
+                }
+                catch
+                {
+                    // UndoRecord unavailable in this context — proceed without it
+                }
+
+                if (cellCount <= 1)
+                {
+                    foreach (Excel.Range cell in target.Cells)
                     {
-                        ApplyColorToCell(cell, sheetName, workbook);
+                        try
+                        {
+                            ApplyColorToCell(cell, sheetName, workbook);
+                        }
+                        catch
+                        {
+                            // ignore cell errors
+                        }
+                        finally
+                        {
+                            ReleaseCom(cell);
+                        }
                     }
-                    catch
+                    return;
+                }
+
+                using (new UiGuard(_app))
+                {
+                    foreach (Excel.Range cell in target.Cells)
                     {
-                        // ignore cell errors
-                    }
-                    finally
-                    {
-                        ReleaseCom(cell);
+                        try
+                        {
+                            ApplyColorToCell(cell, sheetName, workbook);
+                        }
+                        catch
+                        {
+                            // ignore cell errors
+                        }
+                        finally
+                        {
+                            ReleaseCom(cell);
+                        }
                     }
                 }
+            }
+            finally
+            {
+                if (recordingStarted && undoRecord != null)
+                {
+                    try { undoRecord.EndCustomRecord(); } catch { }
+                }
+                ReleaseCom(undoRecord);
             }
         }
 

@@ -359,7 +359,7 @@ Sub DefaultConfig()
         .Map "nmap gp PasteSpecial"
         .Map "nmap U PasteValue"
         .Map "nmap <C-S-q> PasteExact"
-        .Map "nmap <cmd>cons PasteCondensed"
+        .Map "nmap <cmd>cond PasteCondensed"
         .Map "nmap <cmd>num CmdInsertNumbers"
         .Map "nmap <cmd>econs Econs_Output_PPT_V2"
         .Map "nmap <cmd>bo FormatOverviewGraph"

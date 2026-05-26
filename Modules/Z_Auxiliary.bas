@@ -79,6 +79,10 @@ Function TogglePlainKeyMappings(Optional ByVal g As String) As Boolean
 
     If Not gVim.KeyMap.SuppressPlainKeys Then
         gVim.KeyMap.SuppressPlainKeys = True
+        Application.OnKey "^b"
+        Application.OnKey "^i"
+        Application.OnKey "^z"
+        Application.OnKey "^y"
         statusMessage = "Excel native shortcuts restored."
     Else
         gVim.KeyMap.SuppressPlainKeys = False

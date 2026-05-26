@@ -443,7 +443,6 @@ namespace VantagePackageHolder
                     Excel.Range sourceCell = null;
                     Excel.Range columnSpan = null;
                     Excel.Range targetRange = null;
-                    Excel.Range changedTargets = null;
 
                     try
                     {
@@ -545,53 +544,23 @@ namespace VantagePackageHolder
                             try { sourceValue = sourceCell.Value2; } catch { sourceValue = null; }
                         }
 
-                        for (int row = startRow + 1; row <= lastRow; row++)
+                        try
                         {
-                            Excel.Range cell = null;
-                            try
+                            if (sourceHasFormula && !string.IsNullOrEmpty(sourceFormulaR1C1))
                             {
-                                cell = ws.Cells[row, currentCol] as Excel.Range;
-                                if (cell == null)
-                                {
-                                    continue;
-                                }
-
-                                if (HasCellValue(cell))
-                                {
-                                    continue;
-                                }
-
-                                try
-                                {
-                                    if (sourceHasFormula && !string.IsNullOrEmpty(sourceFormulaR1C1))
-                                    {
-                                        cell.FormulaR1C1 = sourceFormulaR1C1;
-                                    }
-                                    else
-                                    {
-                                        cell.Value2 = sourceValue;
-                                    }
-                                }
-                                catch
-                                {
-                                    // ignore copy issues for individual cells
-                                }
-
-                                changedTargets = MergeIntoUnion(changedTargets, cell);
-                                cell = null;
+                                targetRange.FormulaR1C1 = sourceFormulaR1C1;
                             }
-                            finally
+                            else
                             {
-                                ReleaseIfNeeded(cell);
+                                targetRange.Value2 = sourceValue;
                             }
                         }
-
-                        if (changedTargets == null)
+                        catch
                         {
-                            continue;
+                            // ignore assignment failures
                         }
 
-                        ApplyDownFillFormatting(changedTargets, sourceCell, sourceHasFill, sourceFillColor);
+                        ApplyDownFillFormatting(targetRange, sourceCell, sourceHasFill, sourceFillColor);
 
                         filledUnion = MergeIntoUnion(filledUnion, columnSpan);
                         columnSpan = null;
@@ -601,7 +570,6 @@ namespace VantagePackageHolder
                         ReleaseIfNeeded(sourceCell);
                         ReleaseIfNeeded(columnSpan);
                         ReleaseIfNeeded(targetRange);
-                        ReleaseIfNeeded(changedTargets);
                     }
                 }
 
@@ -3425,12 +3393,33 @@ namespace VantagePackageHolder
                 return false;
             }
 
-            Excel.Range slice = null;
+            Excel.Range startCell = null;
+            Excel.Range jumpCell = null;
             try
             {
-                slice = ws.Range[ws.Cells[startRow, columnIndex], ws.Cells[maxRow, columnIndex]];
-                double count = Convert.ToDouble(_app.WorksheetFunction.CountA(slice));
-                return count > 0;
+                startCell = ws.Cells[startRow, columnIndex] as Excel.Range;
+                if (startCell == null)
+                {
+                    return false;
+                }
+
+                object val = null;
+                try { val = startCell.Value2; } catch { }
+                if (val != null)
+                {
+                    return true;
+                }
+
+                // From an empty cell, End[xlDown] jumps to the next non-empty cell,
+                // or to the last row of the sheet if none exists.
+                jumpCell = startCell.End[Excel.XlDirection.xlDown] as Excel.Range;
+                if (jumpCell == null)
+                {
+                    return false;
+                }
+
+                int jumpRow = jumpCell.Row;
+                return jumpRow > startRow && jumpRow < maxRow;
             }
             catch
             {
@@ -3438,7 +3427,8 @@ namespace VantagePackageHolder
             }
             finally
             {
-                ReleaseIfNeeded(slice);
+                ReleaseIfNeeded(startCell);
+                ReleaseIfNeeded(jumpCell);
             }
         }
 

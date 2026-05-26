@@ -72,43 +72,67 @@ namespace VantagePackageHolder
                 sheetName = string.Empty;
             }
 
-            if (cellCount <= 1)
+            dynamic undoRecord = null;
+            bool recordingStarted = false;
+            try
             {
-                foreach (Excel.Range cell in target.Cells)
+                try
                 {
-                    try
-                    {
-                        ApplyColorToCell(cell, sheetName, workbook);
-                    }
-                    catch
-                    {
-                        // ignore cell errors
-                    }
-                    finally
-                    {
-                        ReleaseCom(cell);
-                    }
+                    undoRecord = ((dynamic)_app).UndoRecord;
+                    undoRecord.StartCustomRecord("AutoColor");
+                    recordingStarted = true;
                 }
-                return;
-            }
+                catch
+                {
+                    // UndoRecord unavailable in this context — proceed without it
+                }
 
-            using (new UiGuard(_app))
-            {
-                foreach (Excel.Range cell in target.Cells)
+                if (cellCount <= 1)
                 {
-                    try
+                    foreach (Excel.Range cell in target.Cells)
                     {
-                        ApplyColorToCell(cell, sheetName, workbook);
+                        try
+                        {
+                            ApplyColorToCell(cell, sheetName, workbook);
+                        }
+                        catch
+                        {
+                            // ignore cell errors
+                        }
+                        finally
+                        {
+                            ReleaseCom(cell);
+                        }
                     }
-                    catch
+                    return;
+                }
+
+                using (new UiGuard(_app))
+                {
+                    foreach (Excel.Range cell in target.Cells)
                     {
-                        // ignore cell errors
-                    }
-                    finally
-                    {
-                        ReleaseCom(cell);
+                        try
+                        {
+                            ApplyColorToCell(cell, sheetName, workbook);
+                        }
+                        catch
+                        {
+                            // ignore cell errors
+                        }
+                        finally
+                        {
+                            ReleaseCom(cell);
+                        }
                     }
                 }
+            }
+            finally
+            {
+                if (recordingStarted && undoRecord != null)
+                {
+                    try { undoRecord.EndCustomRecord(); } catch { }
+                }
+                ReleaseCom(undoRecord);
             }
         }
 

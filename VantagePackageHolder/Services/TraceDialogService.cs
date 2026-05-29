@@ -65,7 +65,7 @@ namespace VantagePackageHolder
             }
             catch
             {
-                form.RefreshFromSelection();
+                return;
             }
 
             if (!form.HasContent)
@@ -73,12 +73,19 @@ namespace VantagePackageHolder
                 return;
             }
 
-            if (!form.Visible)
+            try
             {
-                form.Show();
+                if (!form.Visible)
+                {
+                    form.Show();
+                }
+                form.BringToFront();
+                form.Activate();
             }
-            form.BringToFront();
-            form.Activate();
+            catch
+            {
+                // ignore show/activation failures
+            }
         }
     }
 }

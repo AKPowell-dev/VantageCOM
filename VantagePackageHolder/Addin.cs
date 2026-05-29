@@ -29,18 +29,14 @@ namespace VantagePackageHolder
         private IntPtr _subclassHandle = IntPtr.Zero;
         private IntPtr _originalWndProc = IntPtr.Zero;
         private WndProcDelegate _wndProcDelegate;
-        private static readonly bool EnableHotkeyHook = false;
+        private static readonly bool EnableHotkeyHook = true;
 
-        private const int WM_HOTKEY = 0x0312;
         private const int WM_KEYDOWN = 0x0100;
-        private const int MOD_CONTROL = 0x0002;
         private const int VK_OEM_4 = 0xDB; // [ key on US keyboards
         private const int VK_OEM_6 = 0xDD; // ] key on US keyboards
         private const int VK_SHIFT_KEY = 0x10;
         private const int VK_CONTROL_KEY = 0x11;
         private const int VK_MENU_KEY = 0x12;
-        private const int HOTKEY_TRACE_IN_ID = 0xBEE1;
-        private const int HOTKEY_TRACE_OUT_ID = 0xBEE2;
 
         public void OnConnection(object application, ext_ConnectMode connectMode, object addInInst, ref Array custom)
         {
@@ -80,6 +76,10 @@ namespace VantagePackageHolder
         private void OnWindowActivate(Workbook wb, Window wn)
         {
             try { _engine?.ResetCycleState(); } catch { }
+            if (EnableHotkeyHook)
+            {
+                try { ReinstallHook(wn); } catch { }
+            }
         }
 
         public void OnDisconnection(ext_DisconnectMode removeMode, ref Array custom)
@@ -121,41 +121,38 @@ namespace VantagePackageHolder
         private void InstallHotkey()
         {
             if (_excel == null) return;
-            if (_subclassHandle != IntPtr.Zero) return;
+            try { ReinstallHook(_excel.ActiveWindow); } catch { }
+        }
 
-            _subclassHandle = new IntPtr(_excel.Hwnd);
+        private void ReinstallHook(Window win)
+        {
+            UninstallHotkey();
+            if (win == null) return;
+            IntPtr hwnd;
+            try { hwnd = new IntPtr(win.Hwnd); } catch { return; }
+            if (hwnd == IntPtr.Zero) return;
+
+            _subclassHandle = hwnd;
             _wndProcDelegate = WindowProc;
-            _originalWndProc = SetWindowLongPtr(_subclassHandle, GWLP_WNDPROC, _wndProcDelegate);
-
-            try
+            _originalWndProc = SetWindowLongPtr(hwnd, GWLP_WNDPROC, _wndProcDelegate);
+            if (_originalWndProc == IntPtr.Zero)
             {
-                RegisterHotKey(_subclassHandle, HOTKEY_TRACE_IN_ID, MOD_CONTROL, VK_OEM_4);
-                RegisterHotKey(_subclassHandle, HOTKEY_TRACE_OUT_ID, MOD_CONTROL, VK_OEM_6);
-            }
-            catch
-            {
-                // ignore hotkey registration failures
+                _subclassHandle = IntPtr.Zero;
+                _wndProcDelegate = null;
             }
         }
 
         private void UninstallHotkey()
         {
             if (_subclassHandle == IntPtr.Zero) return;
-
             try
             {
-                UnregisterHotKey(_subclassHandle, HOTKEY_TRACE_IN_ID);
-                UnregisterHotKey(_subclassHandle, HOTKEY_TRACE_OUT_ID);
                 if (_originalWndProc != IntPtr.Zero)
                 {
                     SetWindowLongPtr(_subclassHandle, GWLP_WNDPROC, _originalWndProc);
                 }
             }
-            catch
-            {
-                // ignore
-            }
-
+            catch { }
             _originalWndProc = IntPtr.Zero;
             _subclassHandle = IntPtr.Zero;
             _wndProcDelegate = null;
@@ -163,34 +160,18 @@ namespace VantagePackageHolder
 
         private IntPtr WindowProc(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam)
         {
-            if (msg == WM_HOTKEY && wParam.ToInt32() == HOTKEY_TRACE_IN_ID)
-            {
-                TryShowTracePrecedents();
-                return IntPtr.Zero;
-            }
-
-            if (msg == WM_HOTKEY && wParam.ToInt32() == HOTKEY_TRACE_OUT_ID)
-            {
-                TryShowTraceDependents();
-                return IntPtr.Zero;
-            }
-
             if (msg == WM_KEYDOWN && (wParam.ToInt32() == VK_OEM_4 || wParam.ToInt32() == VK_OEM_6))
             {
                 bool shift = (GetKeyState(VK_SHIFT_KEY) & 0x8000) != 0;
                 bool ctrl = (GetKeyState(VK_CONTROL_KEY) & 0x8000) != 0;
                 bool alt = (GetKeyState(VK_MENU_KEY) & 0x8000) != 0;
 
-                if (ctrl && !shift && !alt)
+                if (ctrl && shift && !alt)
                 {
                     if (wParam.ToInt32() == VK_OEM_4)
-                    {
                         TryShowTracePrecedents();
-                    }
                     else
-                    {
                         TryShowTraceDependents();
-                    }
                     return IntPtr.Zero;
                 }
             }
@@ -234,12 +215,6 @@ namespace VantagePackageHolder
 
         [DllImport("user32.dll")]
         private static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vk);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
         [DllImport("user32.dll")]
         private static extern short GetKeyState(int nVirtKey);

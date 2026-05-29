@@ -19,7 +19,7 @@ Private mNavLastSelectionStamp As Long
 Private mFormulaNavigatorForm As UF_FormulaNavigator
 Private mCtrlBracketPassthrough As Boolean
 Private Const NAV_STATUS_MAX As Long = 220
-Private Const NAV_DEBUG As Boolean = True
+Private Const NAV_DEBUG As Boolean = False
 
 Sub DrawDependencyMap()
     Dim engine As Object
@@ -324,7 +324,7 @@ Private Sub GoToFormulaNavigatorStart()
             If Not ws Is Nothing Then
                 Set target = ws.Range(addr)
                 If Not target Is Nothing Then
-                    Call SafeActivateWorkbook(wb)
+                    If Not wb Is ActiveWorkbook Then Call SafeActivateWorkbook(wb)
                     Call SafeActivateWorksheet(ws)
                     Call SafeSelectRange(target)
                 End If
@@ -459,6 +459,11 @@ Private Sub PassThroughCtrlBracketKey()
     On Error Resume Next
     Application.OnKey "^{[}"
     KeyStroke Ctrl_ + OpeningSquareBracket_
+    Application.OnTime Now, "'F_DependencyMap.RebindCtrlBracketKey'"
+End Sub
+
+Public Sub RebindCtrlBracketKey()
+    On Error Resume Next
     Application.OnKey "^{[}", "FormulaNavigatorHotkeyFallback"
     mCtrlBracketPassthrough = False
 End Sub
@@ -667,7 +672,7 @@ Private Function SelectFormulaReference(ByVal token As String) As Boolean
             Set target = ws.Range(addr)
             If Not target Is Nothing Then
                 Call NavTrace("Select range " & ws.Name & "!" & addr)
-                Call SafeActivateWorkbook(wb)
+                If Not wb Is ActiveWorkbook Then Call SafeActivateWorkbook(wb)
                 Call SafeActivateWorksheet(ws)
                 Call SafeSelectRange(target)
                 SelectFormulaReference = True
@@ -679,7 +684,7 @@ Private Function SelectFormulaReference(ByVal token As String) As Boolean
     If IsBareNameToken(token) Then
         If TryResolveNameRange(token, target) Then
             Call NavTrace("Select named range " & token)
-            Call SafeActivateWorkbook(target.Parent.Parent)
+            If Not target.Parent.Parent Is ActiveWorkbook Then Call SafeActivateWorkbook(target.Parent.Parent)
             Call SafeActivateWorksheet(target.Parent)
             Call SafeSelectRange(target)
             SelectFormulaReference = True
@@ -703,7 +708,7 @@ Private Function SelectFormulaReference(ByVal token As String) As Boolean
                 Set target = ws.Range(token)
                 If Not target Is Nothing Then
                     Call NavTrace("Select range " & ws.Name & "!" & token)
-                    Call SafeActivateWorkbook(wb)
+                    If Not wb Is ActiveWorkbook Then Call SafeActivateWorkbook(wb)
                     Call SafeActivateWorksheet(ws)
                     Call SafeSelectRange(target)
                     SelectFormulaReference = True

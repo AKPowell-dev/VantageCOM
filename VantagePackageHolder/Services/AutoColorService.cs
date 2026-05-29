@@ -76,15 +76,18 @@ namespace VantagePackageHolder
             bool recordingStarted = false;
             try
             {
-                try
+                if (cellCount > 1)
                 {
-                    undoRecord = ((dynamic)_app).UndoRecord;
-                    undoRecord.StartCustomRecord("AutoColor");
-                    recordingStarted = true;
-                }
-                catch
-                {
-                    // UndoRecord unavailable in this context — proceed without it
+                    try
+                    {
+                        undoRecord = ((dynamic)_app).UndoRecord;
+                        undoRecord.StartCustomRecord("AutoColor");
+                        recordingStarted = true;
+                    }
+                    catch
+                    {
+                        // UndoRecord unavailable in this context — proceed without it
+                    }
                 }
 
                 if (cellCount <= 1)

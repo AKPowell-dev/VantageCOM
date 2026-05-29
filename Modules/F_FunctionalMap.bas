@@ -97,9 +97,13 @@ Private Sub FunctionalMapClear()
             Set cell = RangeFromKey(CStr(key))
             If Not cell Is Nothing Then
                 arr = gFunctionalMapOriginal(key)
-                cell.Interior.Pattern = arr(0)
-                cell.Interior.PatternColor = arr(1)
-                cell.Interior.Color = arr(2)
+                If arr(0) = xlPatternNone Then
+                    cell.Interior.Pattern = xlPatternNone
+                Else
+                    cell.Interior.Color = arr(2)
+                    cell.Interior.Pattern = arr(0)
+                    cell.Interior.PatternColor = arr(1)
+                End If
             End If
         Next key
     End If

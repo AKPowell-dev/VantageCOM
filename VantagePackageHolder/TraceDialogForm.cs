@@ -49,7 +49,7 @@ namespace VantagePackageHolder
         private string _formulaText;
         private Excel.Range _highlightedRange;
         private bool _isRefreshing;
-        private string _highlightFormula;
+        private readonly List<Excel.Range> _highlightHistory = new List<Excel.Range>();
         private TraceItem _lastNavigatedItem;
         private Stopwatch _refreshWatch;
         private bool _refreshTimedOut;
@@ -60,7 +60,16 @@ namespace VantagePackageHolder
         private readonly bool _moveEnabled = true;
         private bool _hasVerticalScrollbar;
         private bool _pendingDeactivateClose;
+        private bool _ignoreDeactivate;
+        private bool _isNavigating;
+        private bool _isLoadingChildren;
+        private TraceItem _pendingNavItem;
+        private bool _pendingNavForce;
+        private readonly System.Windows.Forms.Timer _navDebounceTimer;
         public bool HasContent { get; private set; }
+
+        private static Size _savedSize = Size.Empty;
+        private static Point _savedLocation = Point.Empty;
 
         private const int MaxValueText = 48;
         private const int MaxTraceCells = 200;
@@ -251,6 +260,9 @@ namespace VantagePackageHolder
             contentPanel.Controls.Add(_status);
             Controls.Add(contentPanel);
 
+            _navDebounceTimer = new System.Windows.Forms.Timer { Interval = 60 };
+            _navDebounceTimer.Tick += (_, __) => FlushNavDebounce();
+
             _tree.AfterSelect += (_, __) => OnTreeSelectionChanged();
             _tree.BeforeExpand += (_, e) => EnsureChildrenLoaded(e.Node);
             _tree.AfterExpand += (_, e) =>
@@ -274,11 +286,19 @@ namespace VantagePackageHolder
             _tree.DrawNode += (_, e) => DrawTreeNode(e);
             _tree.Paint += (_, e) => DrawTreeGrid(e.Graphics);
 
-            Load += (_, __) => PositionNearExcelTopRight();
+            Load += (_, __) => RestoreOrPositionForm();
             Shown += (_, __) => FocusTree();
-            Activated += (_, __) => FocusTree();
+            Activated += (_, __) =>
+            {
+                try { Opacity = 1.0; } catch { }
+                _ignoreDeactivate = false;
+                FocusTree();
+            };
             Deactivate += (_, __) =>
             {
+                if (IsDisposed || Disposing) return;
+                try { Opacity = 0.7; } catch { }
+                if (_ignoreDeactivate) return;
                 if (!IsExcelForeground())
                 {
                     _pendingDeactivateClose = true;
@@ -288,12 +308,20 @@ namespace VantagePackageHolder
                     }
                 }
             };
+            FormClosing += (_, __) =>
+            {
+                try { Opacity = 1.0; } catch { }
+            };
             // grouping disabled; keep checkbox hidden
 
             FormClosed += (_, __) =>
             {
+                _navDebounceTimer.Stop();
+                _navDebounceTimer.Dispose();
+                SaveFormPosition();
                 RestoreHiddenSheets();
                 RemoveHighlight();
+                FlushHighlightHistory();
                 ClearTraceArrows();
             };
         }
@@ -717,21 +745,31 @@ namespace VantagePackageHolder
 
         private void OnTreeSelectionChanged()
         {
+            // Update formula highlight immediately — pure WinForms, no COM, safe at any rate.
+            if (_tree.SelectedNode?.Tag is TraceItem item)
+                ApplyFormulaText(_formulaText, item.StartIndex >= 0 ? item : null);
+            else
+                ApplyFormulaText(_formulaText, null);
+
+            // Debounce the Excel navigation so rapid arrow-key scrolling collapses
+            // into a single navigate call once the selection settles.
+            _navDebounceTimer.Stop();
+            _navDebounceTimer.Start();
+        }
+
+        private void FlushNavDebounce()
+        {
+            _navDebounceTimer.Stop();
+            if (IsDisposed || Disposing) return;
             if (_tree.SelectedNode?.Tag is TraceItem item)
             {
-                ApplyFormulaText(_formulaText, item.StartIndex >= 0 ? item : null);
                 if (IsNavigable(item))
-                {
                     NavigateToItem(item, false);
-                }
                 else
-                {
                     RemoveHighlight();
-                }
             }
             else
             {
-                ApplyFormulaText(_formulaText, null);
                 RemoveHighlight();
             }
         }
@@ -757,49 +795,90 @@ namespace VantagePackageHolder
 
         private void NavigateToItem(TraceItem item, bool force)
         {
-            if (item == null)
+            if (item == null) return;
+
+            if (_isNavigating)
             {
+                // A navigation is already executing (COM pump re-entered us).
+                // Save the latest request; the outer call will drain it when done.
+                _pendingNavItem = item;
+                _pendingNavForce = force;
                 return;
             }
+
+            // Drain loop: process pending navigations without recursing, so that
+            // if a COM call pumps messages and triggers another selection change
+            // we handle it cleanly after the current navigation finishes.
+            while (item != null)
+            {
+                _isNavigating = true;
+                _ignoreDeactivate = true;
+                try
+                {
+                    DoNavigate(item, force);
+                }
+                finally
+                {
+                    _ignoreDeactivate = false;
+                    _isNavigating = false;
+                }
+
+                item = _pendingNavItem;
+                force = _pendingNavForce;
+                _pendingNavItem = null;
+                _pendingNavForce = false;
+            }
+
+            FocusTree();
+        }
+
+        private void DoNavigate(TraceItem item, bool force)
+        {
+            // Remove the previous highlight BEFORE switching sheets.
+            // FormatCondition.Delete() on a non-active sheet crashes Excel —
+            // we must clean up while the old sheet is still active.
+            RemoveHighlight();
 
             ClearTraceArrows();
 
             if (item.Kind == TraceItemKind.Chart && item.Chart != null)
             {
-                TryNavigateChart(item.Chart);
+                try { TryNavigateChart(item.Chart); } catch { }
                 _lastNavigatedItem = item;
-                FocusTree();
                 return;
             }
 
             if (item.Range != null && RangeHelpers.IsRangeValid(item.Range))
             {
-                TryUnhide(item.Range);
+                try { TryUnhide(item.Range); } catch { }
                 RangeHelpers.SafeActivateSheet(item.Range.Worksheet);
                 RangeHelpers.SafeSelect(item.Range);
                 if (_moveEnabled)
                 {
-                    MoveFormAsNeeded(item.Range);
+                    try { MoveFormAsNeeded(item.Range); } catch { }
                 }
                 if (_highlightEnabled)
                 {
-                    ApplyHighlight(item.Range);
+                    try { ApplyHighlight(item.Range); } catch { }
                 }
                 _lastNavigatedItem = item;
-                CenterActiveCell();
-                FocusTree();
+                try { CenterActiveCell(); } catch { }
                 return;
             }
 
             if (force && !string.IsNullOrWhiteSpace(item.Token))
             {
-                TryGoto(item.Token);
-                if (_highlightEnabled && _app.ActiveCell is Excel.Range active)
+                try { TryGoto(item.Token); } catch { }
+                if (_highlightEnabled)
                 {
-                    ApplyHighlight(active);
+                    try
+                    {
+                        if (_app.ActiveCell is Excel.Range active)
+                            ApplyHighlight(active);
+                    }
+                    catch { }
                 }
-                CenterActiveCell();
-                FocusTree();
+                try { CenterActiveCell(); } catch { }
             }
         }
 
@@ -1227,6 +1306,7 @@ namespace VantagePackageHolder
                         StartIndex = source?.StartIndex ?? -1,
                         Length = source?.Length ?? 0
                     };
+                    MarkDeferredIfFormula(child);
                     parent.Children.Add(child);
                 }
             }
@@ -1238,38 +1318,43 @@ namespace VantagePackageHolder
 
         private void EnsureChildrenLoaded(TreeNode node)
         {
-            if (node == null)
-            {
-                return;
-            }
+            if (node == null || _isLoadingChildren) return;
 
             if (node.Tag is TraceItem item && item.HasDeferredChildren && !item.ChildrenLoaded)
             {
-                item.ChildrenLoaded = true;
-                item.Children.Clear();
-                if (item.Kind == TraceItemKind.MultiCell)
+                _isLoadingChildren = true;
+                try
                 {
-                    AddMultiCellChildren(item, item.Range, item);
-                }
-                else if (RangeHelpers.IsRangeValid(item.Range) && HasFormula(item.Range))
-                {
-                    var ancestorKeys = GetAncestorKeys(node);
-                    var children = BuildNestedPrecedents(item.Range, ancestorKeys, item);
-                    item.Children.AddRange(children);
-                }
+                    item.ChildrenLoaded = true;
+                    item.Children.Clear();
+                    if (item.Kind == TraceItemKind.MultiCell)
+                    {
+                        AddMultiCellChildren(item, item.Range, item);
+                    }
+                    else if (RangeHelpers.IsRangeValid(item.Range) && HasFormula(item.Range))
+                    {
+                        var ancestorKeys = GetAncestorKeys(node);
+                        var children = BuildNestedPrecedents(item.Range, ancestorKeys, item);
+                        item.Children.AddRange(children);
+                    }
 
-                node.Nodes.Clear();
-                foreach (var child in item.Children)
-                {
-                    node.Nodes.Add(BuildTreeNode(child));
-                }
+                    node.Nodes.Clear();
+                    foreach (var child in item.Children)
+                    {
+                        node.Nodes.Add(BuildTreeNode(child));
+                    }
 
-                if (node.Nodes.Count == 0)
-                {
-                    item.HasDeferredChildren = false;
-                }
+                    if (node.Nodes.Count == 0)
+                    {
+                        item.HasDeferredChildren = false;
+                    }
 
-                UpdateNodeIconAfterToggle(node);
+                    UpdateNodeIconAfterToggle(node);
+                }
+                finally
+                {
+                    _isLoadingChildren = false;
+                }
             }
         }
 
@@ -2017,7 +2102,6 @@ namespace VantagePackageHolder
                 var color = mode == HighlightMode.Crosshairs ? HighlightCrosshairColor : HighlightSelectionColor;
                 format.Interior.Color = ColorTranslator.ToOle(color);
                 format.Interior.Pattern = Excel.XlPattern.xlPatternSolid;
-                _highlightFormula = formula;
             }
             catch
             {
@@ -2025,65 +2109,73 @@ namespace VantagePackageHolder
             }
 
             _highlightedRange = range;
+            _highlightHistory.Add(range);
         }
 
         private void RemoveHighlight()
         {
             if (_highlightedRange == null)
             {
-                _highlightFormula = null;
                 return;
             }
 
-            Excel.Range range = _highlightedRange;
-            HighlightMode mode = GetHighlightModeForRange(range);
-            Excel.Range target = range;
-            if (mode == HighlightMode.Crosshairs)
-            {
-                try
-                {
-                    target = _app.Union(range.EntireRow, range.EntireColumn);
-                }
-                catch
-                {
-                    target = range;
-                }
-            }
+            var range = _highlightedRange;
+            _highlightedRange = null;
 
+            if (!RangeHelpers.IsRangeValid(range)) return;
+
+            // Clean row and column separately. Excel sometimes stores one rule per
+            // area when Add() is called on a Union, and Formula1 may be returned
+            // without the leading "=" — so we match by substring instead of exact
+            // formula equality.
+            try { DeleteVantageConditions(range.EntireRow); } catch { }
+            try { DeleteVantageConditions(range.EntireColumn); } catch { }
+        }
+
+        private static void DeleteVantageConditions(Excel.Range target)
+        {
+            if (target == null) return;
             try
             {
-                var matchFormula = _highlightFormula ?? HighlightFormula;
-                var conditions = target?.FormatConditions;
-                if (conditions != null)
+                var conditions = target.FormatConditions;
+                for (int i = conditions.Count; i >= 1; i--)
                 {
-                    for (int i = conditions.Count; i >= 1; i--)
+                    try
                     {
-                        try
+                        var condition = (Excel.FormatCondition)conditions.Item(i);
+                        if (condition != null
+                            && condition.Type == (int)Excel.XlFormatConditionType.xlExpression
+                            && (condition.Formula1 ?? string.Empty).IndexOf("VANTAGE_TRACE", StringComparison.OrdinalIgnoreCase) >= 0)
                         {
-                            var condition = (Excel.FormatCondition)conditions.Item(i);
-                            if (condition != null
-                                && condition.Type == (int)Excel.XlFormatConditionType.xlExpression
-                                && (string.Equals(condition.Formula1, matchFormula, StringComparison.OrdinalIgnoreCase)
-                                    || string.Equals(condition.Formula1, HighlightFormula, StringComparison.OrdinalIgnoreCase)))
-                            {
-                                condition.Delete();
-                                break;
-                            }
-                        }
-                        catch
-                        {
-                            // ignore
+                            condition.Delete();
                         }
                     }
+                    catch
+                    {
+                            // ignore
+                        }
                 }
             }
             catch
             {
                 // ignore
             }
+        }
 
-            _highlightedRange = null;
-            _highlightFormula = null;
+        private void FlushHighlightHistory()
+        {
+            foreach (var r in _highlightHistory)
+            {
+                try
+                {
+                    if (!RangeHelpers.IsRangeValid(r)) continue;
+                    try { r.Worksheet?.Activate(); } catch { }
+                    try { DeleteVantageConditions(r.EntireRow); } catch { }
+                    try { DeleteVantageConditions(r.EntireColumn); } catch { }
+                }
+                catch { }
+            }
+            _highlightHistory.Clear();
         }
 
         private HighlightMode GetHighlightModeForRange(Excel.Range range)
@@ -3198,6 +3290,32 @@ namespace VantagePackageHolder
             {
                 // ignore
             }
+        }
+
+        private void RestoreOrPositionForm()
+        {
+            if (_savedSize != Size.Empty)
+            {
+                Size = _savedSize;
+            }
+
+            if (_savedLocation != Point.Empty)
+            {
+                var wa = Screen.FromPoint(_savedLocation).WorkingArea;
+                int x = Math.Max(wa.Left, Math.Min(_savedLocation.X, wa.Right - Width));
+                int y = Math.Max(wa.Top, Math.Min(_savedLocation.Y, wa.Bottom - Height));
+                Location = new Point(x, y);
+            }
+            else
+            {
+                PositionNearExcelTopRight();
+            }
+        }
+
+        private void SaveFormPosition()
+        {
+            _savedSize = Size;
+            _savedLocation = Location;
         }
 
         private void PositionNearExcelTopRight()

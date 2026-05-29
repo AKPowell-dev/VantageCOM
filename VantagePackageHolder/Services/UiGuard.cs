@@ -62,11 +62,11 @@ namespace VantagePackageHolder
             {
                 try { _app.DisplayAlerts = _prevDisplayAlerts; } catch { }
             }
-            _app.ScreenUpdating = _prevScreenUpdating;
-            _app.EnableEvents = _prevEnableEvents;
+            try { _app.ScreenUpdating = _prevScreenUpdating; } catch { }
+            try { _app.EnableEvents = _prevEnableEvents; } catch { }
             if (_hideStatusBar)
             {
-                _app.DisplayStatusBar = _prevStatusBarVisible;
+                try { _app.DisplayStatusBar = _prevStatusBarVisible; } catch { }
             }
 
             _disposed = true;

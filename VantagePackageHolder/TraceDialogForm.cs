@@ -51,6 +51,7 @@ namespace VantagePackageHolder
         private bool _isRefreshing;
         private readonly List<Excel.Range> _highlightHistory = new List<Excel.Range>();
         private TraceItem _lastNavigatedItem;
+        private Dictionary<string, string> _nameAddressMap;
         private Stopwatch _refreshWatch;
         private bool _refreshTimedOut;
         private readonly List<Excel.Worksheet> _navUnhiddenSheets = new List<Excel.Worksheet>();
@@ -334,8 +335,15 @@ namespace VantagePackageHolder
             }
 
             _isRefreshing = true;
+            UiGuard guard = null;
             try
             {
+                // Suppress repaint and the add-in's own selection-change handlers for
+                // the whole build so the per-cell sheet activations, value reads and
+                // (for dependents) arrow tracing stay quiet. Calculation is left
+                // untouched on purpose: tracing never edits cells, so forcing manual
+                // calc only adds a costly full recalc when the mode is restored.
+                guard = new UiGuard(_app, hideStatusBar: true, disableAlerts: true, manualCalculation: false);
                 HasContent = false;
                 _refreshTimedOut = false;
                 _refreshWatch = Stopwatch.StartNew();
@@ -345,9 +353,12 @@ namespace VantagePackageHolder
                 _formulaText = string.Empty;
                 _anchorCell = null;
                 _lastNavigatedItem = null;
+                _nameAddressMap = null;   // rebuilt once per refresh (see TryGetNameForRange)
                 _tree.Nodes.Clear();
                 _status.Text = string.Empty;
                 ClearTraceArrows();
+                // Clear any highlight left over from a prior run on a reused form.
+                RemoveHighlight();
 
                 if (!RangeHelpers.TryGetRangeOrActiveCell(_app, out var range))
                 {
@@ -393,6 +404,7 @@ namespace VantagePackageHolder
             }
             finally
             {
+                try { guard?.Dispose(); } catch { }
                 ResetExcelCursor();
                 _refreshWatch = null;
                 _isRefreshing = false;
@@ -2124,12 +2136,60 @@ namespace VantagePackageHolder
 
             if (!RangeHelpers.IsRangeValid(range)) return;
 
+            // FormatCondition.Delete() requires the owning sheet to be active, or
+            // Excel can throw and leave the crosshair behind. If a different sheet
+            // is active (a stranded highlight), switch to it quietly, delete, then
+            // restore the prior sheet so cleanup is reliable from any call site.
+            Excel.Worksheet targetSheet = null;
+            Excel.Worksheet prevSheet = null;
+            try { targetSheet = range.Worksheet; } catch { targetSheet = null; }
+            try { prevSheet = _app.ActiveSheet as Excel.Worksheet; } catch { prevSheet = null; }
+
+            if (targetSheet != null && !SameSheet(prevSheet, targetSheet))
+            {
+                using (new UiGuard(_app))
+                {
+                    try { RangeHelpers.SafeActivateSheet(targetSheet); } catch { }
+                    try { DeleteVantageConditions(range.EntireRow); } catch { }
+                    try { DeleteVantageConditions(range.EntireColumn); } catch { }
+                    if (prevSheet != null)
+                    {
+                        try { RangeHelpers.SafeActivateSheet(prevSheet); } catch { }
+                    }
+                }
+                return;
+            }
+
             // Clean row and column separately. Excel sometimes stores one rule per
             // area when Add() is called on a Union, and Formula1 may be returned
             // without the leading "=" — so we match by substring instead of exact
             // formula equality.
             try { DeleteVantageConditions(range.EntireRow); } catch { }
             try { DeleteVantageConditions(range.EntireColumn); } catch { }
+        }
+
+        private static bool SameSheet(Excel.Worksheet a, Excel.Worksheet b)
+        {
+            if (a == null || b == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (!string.Equals(a.Name, b.Name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+
+                var wbA = (a.Parent as Excel.Workbook)?.Name;
+                var wbB = (b.Parent as Excel.Workbook)?.Name;
+                return string.Equals(wbA, wbB, StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static void DeleteVantageConditions(Excel.Range target)
@@ -2908,87 +2968,16 @@ namespace VantagePackageHolder
                 return null;
             }
 
+            // Look the address up in a map built once per refresh, instead of
+            // scanning every defined name (RefersToRange/Intersect on each) for
+            // every traced cell — the old behaviour was O(cells x names).
+            EnsureNameMap();
             try
             {
-                var wb = range.Worksheet?.Parent as Excel.Workbook ?? _app.ActiveWorkbook;
-                if (wb != null)
+                var key = range.Address[true, true, Excel.XlReferenceStyle.xlA1, true];
+                if (!string.IsNullOrEmpty(key) && _nameAddressMap.TryGetValue(key, out var nm))
                 {
-                    foreach (Excel.Name name in wb.Names)
-                    {
-                        Excel.Range refersTo = null;
-                        try
-                        {
-                            refersTo = name.RefersToRange;
-                        }
-                        catch
-                        {
-                            refersTo = null;
-                        }
-
-                        if (!RangeHelpers.IsRangeValid(refersTo))
-                        {
-                            continue;
-                        }
-
-                        try
-                        {
-                            if (_app.Intersect(refersTo, range) != null
-                                && string.Equals(refersTo.Address[true, true, Excel.XlReferenceStyle.xlA1, true],
-                                    range.Address[true, true, Excel.XlReferenceStyle.xlA1, true],
-                                    StringComparison.OrdinalIgnoreCase))
-                            {
-                                return NormalizeDefinedName(name.Name);
-                            }
-                        }
-                        catch
-                        {
-                            // ignore
-                        }
-                    }
-                }
-            }
-            catch
-            {
-                // ignore
-            }
-
-            try
-            {
-                var ws = range.Worksheet;
-                if (ws != null)
-                {
-                    foreach (Excel.Name name in ws.Names)
-                    {
-                        Excel.Range refersTo = null;
-                        try
-                        {
-                            refersTo = name.RefersToRange;
-                        }
-                        catch
-                        {
-                            refersTo = null;
-                        }
-
-                        if (!RangeHelpers.IsRangeValid(refersTo))
-                        {
-                            continue;
-                        }
-
-                        try
-                        {
-                            if (_app.Intersect(refersTo, range) != null
-                                && string.Equals(refersTo.Address[true, true, Excel.XlReferenceStyle.xlA1, true],
-                                    range.Address[true, true, Excel.XlReferenceStyle.xlA1, true],
-                                    StringComparison.OrdinalIgnoreCase))
-                            {
-                                return NormalizeDefinedName(name.Name);
-                            }
-                        }
-                        catch
-                        {
-                            // ignore
-                        }
-                    }
+                    return nm;
                 }
             }
             catch
@@ -2997,6 +2986,61 @@ namespace VantagePackageHolder
             }
 
             return null;
+        }
+
+        // Build a map of exact range address -> defined-name label, once per
+        // refresh. Workbook.Names already includes worksheet-scoped (local) names,
+        // and the external address key encodes the workbook, so a single pass over
+        // every open workbook covers global, local and cross-workbook names.
+        private void EnsureNameMap()
+        {
+            if (_nameAddressMap != null)
+            {
+                return;
+            }
+
+            var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                foreach (Excel.Workbook wb in _app.Workbooks)
+                {
+                    try
+                    {
+                        foreach (Excel.Name name in wb.Names)
+                        {
+                            try
+                            {
+                                Excel.Range refersTo = null;
+                                try { refersTo = name.RefersToRange; } catch { refersTo = null; }
+                                if (!RangeHelpers.IsRangeValid(refersTo))
+                                {
+                                    continue;
+                                }
+
+                                var key = refersTo.Address[true, true, Excel.XlReferenceStyle.xlA1, true];
+                                if (!string.IsNullOrEmpty(key) && !map.ContainsKey(key))
+                                {
+                                    map[key] = NormalizeDefinedName(name.Name);
+                                }
+                            }
+                            catch
+                            {
+                                // ignore individual name failures
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // ignore per-workbook failures
+                    }
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+
+            _nameAddressMap = map;
         }
 
         private static string NormalizeDefinedName(string name)
@@ -3844,7 +3888,7 @@ namespace VantagePackageHolder
             Excel.Range originalSelection = null;
             Excel.Range originalActiveCell = null;
 
-            using (new UiGuard(_app, hideStatusBar: true, disableAlerts: true, manualCalculation: true))
+            using (new UiGuard(_app, hideStatusBar: true, disableAlerts: true, manualCalculation: false))
             {
                 try
                 {
@@ -4017,7 +4061,7 @@ namespace VantagePackageHolder
             Excel.Range originalActiveCell = null;
             bool timedOut = false;
 
-            using (new UiGuard(_app, hideStatusBar: true, disableAlerts: true, manualCalculation: true))
+            using (new UiGuard(_app, hideStatusBar: true, disableAlerts: true, manualCalculation: false))
             {
                 try
                 {

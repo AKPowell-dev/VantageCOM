@@ -1557,10 +1557,14 @@ Public Sub BindAll()
         Call BindSingleKeyInternal(CStr(key), currentModeBit)
     Next key
 
-    ' Ensure native Delete key behavior (avoid Undo-breaking macro binding).
+    ' Ensure native Delete and Undo/Redo behavior: leave these to Excel so they
+    ' work like vanilla (avoid Undo-breaking macro bindings). OnKey with no
+    ' procedure restores the key's default behavior.
     On Error Resume Next
     Application.OnKey "{DEL}"
     Application.OnKey "{DELETE}"
+    Application.OnKey "^z"
+    Application.OnKey "^y"
     On Error GoTo 0
 
 End Sub

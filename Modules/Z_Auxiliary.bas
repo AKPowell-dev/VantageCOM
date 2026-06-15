@@ -6,6 +6,18 @@ Public gScrollLockMode As Boolean
 Private Const DATA_LABEL_STEP As Double = 1#
 Private Const CHART_MOVE_STEP As Double = 50#
 
+' Win32 clipboard APIs used to release the system clipboard after picture
+' pastes, so repeated xp / econs operations don't exhaust memory.
+#If Win64 Then
+    Private Declare PtrSafe Function OpenClipboard Lib "user32" (ByVal hwnd As LongPtr) As Long
+    Private Declare PtrSafe Function EmptyClipboard Lib "user32" () As Long
+    Private Declare PtrSafe Function CloseClipboard Lib "user32" () As Long
+#Else
+    Private Declare Function OpenClipboard Lib "user32" (ByVal hwnd As Long) As Long
+    Private Declare Function EmptyClipboard Lib "user32" () As Long
+    Private Declare Function CloseClipboard Lib "user32" () As Long
+#End If
+
 ' Shared wrapper for temporarily disabling events / screen updates.
 
 Private Function SuppressExcelUi(Optional ByVal hideStatusBar As Boolean = False) As ExcelUiGuard
@@ -81,13 +93,15 @@ Function TogglePlainKeyMappings(Optional ByVal g As String) As Boolean
         gVim.KeyMap.SuppressPlainKeys = True
         Application.OnKey "^b"
         Application.OnKey "^i"
-        Application.OnKey "^z"
-        Application.OnKey "^y"
         statusMessage = "Excel native shortcuts restored."
     Else
         gVim.KeyMap.SuppressPlainKeys = False
         statusMessage = "Vim shortcuts re-enabled."
     End If
+
+    ' Undo/Redo always defer to native Excel, in plain and normal mode alike.
+    Application.OnKey "^z"
+    Application.OnKey "^y"
 
     TogglePlainKeyMappings = False
     Call ClipboardRefresh
@@ -957,8 +971,8 @@ Sub CycleSpecialBorder(side As String)
     lastSelectionStamp = gSelectionStamp
     lastActiveKey = currentActiveKey
 
-    ' First: dotted border, second: double border
-    borderStyles = Array(Array(xlDot, xlThin), Array(xlDouble, xlThick))
+    ' First: dashed border, second: double border
+    borderStyles = Array(Array(xlDash, xlThin), Array(xlDouble, xlThick))
 
     Select Case sideKey
         Case "h": Set b = rng.Borders(xlEdgeLeft)
@@ -1078,62 +1092,30 @@ Sub CopyPasteAsPictureToPPT()
         End If
     End If
 
-    On Error Resume Next
-    Set pastedShp = pptSlide.Shapes.PasteSpecial(DataType:=2)
-    If pastedShp Is Nothing Then Set pastedShp = pptSlide.Shapes.Paste
-    On Error GoTo CleanFail
+    ' Paste with a few retries. Transient clipboard / metafile pressure can raise
+    ' "not enough memory for this operation" on the first try; re-copying the
+    ' source and retrying clears it.
+    Dim attempt As Long
+    Set pastedShp = Nothing
+    For attempt = 1 To 3
+        Set pastedShp = PptTryPastePicture(pptSlide)
+        If Not pastedShp Is Nothing Then Exit For
+        DoEvents
+        Call CopySelectionAsPicturePrintSafe(sel)
+    Next attempt
 
-    If TypeName(pastedShp) = "ShapeRange" Then
-        Set pastedShp = pastedShp(1)
+    If pastedShp Is Nothing Then
+        Application.CutCopyMode = False
+        Call ClearWindowsClipboard
+        MsgBox "Could not paste the picture into PowerPoint after several attempts. Please try again.", vbExclamation
+        Exit Sub
     End If
 
     If hadTarget Then
-        Dim scaledWidth As Double
-        Dim scaledHeight As Double
-        Dim scaleFactor As Double
-        Dim scaleY As Double
-        Dim offsetLeft As Double
-        Dim offsetTop As Double
-
-        scaledWidth = pastedShp.Width
-        scaledHeight = pastedShp.Height
-
-        If pastedShp.Width > 0 And pastedShp.Height > 0 Then
-            If targetWidth > 0 And targetHeight > 0 Then
-                scaleFactor = targetWidth / pastedShp.Width
-                scaleY = targetHeight / pastedShp.Height
-                If scaleY < scaleFactor Then scaleFactor = scaleY
-            ElseIf targetWidth > 0 Then
-                scaleFactor = targetWidth / pastedShp.Width
-            ElseIf targetHeight > 0 Then
-                scaleFactor = targetHeight / pastedShp.Height
-            Else
-                scaleFactor = 1
-            End If
-
-            If scaleFactor > 0 Then
-                scaledWidth = pastedShp.Width * scaleFactor
-                scaledHeight = pastedShp.Height * scaleFactor
-            End If
-        End If
-
-        pastedShp.Width = scaledWidth
-        pastedShp.Height = scaledHeight
-
-        If targetWidth > 0 Then
-            offsetLeft = targetLeft + (targetWidth - scaledWidth) / 2
-        Else
-            offsetLeft = targetLeft
-        End If
-
-        If targetHeight > 0 Then
-            offsetTop = targetTop + (targetHeight - scaledHeight) / 2
-        Else
-            offsetTop = targetTop
-        End If
-
-        pastedShp.Left = offsetLeft
-        pastedShp.Top = offsetTop
+        ' Mirror the target image's WIDTH: shrink to the target width only if the
+        ' pasted figure is wider (never enlarge), then align to the target's
+        ' top-left corner and remove the target.
+        Call FitShapeToTargetWidth(pastedShp, targetLeft, targetTop, targetWidth)
 
         pptShape.Delete
 
@@ -1153,10 +1135,70 @@ Sub CopyPasteAsPictureToPPT()
 
     pastedShp.Select
     pptApp.Activate
+    Application.CutCopyMode = False
+    Call ClearWindowsClipboard
     Exit Sub
 
 CleanFail:
+    Application.CutCopyMode = False
+    Call ClearWindowsClipboard
     MsgBox "Error: " & Err.Description, vbCritical, "CopyPasteAsPictureToPPT"
+End Sub
+
+' Shrink shp to targetWidth only when it is wider (preserving aspect ratio;
+' never enlarges), then anchor it to the target's top-left corner. Shared by the
+' xp command and the econs "replace existing" flow.
+Public Sub FitShapeToTargetWidth(ByVal shp As Object, ByVal targetLeft As Single, _
+    ByVal targetTop As Single, ByVal targetWidth As Single)
+
+    On Error Resume Next
+    shp.LockAspectRatio = msoTrue
+    On Error GoTo 0
+
+    If targetWidth > 0 Then
+        If shp.Width > targetWidth Then shp.Width = targetWidth
+    End If
+
+    shp.Left = targetLeft
+    shp.Top = targetTop
+End Sub
+
+' Paste the clipboard picture onto a PowerPoint slide, trying enhanced metafile,
+' then default, then plain paste. Returns the new shape (single), or Nothing.
+Public Function PptTryPastePicture(ByVal pptSlide As Object) As Object
+    Dim s As Object
+
+    On Error Resume Next
+    Set s = pptSlide.Shapes.PasteSpecial(DataType:=2)   ' ppPasteEnhancedMetafile
+    If s Is Nothing Then
+        Err.Clear
+        Set s = pptSlide.Shapes.PasteSpecial(DataType:=0)   ' ppPasteDefault
+    End If
+    If s Is Nothing Then
+        Err.Clear
+        Set s = pptSlide.Shapes.Paste
+    End If
+    On Error GoTo 0
+
+    If Not s Is Nothing Then
+        If TypeName(s) = "ShapeRange" Then
+            On Error Resume Next
+            Set s = s(1)
+            On Error GoTo 0
+        End If
+    End If
+
+    Set PptTryPastePicture = s
+End Function
+
+' Best-effort release of the system clipboard so repeated picture copies don't
+' accumulate large metafiles and exhaust memory.
+Public Sub ClearWindowsClipboard()
+    On Error Resume Next
+    If OpenClipboard(0&) <> 0 Then
+        EmptyClipboard
+        CloseClipboard
+    End If
 End Sub
 
 
@@ -2847,205 +2889,4 @@ End Function
 '===========================================
 ' Workbook utilities
 '===========================================
-Sub Econs_Output_PPT_V2()
-    Const layoutName As String = "content no text"
-    Const targetSheetName As String = "Inputs"
-
-    Dim originalCalc As XlCalculation
-    Dim originalEvents As Boolean
-    Dim originalScreen As Boolean
-
-    originalCalc = Application.Calculation
-    originalEvents = Application.EnableEvents
-    originalScreen = Application.ScreenUpdating
-
-    On Error GoTo CleanFail
-    Application.EnableEvents = False
-    Application.ScreenUpdating = False
-    Application.Calculation = xlCalculationManual
-
-    Dim pptApp As Object, pptPres As Object
-    Dim slide As Object, customLayout As Object
-    Dim wb As Workbook, wsInputs As Worksheet, pic As Object
-    Dim slideWidth As Single
-    Dim cases As Variant, c As Variant
-    Dim userInput As String
-    Dim i As Long, key As Variant
-    Dim rng As Range
-    Dim ws As Worksheet
-    Dim restartInput As Boolean
-    Dim caseCell As Range
-    Static wbOutputMap As Object
-    Static wbOutputOwner As String
-
-    Set wb = ActiveWorkbook
-    If wb Is Nothing Then
-        MsgBox "No active workbook found. Please open your Excel file and try again.", vbExclamation
-        GoTo CleanExit
-    End If
-
-    Set wsInputs = Nothing
-    For Each ws In wb.Worksheets
-        If StrComp(ws.Name, targetSheetName, vbTextCompare) = 0 Then
-            Set wsInputs = ws
-            Exit For
-        End If
-    Next ws
-    If wsInputs Is Nothing Then
-        MsgBox "Worksheet '" & targetSheetName & "' was not found in " & wb.Name & ".", vbExclamation
-        GoTo CleanExit
-    End If
-
-    Set caseCell = Nothing
-    On Error Resume Next
-    Set caseCell = wsInputs.Range("case1")
-    If caseCell Is Nothing Then
-        Set caseCell = wb.Names("case1").RefersToRange
-    End If
-    On Error GoTo 0
-    If caseCell Is Nothing Then
-        MsgBox "Named cell or range 'case1' was not found on the Inputs sheet.", vbExclamation
-        GoTo CleanExit
-    End If
-
-    If wbOutputMap Is Nothing Then Set wbOutputMap = CreateObject("Scripting.Dictionary")
-    If wbOutputOwner <> wb.FullName Then
-        wbOutputMap.RemoveAll
-        wbOutputOwner = wb.FullName
-    End If
-
-    On Error Resume Next
-    Set pptApp = GetObject(Class:="PowerPoint.Application")
-    If pptApp Is Nothing Then Set pptApp = CreateObject(Class:="PowerPoint.Application")
-    On Error GoTo CleanFail
-    If pptApp Is Nothing Then
-        MsgBox "Unable to start PowerPoint.", vbExclamation
-        GoTo CleanExit
-    End If
-    pptApp.Visible = True
-
-    If pptApp.Presentations.Count = 0 Then
-        MsgBox "No PowerPoint presentations are open. Please open one and try again.", vbExclamation
-        GoTo CleanExit
-    End If
-    Set pptPres = pptApp.ActivePresentation
-
-    Set customLayout = Nothing
-    Dim d As Object, cl As Object
-    For Each d In pptPres.Designs
-        For Each cl In d.SlideMaster.CustomLayouts
-            If LCase$(cl.Name) = layoutName Then
-                Set customLayout = cl
-                Exit For
-            End If
-        Next cl
-        If Not customLayout Is Nothing Then Exit For
-    Next d
-    If customLayout Is Nothing Then
-        MsgBox "Custom layout '" & layoutName & "' not found in the active presentation.", vbExclamation
-        GoTo CleanExit
-    End If
-    slideWidth = pptPres.PageSetup.SlideWidth
-
-SelectOutputs:
-    If wbOutputMap.Count = 0 Or restartInput Then
-        wbOutputMap.RemoveAll
-        Dim numOutputs As Long
-        Dim outName As String, rngName As String
-        Dim defaultsNames As Variant
-        Dim defaultsRanges As Variant
-        Dim idx As Long
-
-        defaultsNames = Array("Cash Flows", "Valuations & Returns", "Operating Build", "Output 4", "Output 5")
-        defaultsRanges = Array("CF", "RET", "OP", "OUT4", "OUT5")
-
-        numOutputs = Application.InputBox("How many outputs to create? (1-5)", "Number of Outputs", 2, , , , , 1)
-        If numOutputs < 1 Or numOutputs > 5 Then GoTo CleanExit
-
-        For idx = 1 To numOutputs
-            Dim namePrompt As String
-            Dim rangePrompt As String
-            Dim defaultName As String
-            Dim defaultRange As String
-
-            If idx <= UBound(defaultsNames) + 1 Then
-                defaultName = defaultsNames(idx - 1)
-                defaultRange = defaultsRanges(idx - 1)
-            Else
-                defaultName = "Output " & idx
-                defaultRange = "OUT" & idx
-            End If
-
-            namePrompt = "Enter display name for output #" & idx & ":"
-            rangePrompt = "Enter named range for '" & defaultName & "':"
-
-            outName = InputBox(namePrompt, "Output Name", defaultName)
-            If Trim$(outName) = "" Then GoTo CleanExit
-            rngName = InputBox(rangePrompt, "Named Range", defaultRange)
-            If Trim$(rngName) = "" Then GoTo CleanExit
-            wbOutputMap(outName) = rngName
-        Next idx
-
-        restartInput = False
-    End If
-
-CasesInput:
-    userInput = InputBox("Enter the cases to print, separated by commas:" & vbCrLf & _
-                         "Type 'restart' to change output selection.", _
-                         "Case Selection", "Base, Upside, Downside")
-    If Trim$(userInput) = "" Then GoTo CleanExit
-    If LCase$(Trim$(userInput)) = "restart" Then
-        restartInput = True
-        GoTo SelectOutputs
-    End If
-
-    cases = Split(userInput, ",")
-
-    Dim caseName As String
-    For i = LBound(cases) To UBound(cases)
-        caseName = Trim$(cases(i))
-        If caseName <> "" Then
-            caseCell.Value = caseName
-            Application.CalculateFull
-            DoEvents
-
-            For Each key In wbOutputMap.Keys
-                Set rng = Nothing
-                On Error Resume Next
-                Set rng = wb.Names(wbOutputMap(key)).RefersToRange
-                On Error GoTo 0
-
-                If rng Is Nothing Then
-                    MsgBox "Named range '" & wbOutputMap(key) & "' not found. Skipping output '" & key & "'.", vbExclamation
-                Else
-                    Set slide = pptPres.Slides.AddSlide(pptPres.Slides.Count + 1, customLayout)
-                    rng.CopyPicture Appearance:=xlPrinter, Format:=xlPicture
-                    slide.Shapes.Paste
-                    Set pic = slide.Shapes(slide.Shapes.Count)
-                    With pic
-                        .LockAspectRatio = msoTrue
-                        If .Width > 0 Then .ScaleWidth (9.5 * 72) / .Width, msoFalse, msoScaleFromTopLeft
-                        .Left = (slideWidth - .Width) / 2
-                        .Top = 0.74 * 72
-                    End With
-
-                    If Not slide.Shapes.Title Is Nothing Then
-                        slide.Shapes.Title.TextFrame.TextRange.Text = key & " | " & caseName
-                    End If
-                End If
-            Next key
-        End If
-    Next i
-
-CleanExit:
-    On Error Resume Next
-    Application.Calculation = originalCalc
-    Application.ScreenUpdating = originalScreen
-    Application.EnableEvents = originalEvents
-    On Error GoTo 0
-    Exit Sub
-
-CleanFail:
-    MsgBox "Error running econs export: " & Err.Description, vbCritical
-    Resume CleanExit
-End Sub
+' Econs PowerPoint export moved to F_Econs.bas (unified dialog flow).

@@ -149,58 +149,76 @@ Private Sub UserForm_Initialize()
     ' --- new section: customize these arrays freely ---------------------------------------
     Dim customBlockTopColors As Variant
     Dim customBlockDetailBaseColors As Variant
+    Dim customBlockSteelDetailColors As Variant
     Dim customBlockTealDetailColors As Variant
     Dim customBlockOrangeDetailColors As Variant
     Dim customBlockLuminance As Long
 
+    ' Order: cool blues -> greens -> warm yellows -> reds (muted -> peak -> deep) -> neutral closer
+    ' 0 navy, 1 sky, 2 mint (Excel Good #C6EFCE), 3 forest, 4 gold, 5 peach, 6 brick, 7 red, 8 burgundy, 9 slate
     customBlockTopColors = Array( _
-        RGB(0, 32, 96), _
-        RGB(235, 243, 248), _
-        RGB(84, 123, 155), _
-        RGB(46, 110, 106), _
-        RGB(132, 168, 146), _
-        RGB(212, 168, 92), _
-        RGB(230, 174, 131), _
-        RGB(184, 128, 110), _
-        RGB(192, 0, 0), _
-        RGB(68, 84, 106))
+        RGB(0, 42, 112), _
+        RGB(95, 175, 230), _
+        RGB(198, 239, 206), _
+        RGB(58, 110, 72), _
+        RGB(222, 178, 100), _
+        RGB(238, 184, 142), _
+        RGB(160, 80, 70), _
+        RGB(208, 32, 32), _
+        RGB(126, 56, 86), _
+        RGB(78, 96, 122))
 
     ' Softer companion tones for the numeric detail grids.
     customBlockDetailBaseColors = Array( _
-        RGB(40, 90, 158), _
-        RGB(230, 238, 244), _
-        RGB(101, 132, 155), _
-        RGB(72, 122, 118), _
-        RGB(143, 174, 156), _
-        RGB(205, 174, 116), _
-        RGB(239, 208, 184), _
-        RGB(178, 136, 124), _
-        RGB(176, 58, 58), _
-        RGB(92, 108, 128))
+        RGB(50, 102, 172), _
+        RGB(120, 188, 235), _
+        RGB(160, 218, 175), _
+        RGB(82, 138, 96), _
+        RGB(216, 184, 126), _
+        RGB(245, 216, 192), _
+        RGB(175, 92, 82), _
+        RGB(196, 78, 78), _
+        RGB(155, 88, 116), _
+        RGB(105, 122, 142))
 
+    ' Custom sky-blue gradient (position 1) with dark end pushed slightly past the default range.
+    customBlockSteelDetailColors = Array( _
+        RGB(230, 244, 252), _
+        RGB(200, 226, 248), _
+        RGB(168, 210, 245), _
+        RGB(132, 192, 238), _
+        RGB(95, 175, 230), _
+        RGB(65, 148, 205), _
+        RGB(42, 120, 178), _
+        RGB(25, 92, 148), _
+        RGB(13, 66, 112), _
+        RGB(5, 45, 80))
+
+    ' Position 2 mint/green gradient: starts from a very pale mint, passes through #C6EFCE,
+    ' and descends to dark forest. The headline tile uses #C6EFCE directly.
     customBlockTealDetailColors = Array( _
-        RGB(231, 245, 244), _
-        RGB(193, 230, 226), _
-        RGB(155, 213, 208), _
-        RGB(117, 198, 191), _
-        RGB(80, 182, 174), _
-        RGB(62, 147, 140), _
-        RGB(40, 98, 94), _
-        RGB(34, 81, 78), _
-        RGB(27, 65, 62), _
-        RGB(20, 48, 46))
+        RGB(228, 248, 232), _
+        RGB(198, 239, 206), _
+        RGB(165, 222, 180), _
+        RGB(135, 205, 155), _
+        RGB(105, 185, 130), _
+        RGB(78, 160, 105), _
+        RGB(55, 135, 80), _
+        RGB(38, 108, 60), _
+        RGB(24, 82, 42), _
+        RGB(15, 58, 30))
 
     customBlockOrangeDetailColors = Array( _
-        RGB(251, 233, 220), _
-        RGB(248, 203, 173), _
-        RGB(242, 186, 145), _
-        RGB(236, 170, 116), _
-        RGB(229, 149, 88), _
-        RGB(205, 125, 67), _
-        RGB(173, 103, 54), _
-        RGB(141, 84, 45), _
-        RGB(113, 69, 38), _
-        RGB(102, 66, 38))
+        RGB(254, 238, 225), _
+        RGB(253, 208, 178), _
+        RGB(247, 191, 150), _
+        RGB(241, 175, 121), _
+        RGB(234, 154, 93), _
+        RGB(210, 130, 72), _
+        RGB(178, 108, 59), _
+        RGB(146, 89, 50), _
+        RGB(118, 74, 43), _
+        RGB(107, 71, 43))
     ' --------------------------------------------------------------------------------------
 
     Dim lncBlack As Variant
@@ -301,9 +319,11 @@ Private Sub UserForm_Initialize()
 
         For j = 1 To Len(KEY_DETAIL)
             Set Color = New cls_FontColor
-            If i = 3 Then
+            If i = 1 Then
+                Color.Setup colorCode:=customBlockSteelDetailColors(j - 1)
+            ElseIf i = 2 Then
                 Color.Setup colorCode:=customBlockTealDetailColors(j - 1)
-            ElseIf i = 6 Then
+            ElseIf i = 5 Then
                 Color.Setup colorCode:=customBlockOrangeDetailColors(j - 1)
             Else
                 Color.Setup colorCode:=customBlockDetailBaseColors(i)

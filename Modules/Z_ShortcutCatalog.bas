@@ -4,7 +4,7 @@ Option Private Module
 
 Public Function ShortcutCatalog() As Variant
     Dim data() As Variant
-    ReDim data(1 To 410, 1 To 2)
+    ReDim data(1 To 412, 1 To 2)
     data(1, 1) = "Pictures"
     data(1, 2) = "nmap xp CopyPasteAsPictureToPPT"
     data(2, 1) = "Charts"
@@ -713,8 +713,7 @@ Public Function ShortcutCatalog() As Variant
     data(353, 2) = "nmap <C-d> ScrollDownHalf"
     data(354, 1) = "Research Links (command mode)"
     data(354, 2) = "nmap <C-b> ScrollUp"
-    data(355, 1) = "Research Links (command mode)"
-    data(355, 2) = "nmap <C-y> RedoExecute"
+    ' (355 intentionally blank: Ctrl+Y is left to native Excel redo)
     data(356, 1) = "Research Links (command mode)"
     data(356, 2) = "nmap <C-e> ScrollDown1Row"
     data(357, 1) = "Research Links (command mode)"
@@ -781,8 +780,7 @@ Public Function ShortcutCatalog() As Variant
     data(387, 2) = "nmap [b PreviousWorkbook"
     data(388, 1) = "Research Links (command mode)"
     data(388, 2) = "nmap u Undo_CtrlZ"
-    data(389, 1) = "Research Links (command mode)"
-    data(389, 2) = "nmap <C-z> Undo_CtrlZ"
+    ' (389 intentionally blank: Ctrl+Z is left to native Excel undo)
     data(390, 1) = "Research Links (command mode)"
     data(390, 2) = "nmap <C-r> RedoExecute"
     data(391, 1) = "Research Links (command mode)"
@@ -825,5 +823,9 @@ Public Function ShortcutCatalog() As Variant
     data(409, 2) = "nmap 8 SubstituteType 8"
     data(410, 1) = "Research Links (command mode)"
     data(410, 2) = "nmap 9 SubstituteType 9"
+    data(411, 1) = "Borders"
+    data(411, 2) = "nmap bsa ToggleBorderAround -4115 2"
+    data(412, 1) = "Borders"
+    data(412, 2) = "nmap bsb ToggleBorderAll -4115 2"
     ShortcutCatalog = data
 End Function

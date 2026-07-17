@@ -74,6 +74,21 @@ End Sub
 Public Sub SafeActivateWorksheet(ByVal targetSheet As Worksheet)
     On Error Resume Next
     If targetSheet Is Nothing Then Exit Sub
+
+    ' If the target sheet is already the active window's active sheet, don't
+    ' re-activate it. With multiple windows of the same workbook, Worksheet.Activate
+    ' hops focus to a sibling window that also shows the sheet, so re-activating the
+    ' sheet you're already on jumps you to another window. Selecting still works
+    ' without re-activating.
+    Dim win As Window
+    Set win = Application.ActiveWindow
+    If Not win Is Nothing Then
+        If win.ActiveSheet.Name = targetSheet.Name _
+           And win.ActiveSheet.Parent.Name = targetSheet.Parent.Name Then
+            Exit Sub
+        End If
+    End If
+
     targetSheet.Activate
     On Error GoTo 0
 End Sub

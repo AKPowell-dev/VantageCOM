@@ -15,7 +15,9 @@
       "PowerShell(python \"C:\\\\Users\\\\andrep54\\\\Vantage Add-in\\\\update_xlam.py\" --repo-root \"C:\\\\Users\\\\andrep54\\\\VantageCOM\\\\VantageCOM\" --skip-com-build --target \"$env:TEMP\\\\econs_build_test\")",
       "PowerShell(Remove-Item *)",
       "PowerShell(python \"C:\\\\Users\\\\andrep54\\\\Vantage Add-in\\\\update_xlam.py\" --repo-root \"C:\\\\Users\\\\andrep54\\\\VantageCOM\\\\VantageCOM\" --register-com-per-user --close-excel)",
-      "PowerShell(python \"C:\\\\Users\\\\andrep54\\\\VantageCOM\\\\VantageCOM\\\\build\\\\gen_econs_form.py\")"
+      "PowerShell(python \"C:\\\\Users\\\\andrep54\\\\VantageCOM\\\\VantageCOM\\\\build\\\\gen_econs_form.py\")",
+      "Bash(python *)",
+      "Bash(git add *)"
     ]
   }
 }

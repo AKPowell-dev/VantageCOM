@@ -21,6 +21,12 @@ Private mCtrlBracketPassthrough As Boolean
 Private Const NAV_STATUS_MAX As Long = 220
 Private Const NAV_DEBUG As Boolean = False
 
+' Error-tracer bounds: cap recursion depth, total cells visited, and errored
+' precedents followed per cell so a pathological model can't hang the walk.
+Private Const ERR_MAX_DEPTH As Long = 200
+Private Const ERR_MAX_NODES As Long = 5000
+Private Const ERR_MAX_PRECEDENTS As Long = 64
+
 Sub DrawDependencyMap()
     Dim engine As Object
     On Error GoTo CleanFail
@@ -861,4 +867,364 @@ Private Function QuoteSheetReference(ByVal workbookName As String, ByVal sheetNa
     End If
 
     QuoteSheetReference = fullName
+End Function
+
+' === Error tracer ===========================================================
+' Trace the active cell's error back to the cell(s) where it originates, by
+' walking up only the errored precedents until reaching an errored cell that has
+' no errored precedents (the root). Reuses the formula-reference parsing and the
+' reference-resolution helpers above. Bound to <C-S-t> and <cmd>traceerr.
+Public Function TraceErrorToRoot(Optional ByVal g As String) As Boolean
+    Dim startCell As Range, rootCell As Range
+    Dim visited As Object, path As Object
+    Dim acyclicRoots As Collection, circularRoots As Collection
+    Dim origScreen As Boolean, origEvents As Boolean, stateSet As Boolean
+    Dim isCircular As Boolean
+    Dim msg As String
+
+    On Error GoTo CleanFail
+    TraceErrorToRoot = False
+
+    If Not TryGetActiveCell(startCell) Then
+        Call SetStatusBarTemporarily("No active cell.", 2000)
+        Exit Function
+    End If
+    If startCell.CountLarge > 1 Then Set startCell = startCell.Cells(1, 1)
+
+    If Not CellIsError(startCell) Then
+        Call SetStatusBarTemporarily("Active cell is not an error - nothing to trace.", 2500)
+        Exit Function
+    End If
+
+    ' Suppress repaint and events: the walk activates each cell's sheet (so the
+    ' Excel auditing APIs work) and that must stay invisible. Calculation is left
+    ' alone - tracing never edits cells.
+    origScreen = Application.ScreenUpdating
+    origEvents = Application.EnableEvents
+    Application.ScreenUpdating = False
+    Application.EnableEvents = False
+    stateSet = True
+
+    ' Explore EVERY errored-precedent branch. A cell with no errored precedent is
+    ' a true (acyclic) origin; a branch that loops back is a cycle edge and is not
+    ' followed. Prefer an acyclic origin - even one reached by branching off a
+    ' circular reference - and only report "circular" when the error has no
+    ' acyclic origin at all.
+    Set visited = CreateObject("Scripting.Dictionary")
+    Set path = CreateObject("Scripting.Dictionary")
+    Set acyclicRoots = New Collection
+    Set circularRoots = New Collection
+    Call WalkErr(startCell, visited, path, acyclicRoots, circularRoots, 0)
+
+    If acyclicRoots.Count > 0 Then
+        Set rootCell = acyclicRoots(1)
+        isCircular = False
+    ElseIf circularRoots.Count > 0 Then
+        Set rootCell = circularRoots(1)
+        isCircular = True
+    Else
+        Set rootCell = startCell
+        isCircular = False
+    End If
+
+    ' Restore UI state, then navigate (visibly) to the originating cell. The
+    ' Safe* helpers are multi-window aware.
+    Application.EnableEvents = origEvents
+    Application.ScreenUpdating = origScreen
+    stateSet = False
+
+    Call SafeActivateWorkbook(rootCell.Worksheet.Parent)
+    Call SafeActivateWorksheet(rootCell.Worksheet)
+    Call SafeSelectRange(rootCell)
+    Call CenterActiveCellInWindow
+
+    msg = "Error root: " & rootCell.Worksheet.Name & "!" & rootCell.Address(False, False) _
+        & "   " & ErrTypeText(rootCell) & "   "
+    If isCircular Then
+        msg = msg & "circular reference with no acyclic origin."
+    Else
+        msg = msg & DiagnoseErrorRoot(rootCell)
+        If acyclicRoots.Count > 1 Then
+            msg = msg & "   (+" & (acyclicRoots.Count - 1) & " other origin" & IIf(acyclicRoots.Count - 1 > 1, "s", "") & ")"
+        End If
+    End If
+    Call SetStatusBarTemporarily(msg, 6000, True)
+    Exit Function
+
+CleanFail:
+    If stateSet Then
+        Application.EnableEvents = origEvents
+        Application.ScreenUpdating = origScreen
+    End If
+    Call ErrorHandler("TraceErrorToRoot")
+End Function
+
+' Recursively explore the errored-precedent tree. Records acyclic origins (cells
+' with no errored precedent) and, for cells that reference an errored ancestor, a
+' circular-reference fallback. "path" is the current chain of ancestors, used to
+' spot a cycle edge (a precedent already on the path) without looping forever;
+' "visited" stops a cell being explored twice across branches.
+Private Sub WalkErr(ByVal cell As Range, ByVal visited As Object, ByVal path As Object, _
+                    ByVal acyclicRoots As Collection, ByVal circularRoots As Collection, ByVal depth As Long)
+    Dim key As String, pk As String
+    Dim errored As Collection
+    Dim p As Range
+
+    If depth > ERR_MAX_DEPTH Then
+        acyclicRoots.Add cell
+        Exit Sub
+    End If
+    If visited.Count > ERR_MAX_NODES Then Exit Sub
+
+    key = cell.Address(External:=True)
+    If visited.Exists(key) Then Exit Sub
+    visited(key) = True
+    path(key) = True
+
+    Set errored = AllErroredPrecedents(cell)
+
+    If errored.Count = 0 Then
+        acyclicRoots.Add cell                       ' true origin
+    Else
+        For Each p In errored
+            pk = p.Address(External:=True)
+            If path.Exists(pk) Then
+                ' Cycle edge - remember one cell as a circular fallback, but keep
+                ' exploring the other branches for an acyclic origin.
+                If circularRoots.Count = 0 Then circularRoots.Add cell
+            ElseIf Not visited.Exists(pk) Then
+                Call WalkErr(p, visited, path, acyclicRoots, circularRoots, depth + 1)
+            End If
+        Next p
+    End If
+
+    path.Remove key                                 ' backtrack
+End Sub
+
+' All errored precedents of cell (deduped). Uses fast same-sheet DirectPrecedents
+' plus parsed off-sheet references; only if those find nothing does it fall back
+' to Excel's own trace-precedent arrows (NavigateArrow), which catches anything
+' the other two miss, including cross-sheet links.
+Private Function AllErroredPrecedents(ByVal cell As Range) As Collection
+    Dim result As Collection
+    Dim seen As Object
+
+    Set result = New Collection
+    Set AllErroredPrecedents = result
+    Set seen = CreateObject("Scripting.Dictionary")
+
+    ' Activate the cell's own sheet so the Excel auditing APIs operate on it.
+    Call SafeActivateWorkbook(cell.Worksheet.Parent)
+    Call SafeActivateWorksheet(cell.Worksheet)
+
+    Call AddErroredFromDirectPrecedents(cell, result, seen)
+    Call AddErroredFromParsedRefs(cell, result, seen)
+
+    If result.Count = 0 Then
+        Call AddErroredFromArrows(cell, result, seen)
+    End If
+End Function
+
+' Same-sheet direct precedents (Range.DirectPrecedents).
+Private Sub AddErroredFromDirectPrecedents(ByVal cell As Range, ByVal result As Collection, ByVal seen As Object)
+    Dim dp As Range, area As Range
+
+    On Error Resume Next
+    Set dp = cell.DirectPrecedents
+    On Error GoTo 0
+    If dp Is Nothing Then Exit Sub
+
+    For Each area In dp.Areas
+        Call AddErroredFromRange(area, result, seen)
+    Next area
+End Sub
+
+' References parsed from the formula text (catches off-sheet / external refs that
+' DirectPrecedents does not report).
+Private Sub AddErroredFromParsedRefs(ByVal cell As Range, ByVal result As Collection, ByVal seen As Object)
+    Dim f As String
+    Dim refs() As FormulaNavRef
+    Dim n As Long, i As Long
+    Dim rng As Range
+    Dim ctxWb As String, ctxWs As String
+
+    On Error Resume Next
+    f = cell.Formula2
+    If Len(f) = 0 Then f = cell.Formula
+    On Error GoTo 0
+    If Len(f) = 0 Then Exit Sub
+    If Left$(f, 1) <> "=" Then Exit Sub
+
+    n = CollectFormulaReferences(f, refs)
+    If n <= 0 Then Exit Sub
+
+    ctxWb = cell.Worksheet.Parent.Name
+    ctxWs = cell.Worksheet.Name
+    For i = 1 To n
+        Set rng = ResolveTokenToRange(refs(i).Token, ctxWb, ctxWs)
+        If Not rng Is Nothing Then Call AddErroredFromRange(rng, result, seen)
+    Next i
+End Sub
+
+' Excel's own trace-precedent arrows: ShowPrecedents draws them and NavigateArrow
+' walks them (same- and cross-sheet) - the same path Excel uses when you
+' double-click a tracer arrow. The authoritative fallback.
+Private Sub AddErroredFromArrows(ByVal cell As Range, ByVal result As Collection, ByVal seen As Object)
+    Dim arrow As Long, link As Long
+    Dim prec As Range
+    Dim shown As Boolean
+
+    On Error Resume Next
+    cell.ShowPrecedents
+    shown = (Err.Number = 0)
+    Err.Clear
+
+    For arrow = 1 To 64
+        Set prec = Nothing
+        Set prec = cell.NavigateArrow(True, arrow, 1)
+        If prec Is Nothing Then Exit For
+        If SameCellAddr(prec, cell) Then Exit For
+        Call AddErroredFromRange(prec, result, seen)
+
+        For link = 2 To 64
+            Set prec = Nothing
+            Set prec = cell.NavigateArrow(True, arrow, link)
+            If prec Is Nothing Then Exit For
+            If SameCellAddr(prec, cell) Then Exit For
+            Call AddErroredFromRange(prec, result, seen)
+        Next link
+    Next arrow
+
+    ' Remove the tracer arrows (re-activate the cell's sheet first, since
+    ' NavigateArrow may have moved us off it).
+    If shown Then
+        Call SafeActivateWorksheet(cell.Worksheet)
+        cell.ShowPrecedents True
+    End If
+    On Error GoTo 0
+End Sub
+
+' Add every errored cell within rng to result (deduped, capped). Single cell is
+' tested directly; larger ranges use SpecialCells so they are not scanned
+' cell-by-cell.
+Private Sub AddErroredFromRange(ByVal rng As Range, ByVal result As Collection, ByVal seen As Object)
+    Dim errs As Range, part As Range, c As Range
+
+    On Error Resume Next
+    If rng Is Nothing Then Exit Sub
+    If result.Count >= ERR_MAX_PRECEDENTS Then Exit Sub
+
+    If rng.CountLarge = 1 Then
+        If CellIsError(rng) Then Call AddCellUnique(rng, result, seen)
+        Exit Sub
+    End If
+
+    Set errs = Nothing
+    Set errs = rng.SpecialCells(xlCellTypeFormulas, xlErrors)
+    If Not errs Is Nothing Then
+        For Each part In errs.Areas
+            For Each c In part.Cells
+                Call AddCellUnique(c, result, seen)
+                If result.Count >= ERR_MAX_PRECEDENTS Then Exit Sub
+            Next c
+        Next part
+    End If
+
+    Set errs = Nothing
+    Set errs = rng.SpecialCells(xlCellTypeConstants, xlErrors)
+    If Not errs Is Nothing Then
+        For Each part In errs.Areas
+            For Each c In part.Cells
+                Call AddCellUnique(c, result, seen)
+                If result.Count >= ERR_MAX_PRECEDENTS Then Exit Sub
+            Next c
+        Next part
+    End If
+End Sub
+
+Private Sub AddCellUnique(ByVal c As Range, ByVal result As Collection, ByVal seen As Object)
+    Dim k As String
+    On Error Resume Next
+    k = c.Address(External:=True)
+    If k <> "" Then
+        If Not seen.Exists(k) Then
+            seen(k) = True
+            result.Add c
+        End If
+    End If
+    On Error GoTo 0
+End Sub
+
+Private Function SameCellAddr(ByVal a As Range, ByVal b As Range) As Boolean
+    On Error Resume Next
+    SameCellAddr = (a.Address(External:=True) = b.Address(External:=True))
+    On Error GoTo 0
+End Function
+
+Private Function CellIsError(ByVal c As Range) As Boolean
+    On Error Resume Next
+    CellIsError = IsError(c.Value)
+    On Error GoTo 0
+End Function
+
+Private Function ErrTypeText(ByVal c As Range) As String
+    Dim t As String
+    On Error Resume Next
+    t = CStr(c.Text)
+    On Error GoTo 0
+    If Len(t) = 0 Then t = "#ERROR"
+    ErrTypeText = t
+End Function
+
+' Best-effort explanation of why the root cell carries an error.
+Private Function DiagnoseErrorRoot(ByVal c As Range) As String
+    Dim f As String
+    On Error Resume Next
+    f = c.Formula2
+    If Len(f) = 0 Then f = c.Formula
+    On Error GoTo 0
+
+    If Len(f) = 0 Or Left$(f, 1) <> "=" Then
+        DiagnoseErrorRoot = "hard-coded error value (not a formula)."
+    ElseIf InStr(1, f, "#REF!", vbTextCompare) > 0 Then
+        DiagnoseErrorRoot = "formula references a deleted cell or range (#REF!)."
+    Else
+        DiagnoseErrorRoot = "error created by this formula (divide-by-zero, failed lookup, or type mismatch)."
+    End If
+End Function
+
+' Resolve a parsed formula token to a Range without navigating. Mirrors the
+' resolution used by the formula navigator (qualified reference, named range, or
+' plain address on the context sheet).
+Private Function ResolveTokenToRange(ByVal token As String, ByVal ctxWb As String, ByVal ctxWs As String) As Range
+    Dim wb As Workbook, ws As Worksheet, target As Range
+    Dim wbName As String, wsName As String, addr As String
+
+    On Error Resume Next
+
+    If TryParseQualifiedReference(token, wbName, wsName, addr) Then
+        If Len(wbName) > 0 Then Set wb = Workbooks(wbName)
+        If wb Is Nothing And Len(ctxWb) > 0 Then Set wb = Workbooks(ctxWb)
+        If wb Is Nothing Then Set wb = ActiveWorkbook
+        If Not wb Is Nothing Then Set ws = wb.Worksheets(wsName)
+        If Not ws Is Nothing Then Set target = ws.Range(addr)
+        If Not target Is Nothing Then GoTo Done
+    End If
+
+    If IsBareNameToken(token) Then
+        If TryResolveNameRange(token, target) Then GoTo Done
+    End If
+
+    If IsPlainAddressToken(token) Then
+        Set wb = Nothing: Set ws = Nothing
+        If Len(ctxWb) > 0 Then Set wb = Workbooks(ctxWb)
+        If wb Is Nothing Then Set wb = ActiveWorkbook
+        If Not wb Is Nothing And Len(ctxWs) > 0 Then Set ws = wb.Worksheets(ctxWs)
+        If ws Is Nothing Then Set ws = ActiveSheet
+        If Not ws Is Nothing Then Set target = ws.Range(token)
+    End If
+
+Done:
+    On Error GoTo 0
+    Set ResolveTokenToRange = target
 End Function

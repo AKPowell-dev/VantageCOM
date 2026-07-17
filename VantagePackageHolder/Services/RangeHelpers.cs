@@ -121,6 +121,24 @@ namespace VantagePackageHolder
                 return;
             }
 
+            // If this sheet is already the active sheet of the active window, do
+            // not re-activate it. With multiple windows of the same workbook,
+            // Worksheet.Activate hops focus to whichever sibling window already
+            // shows the sheet — so re-activating the sheet you're already on jumps
+            // you to another window. Selecting works fine without re-activating.
+            try
+            {
+                var win = sheet.Application?.ActiveWindow;
+                if (win != null && win.ActiveSheet is Excel.Worksheet current && SameWorksheet(current, sheet))
+                {
+                    return;
+                }
+            }
+            catch
+            {
+                // fall through and activate
+            }
+
             try
             {
                 sheet.Activate();
@@ -128,6 +146,30 @@ namespace VantagePackageHolder
             catch
             {
                 // ignored
+            }
+        }
+
+        private static bool SameWorksheet(Excel.Worksheet a, Excel.Worksheet b)
+        {
+            if (a == null || b == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (!string.Equals(a.Name, b.Name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+
+                var wbA = (a.Parent as Excel.Workbook)?.Name;
+                var wbB = (b.Parent as Excel.Workbook)?.Name;
+                return string.Equals(wbA, wbB, StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
             }
         }
     }

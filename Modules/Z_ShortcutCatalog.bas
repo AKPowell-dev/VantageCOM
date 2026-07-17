@@ -4,7 +4,7 @@ Option Private Module
 
 Public Function ShortcutCatalog() As Variant
     Dim data() As Variant
-    ReDim data(1 To 412, 1 To 2)
+    ReDim data(1 To 414, 1 To 2)
     data(1, 1) = "Pictures"
     data(1, 2) = "nmap xp CopyPasteAsPictureToPPT"
     data(2, 1) = "Charts"
@@ -827,5 +827,9 @@ Public Function ShortcutCatalog() As Variant
     data(411, 2) = "nmap bsa ToggleBorderAround -4115 2"
     data(412, 1) = "Borders"
     data(412, 2) = "nmap bsb ToggleBorderAll -4115 2"
+    data(413, 1) = "Navigation & References"
+    data(413, 2) = "nmap <C-S-t> TraceErrorToRoot"
+    data(414, 1) = "Navigation & References"
+    data(414, 2) = "nmap <cmd>traceerr TraceErrorToRoot"
     ShortcutCatalog = data
 End Function

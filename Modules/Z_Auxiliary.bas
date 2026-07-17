@@ -1631,6 +1631,75 @@ CleanFail:
     Resume CleanExit
 End Function
 
+Public Function CmdInsertTitle(Optional ByVal g As String) As Boolean
+    Dim uiGuard As ExcelUiGuard
+    Set uiGuard = SuppressExcelUi(True)
+    On Error GoTo CleanFail
+
+    Call StopVisualMode
+
+    If TypeName(Selection) <> "Range" Then GoTo CleanExit
+
+    Dim startCell As Range
+    Set startCell = ActiveCell
+    If startCell Is Nothing Then GoTo CleanExit
+
+    ' === Row 1: title text in the active cell ===
+    With startCell
+        .Value2 = "$MM, Years from Investment"
+        .Font.Name = "Garamond"
+        .Font.Italic = True
+        .Font.Size = 11
+    End With
+
+    ' === Row 1: numbers 0..10, starting 11 columns over from the active cell ===
+    Dim nums As Range
+    Set nums = startCell.Offset(0, 11).Resize(1, 11)
+
+    Dim values(1 To 1, 1 To 11) As Variant
+    Dim i As Long
+    For i = 1 To 11
+        values(1, i) = i - 1
+    Next i
+
+    nums.Value2 = values
+    With nums
+        .Font.Name = "Garamond"
+        .Font.Italic = True
+        .Font.Size = 11
+        .Font.Color = vbBlack
+        .NumberFormat = "#,##0_);(#,##0);--_)"
+    End With
+
+    ' Right border on the first number cell (11th column), extended down all 3 rows
+    startCell.Offset(0, 11).Resize(3, 1).Borders(xlEdgeRight).LineStyle = xlContinuous
+
+    ' === Row 1: bottom border across the full title span (active cell -> last number cell) ===
+    Dim fullRow As Range
+    Set fullRow = startCell.Resize(1, 22)
+    fullRow.Borders(xlEdgeBottom).LineStyle = xlContinuous
+
+    ' === Row 2: thin spacer row directly below ===
+    startCell.Offset(1, 0).EntireRow.RowHeight = 3
+
+    ' === Row 3: dark fill banner directly below the spacer ===
+    With startCell.Offset(2, 0).Resize(1, 22)
+        .Interior.Color = RGB(0, 32, 96)   ' #002060
+        .Font.Color = vbWhite
+        .Font.Name = "Garamond"
+        .Font.Size = 11
+        .Font.Bold = True
+    End With
+
+CleanExit:
+    CmdInsertTitle = False
+    Exit Function
+
+CleanFail:
+    Call ErrorHandler("CmdInsertTitle")
+    Resume CleanExit
+End Function
+
 
 Function PasteExact(Optional ByVal g As String) As Boolean
     Dim engine As Object

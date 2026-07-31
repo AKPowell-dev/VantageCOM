@@ -17,7 +17,12 @@
       "PowerShell(python \"C:\\\\Users\\\\andrep54\\\\Vantage Add-in\\\\update_xlam.py\" --repo-root \"C:\\\\Users\\\\andrep54\\\\VantageCOM\\\\VantageCOM\" --register-com-per-user --close-excel)",
       "PowerShell(python \"C:\\\\Users\\\\andrep54\\\\VantageCOM\\\\VantageCOM\\\\build\\\\gen_econs_form.py\")",
       "Bash(python *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m '@ *)",
+      "Bash(git commit *)",
+      "Bash(Remove-Item .git/COMMIT_MSG.tmp)",
+      "Bash(rm -f .git/COMMIT_MSG.tmp)",
+      "Bash(git push *)"
     ]
   }
 }

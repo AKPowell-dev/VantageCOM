@@ -149,76 +149,145 @@ Private Sub UserForm_Initialize()
     ' --- new section: customize these arrays freely ---------------------------------------
     Dim customBlockTopColors As Variant
     Dim customBlockDetailBaseColors As Variant
-    Dim customBlockSteelDetailColors As Variant
-    Dim customBlockTealDetailColors As Variant
-    Dim customBlockOrangeDetailColors As Variant
+    Dim customBlockNavyDetailColors As Variant
+    Dim customBlockCeruleanDetailColors As Variant
+    Dim customBlockAquaDetailColors As Variant
+    Dim customBlockEmeraldDetailColors As Variant
+    Dim customBlockSeagreenDetailColors As Variant
+    Dim customBlockYellowDetailColors As Variant
+    Dim customBlockRedDetailColors As Variant
+    Dim customBlockSlateDetailColors As Variant
     Dim customBlockLuminance As Long
 
-    ' Order: cool blues -> greens -> warm yellows -> reds (muted -> peak -> deep) -> neutral closer
-    ' 0 navy, 1 sky, 2 mint (Excel Good #C6EFCE), 3 forest, 4 gold, 5 peach, 6 brick, 7 red, 8 burgundy, 9 slate
+    ' 0 navy, 1 cerulean, 2 aqua, 3 emerald, 4 jade, 5 gold, 6 vermillion, 7 red, 8 slate, 9 graphite
     customBlockTopColors = Array( _
-        RGB(0, 42, 112), _
-        RGB(95, 175, 230), _
-        RGB(198, 239, 206), _
-        RGB(58, 110, 72), _
-        RGB(222, 178, 100), _
-        RGB(238, 184, 142), _
-        RGB(160, 80, 70), _
-        RGB(208, 32, 32), _
-        RGB(126, 56, 86), _
-        RGB(78, 96, 122))
+        RGB(0, 32, 96), _
+        RGB(38, 118, 178), _
+        RGB(0, 178, 192), _
+        RGB(38, 128, 98), _
+        RGB(55, 138, 62), _
+        RGB(245, 201, 20), _
+        RGB(178, 62, 52), _
+        RGB(210, 35, 35), _
+        RGB(72, 88, 112), _
+        RGB(58, 65, 75))
 
-    ' Softer companion tones for the numeric detail grids.
+    ' Companion tones for the numeric detail grids (slightly lighter than tops).
     customBlockDetailBaseColors = Array( _
-        RGB(50, 102, 172), _
-        RGB(120, 188, 235), _
-        RGB(160, 218, 175), _
-        RGB(82, 138, 96), _
-        RGB(216, 184, 126), _
-        RGB(245, 216, 192), _
-        RGB(175, 92, 82), _
-        RGB(196, 78, 78), _
-        RGB(155, 88, 116), _
-        RGB(105, 122, 142))
+        RGB(15, 48, 112), _
+        RGB(52, 132, 188), _
+        RGB(20, 192, 205), _
+        RGB(52, 142, 112), _
+        RGB(68, 152, 75), _
+        RGB(248, 210, 30), _
+        RGB(188, 78, 65), _
+        RGB(220, 52, 48), _
+        RGB(88, 102, 125), _
+        RGB(72, 78, 88))
 
-    ' Custom sky-blue gradient (position 1) with dark end pushed slightly past the default range.
-    customBlockSteelDetailColors = Array( _
-        RGB(230, 244, 252), _
-        RGB(200, 226, 248), _
-        RGB(168, 210, 245), _
-        RGB(132, 192, 238), _
-        RGB(95, 175, 230), _
-        RGB(65, 148, 205), _
-        RGB(42, 120, 178), _
-        RGB(25, 92, 148), _
-        RGB(13, 66, 112), _
-        RGB(5, 45, 80))
+    ' Navy gradient (position 0): near-white blue -> deep navy.
+    customBlockNavyDetailColors = Array( _
+        RGB(228, 232, 248), _
+        RGB(195, 205, 238), _
+        RGB(162, 175, 225), _
+        RGB(128, 148, 208), _
+        RGB(98, 120, 188), _
+        RGB(70, 95, 168), _
+        RGB(48, 72, 148), _
+        RGB(30, 55, 128), _
+        RGB(15, 42, 112), _
+        RGB(5, 32, 98))
 
-    ' Position 2 mint/green gradient: starts from a very pale mint, passes through #C6EFCE,
-    ' and descends to dark forest. The headline tile uses #C6EFCE directly.
-    customBlockTealDetailColors = Array( _
-        RGB(228, 248, 232), _
-        RGB(198, 239, 206), _
-        RGB(165, 222, 180), _
-        RGB(135, 205, 155), _
-        RGB(105, 185, 130), _
-        RGB(78, 160, 105), _
-        RGB(55, 135, 80), _
-        RGB(38, 108, 60), _
-        RGB(24, 82, 42), _
-        RGB(15, 58, 30))
+    ' Cerulean gradient (position 1): pale sky -> deep cerulean.
+    customBlockCeruleanDetailColors = Array( _
+        RGB(220, 238, 248), _
+        RGB(185, 222, 240), _
+        RGB(148, 202, 228), _
+        RGB(112, 180, 215), _
+        RGB(78, 158, 198), _
+        RGB(50, 135, 180), _
+        RGB(30, 115, 162), _
+        RGB(15, 95, 142), _
+        RGB(5, 75, 122), _
+        RGB(0, 58, 102))
 
-    customBlockOrangeDetailColors = Array( _
-        RGB(254, 238, 225), _
-        RGB(253, 208, 178), _
-        RGB(247, 191, 150), _
-        RGB(241, 175, 121), _
-        RGB(234, 154, 93), _
-        RGB(210, 130, 72), _
-        RGB(178, 108, 59), _
-        RGB(146, 89, 50), _
-        RGB(118, 74, 43), _
-        RGB(107, 71, 43))
+    ' Aqua gradient (position 2): pale ice-white -> deep aqua.
+    customBlockAquaDetailColors = Array( _
+        RGB(222, 248, 250), _
+        RGB(185, 240, 242), _
+        RGB(145, 228, 232), _
+        RGB(105, 215, 222), _
+        RGB(62, 200, 210), _
+        RGB(25, 182, 195), _
+        RGB(8, 158, 172), _
+        RGB(0, 128, 142), _
+        RGB(0, 98, 110), _
+        RGB(0, 68, 78))
+
+    ' Emerald gradient (position 3): pale blue-mint -> deep emerald.
+    customBlockEmeraldDetailColors = Array( _
+        RGB(218, 240, 235), _
+        RGB(178, 222, 212), _
+        RGB(138, 202, 185), _
+        RGB(100, 180, 158), _
+        RGB(65, 158, 132), _
+        RGB(40, 135, 108), _
+        RGB(22, 112, 88), _
+        RGB(10, 90, 70), _
+        RGB(2, 68, 52), _
+        RGB(0, 48, 38))
+
+    ' Jade gradient (position 4): pale muted sage -> deep muted green.
+    customBlockSeagreenDetailColors = Array( _
+        RGB(228, 238, 222), _
+        RGB(198, 222, 188), _
+        RGB(168, 205, 158), _
+        RGB(138, 185, 128), _
+        RGB(108, 165, 100), _
+        RGB(82, 145, 75), _
+        RGB(60, 125, 55), _
+        RGB(42, 102, 38), _
+        RGB(25, 80, 22), _
+        RGB(12, 58, 10))
+
+    ' Gold gradient (position 5): #FEFAE9 -> #725C05.
+    customBlockYellowDetailColors = Array( _
+        RGB(254, 250, 233), _
+        RGB(253, 242, 198), _
+        RGB(251, 233, 162), _
+        RGB(250, 225, 126), _
+        RGB(248, 216, 90), _
+        RGB(247, 208, 55), _
+        RGB(228, 185, 10), _
+        RGB(189, 153, 9), _
+        RGB(153, 123, 6), _
+        RGB(114, 92, 5))
+
+    ' Red gradient (position 7): pale rose-white -> deep red.
+    customBlockRedDetailColors = Array( _
+        RGB(252, 228, 228), _
+        RGB(248, 195, 195), _
+        RGB(242, 158, 158), _
+        RGB(235, 120, 118), _
+        RGB(225, 82, 78), _
+        RGB(210, 48, 45), _
+        RGB(185, 30, 28), _
+        RGB(155, 18, 18), _
+        RGB(125, 10, 10), _
+        RGB(95, 5, 5))
+
+    ' Slate gradient (position 8): pale blue-gray -> deep blue-slate.
+    customBlockSlateDetailColors = Array( _
+        RGB(225, 230, 238), _
+        RGB(198, 205, 218), _
+        RGB(168, 178, 198), _
+        RGB(140, 152, 175), _
+        RGB(115, 128, 155), _
+        RGB(92, 105, 135), _
+        RGB(72, 85, 115), _
+        RGB(55, 68, 98), _
+        RGB(40, 52, 78), _
+        RGB(28, 38, 62))
     ' --------------------------------------------------------------------------------------
 
     Dim lncBlack As Variant
@@ -319,12 +388,22 @@ Private Sub UserForm_Initialize()
 
         For j = 1 To Len(KEY_DETAIL)
             Set Color = New cls_FontColor
-            If i = 1 Then
-                Color.Setup colorCode:=customBlockSteelDetailColors(j - 1)
+            If i = 0 Then
+                Color.Setup colorCode:=customBlockNavyDetailColors(j - 1)
+            ElseIf i = 1 Then
+                Color.Setup colorCode:=customBlockCeruleanDetailColors(j - 1)
             ElseIf i = 2 Then
-                Color.Setup colorCode:=customBlockTealDetailColors(j - 1)
+                Color.Setup colorCode:=customBlockAquaDetailColors(j - 1)
+            ElseIf i = 3 Then
+                Color.Setup colorCode:=customBlockEmeraldDetailColors(j - 1)
+            ElseIf i = 4 Then
+                Color.Setup colorCode:=customBlockSeagreenDetailColors(j - 1)
             ElseIf i = 5 Then
-                Color.Setup colorCode:=customBlockOrangeDetailColors(j - 1)
+                Color.Setup colorCode:=customBlockYellowDetailColors(j - 1)
+            ElseIf i = 7 Then
+                Color.Setup colorCode:=customBlockRedDetailColors(j - 1)
+            ElseIf i = 8 Then
+                Color.Setup colorCode:=customBlockSlateDetailColors(j - 1)
             Else
                 Color.Setup colorCode:=customBlockDetailBaseColors(i)
                 customBlockLuminance = Color.luminance

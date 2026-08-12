@@ -33,16 +33,15 @@ Private Sub App_SheetChange(ByVal Sh As Object, ByVal target As Range)
 End Sub
 
 Private Sub App_WorkbookActivate(ByVal Wb As Workbook)
-    If gVim.Enabled Then
-        On Error Resume Next
+    If gVim Is Nothing Then Exit Sub
+    If Not gVim.Enabled Then Exit Sub
 
-        Unload UF_Cmd
-        Unload UF_CmdLine
-        Unload UF_ColorPicker
-        Unload UF_SheetPicker
-
-        On Error GoTo 0
-    End If
+    On Error Resume Next
+    Unload UF_Cmd
+    Unload UF_CmdLine
+    Unload UF_ColorPicker
+    Unload UF_SheetPicker
+    On Error GoTo 0
 End Sub
 
 Public Sub ApplySelectionLock()

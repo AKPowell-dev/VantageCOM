@@ -44,6 +44,13 @@ Public Sub FlushAutoColor()
     Set rng = mAutoColorRange
     Set mAutoColorRange = Nothing
 
+    ' Validate the range's parent workbook is still open
+    Dim wbName As String
+    On Error GoTo Done
+    wbName = rng.Worksheet.Parent.Name
+    If Len(wbName) = 0 Then GoTo Done
+    On Error GoTo Done
+
     Dim engine As Object
     Set engine = NetAddin()
     If engine Is Nothing Then Exit Sub

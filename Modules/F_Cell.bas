@@ -385,6 +385,8 @@ Function VisualSubtractNumber(Optional ByVal g As String) As Boolean
 End Function
 
 Function InsertCellsUp(Optional ByVal g As String) As Boolean
+    Dim prevScreen As Boolean
+    prevScreen = Application.ScreenUpdating
     On Error GoTo Catch
 
     Call RepeatRegister("InsertCellsUp")
@@ -398,11 +400,13 @@ Function InsertCellsUp(Optional ByVal g As String) As Boolean
     Call KeyStroke(Ctrl_ + Shift_ + Semicoron_JIS_, D_, Enter_)
 
 Catch:
-    Application.ScreenUpdating = True
-    Call ErrorHandler("InsertCellsUp")
+    Application.ScreenUpdating = prevScreen
+    If Err.Number <> 0 Then Call ErrorHandler("InsertCellsUp")
 End Function
 
 Function InsertCellsDown(Optional ByVal g As String) As Boolean
+    Dim prevScreen As Boolean
+    prevScreen = Application.ScreenUpdating
     On Error GoTo Catch
 
     Call RepeatRegister("InsertCellsDown")
@@ -420,11 +424,13 @@ Function InsertCellsDown(Optional ByVal g As String) As Boolean
     Call KeyStroke(Ctrl_ + Shift_ + Semicoron_JIS_, D_, Enter_)
 
 Catch:
-    Application.ScreenUpdating = True
-    Call ErrorHandler("InsertCellsDown")
+    Application.ScreenUpdating = prevScreen
+    If Err.Number <> 0 Then Call ErrorHandler("InsertCellsDown")
 End Function
 
 Function InsertCellsLeft(Optional ByVal g As String) As Boolean
+    Dim prevScreen As Boolean
+    prevScreen = Application.ScreenUpdating
     On Error GoTo Catch
 
     Call RepeatRegister("InsertCellsLeft")
@@ -438,11 +444,13 @@ Function InsertCellsLeft(Optional ByVal g As String) As Boolean
     Call KeyStroke(Ctrl_ + Shift_ + Semicoron_JIS_, I_, Enter_)
 
 Catch:
-    Application.ScreenUpdating = True
-    Call ErrorHandler("InsertCellsLeft")
+    Application.ScreenUpdating = prevScreen
+    If Err.Number <> 0 Then Call ErrorHandler("InsertCellsLeft")
 End Function
 
 Function InsertCellsRight(Optional ByVal g As String) As Boolean
+    Dim prevScreen As Boolean
+    prevScreen = Application.ScreenUpdating
     On Error GoTo Catch
 
     Call RepeatRegister("InsertCellsRight")
@@ -460,8 +468,8 @@ Function InsertCellsRight(Optional ByVal g As String) As Boolean
     Call KeyStroke(Ctrl_ + Shift_ + Semicoron_JIS_, I_, Enter_)
 
 Catch:
-    Application.ScreenUpdating = True
-    Call ErrorHandler("InsertCellsRight")
+    Application.ScreenUpdating = prevScreen
+    If Err.Number <> 0 Then Call ErrorHandler("InsertCellsRight")
 End Function
 
 Function DeleteValue(Optional ByVal g As String) As Boolean

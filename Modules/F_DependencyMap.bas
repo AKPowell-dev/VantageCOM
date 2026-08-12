@@ -15,6 +15,7 @@ Private mNavIndex As Long
 Private mNavStartAddress As String
 Private mNavStartSheetName As String
 Private mNavStartWorkbookName As String
+Private mNavStartWindow As Window
 Private mNavLastSelectionStamp As Long
 Private mFormulaNavigatorForm As UF_FormulaNavigator
 Private mCtrlBracketPassthrough As Boolean
@@ -182,6 +183,7 @@ Private Function InitFormulaNavigator(ByVal cell As Range, ByVal formulaText As 
     mNavStartAddress = cell.Address(External:=True)
     mNavStartSheetName = cell.Parent.Name
     mNavStartWorkbookName = cell.Parent.Parent.Name
+    Set mNavStartWindow = Application.ActiveWindow
     mNavIndex = 0
     mNavRefCount = 0
     mNavLastSelectionStamp = gSelectionStamp
@@ -207,6 +209,7 @@ Private Sub FormulaNavigatorReset()
     mNavStartAddress = ""
     mNavStartSheetName = ""
     mNavStartWorkbookName = ""
+    Set mNavStartWindow = Nothing
     mNavLastSelectionStamp = 0
     Erase mNavRefs
     Call HideFormulaNavigatorUI
@@ -301,6 +304,14 @@ Private Sub GoToFormulaNavigatorStart()
     Dim addr As String
 
     On Error Resume Next
+
+    ' Reactivate the original window first so we return to the correct view
+    If Not mNavStartWindow Is Nothing Then
+        If mNavStartWindow.Visible Then
+            mNavStartWindow.Activate
+        End If
+    End If
+
     If Len(mNavStartAddress) > 0 Then
         Application.Goto Reference:=mNavStartAddress, Scroll:=False
     End If

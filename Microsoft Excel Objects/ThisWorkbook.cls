@@ -67,6 +67,18 @@ Private Sub App_WorkbookActivate(ByVal Wb As Workbook)
     Call QueueBindAll()
 End Sub
 
+Private Sub App_WorkbookOpen(ByVal Wb As Workbook)
+    Call QueueBindAll()
+End Sub
+
+Private Sub App_NewWorkbook(ByVal Wb As Workbook)
+    Call QueueBindAll()
+End Sub
+
+Private Sub App_WorkbookNewSheet(ByVal Wb As Workbook, ByVal Sh As Object)
+    Call QueueBindAll()
+End Sub
+
 
 Private Sub App_SheetSelectionChange(ByVal Sh As Object, ByVal Target As Range)
     On Error GoTo CleanExit

@@ -413,7 +413,7 @@ namespace VantagePackageHolder
 
         public void SmartFillDown()
         {
-            using (new UiGuard(_app, hideStatusBar: true))
+            using (new UiGuard(_app, hideStatusBar: true, manualCalculation: true))
             {
                 if (!(GetActiveRange() is Excel.Range selection))
                 {
@@ -510,15 +510,43 @@ namespace VantagePackageHolder
                             lastRow = GetLastDataRowOrStart(ws, nearestCol, scanStart, maxRow, startRow);
                         }
 
-                        for (int row = startRow + 1; row <= lastRow; row++)
+                        // Batch-check for occupied cells using range Value2 array instead of cell-by-cell loop
+                        int rowsToCheck = lastRow - startRow;
+                        if (rowsToCheck > 0)
                         {
-                            var cell = ws.Cells[row, currentCol] as Excel.Range;
-                            bool hasValue = HasCellValue(cell);
-                            ReleaseIfNeeded(cell);
-                            if (hasValue)
+                            Excel.Range checkRange = null;
+                            try
                             {
-                                lastRow = row - 1;
-                                break;
+                                checkRange = ws.Range[ws.Cells[startRow + 1, currentCol], ws.Cells[lastRow, currentCol]];
+                                object valuesObj = checkRange.Value2;
+                                if (valuesObj is object[,] values)
+                                {
+                                    for (int r = values.GetLowerBound(0); r <= values.GetUpperBound(0); r++)
+                                    {
+                                        if (values[r, 1] != null)
+                                        {
+                                            string asText = values[r, 1] is string s ? s : Convert.ToString(values[r, 1]);
+                                            if (!string.IsNullOrWhiteSpace(asText))
+                                            {
+                                                lastRow = startRow + (r - values.GetLowerBound(0));
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                                else if (valuesObj != null)
+                                {
+                                    string asText = valuesObj is string s ? s : Convert.ToString(valuesObj);
+                                    if (!string.IsNullOrWhiteSpace(asText))
+                                    {
+                                        lastRow = startRow;
+                                    }
+                                }
+                            }
+                            catch { }
+                            finally
+                            {
+                                ReleaseIfNeeded(checkRange);
                             }
                         }
 
@@ -3370,19 +3398,33 @@ namespace VantagePackageHolder
                 return;
             }
 
-            targetRange.Font.Name = sourceCell.Font.Name;
-            targetRange.Font.Size = sourceCell.Font.Size;
-            targetRange.Font.Bold = sourceCell.Font.Bold;
-            targetRange.Font.Italic = sourceCell.Font.Italic;
-            targetRange.NumberFormat = sourceCell.NumberFormat;
-
-            if (sourceHasFill)
+            try
             {
-                targetRange.Interior.Color = sourceFillColor;
+                sourceCell.Copy();
+                targetRange.PasteSpecial(Excel.XlPasteType.xlPasteFormats);
+                _app.CutCopyMode = (Excel.XlCutCopyMode)0;
             }
-            else
+            catch
             {
-                targetRange.Interior.Pattern = Excel.XlPattern.xlPatternNone;
+                // Fallback to individual property assignment if paste fails
+                try
+                {
+                    targetRange.Font.Name = sourceCell.Font.Name;
+                    targetRange.Font.Size = sourceCell.Font.Size;
+                    targetRange.Font.Bold = sourceCell.Font.Bold;
+                    targetRange.Font.Italic = sourceCell.Font.Italic;
+                    targetRange.NumberFormat = sourceCell.NumberFormat;
+
+                    if (sourceHasFill)
+                    {
+                        targetRange.Interior.Color = sourceFillColor;
+                    }
+                    else
+                    {
+                        targetRange.Interior.Pattern = Excel.XlPattern.xlPatternNone;
+                    }
+                }
+                catch { }
             }
         }
 
